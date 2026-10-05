@@ -75,7 +75,7 @@
     { kind: 'power', x: 0, y: 3.2, z: 0 },
     { kind: 'mega', x: 0, y: 0, z: 0, respawn: 35 },
     { kind: 'weapon', w: 4, x: 0, y: 0, z: -19.5, respawn: 25 },
-    { kind: 'weapon', w: 3, x: 26, y: 2.4, z: -26, respawn: 20 }, { kind: 'weapon', w: 3, x: -26, y: 2.4, z: 26, respawn: 20 },
+    { kind: 'weapon', w: 3, x: 26, y: 2.4, z: -26, respawn: 20 }, { kind: 'weapon', w: 8, x: -26, y: 2.4, z: 26, respawn: 30 }, // the south-west fort holds the Toy Cannon
     { kind: 'armor', x: -26, y: 2.4, z: -26, respawn: 25 }, { kind: 'armor', x: 26, y: 2.4, z: 26, respawn: 25 },
     { kind: 'weapon', w: 1, x: 22, y: 0, z: 0, respawn: 12 }, { kind: 'weapon', w: 5, x: -22, y: 0, z: 0, respawn: 15 },
     { kind: 'weapon', w: 2, x: 9, y: 0, z: 21, respawn: 12 }, { kind: 'weapon', w: 7, x: -9, y: 0, z: -21, respawn: 15 },
@@ -99,9 +99,12 @@
     { id: 'burst', name: 'Burst Blaster', dmg: 17, head: 1.6, rate: 13, burst: 3, burstGap: 0.42, mag: 24, reserve: 72, reload: 1.5, spread: 0.014, pellets: 1, range: 85, falloff: [28, 65, 0.7], auto: false, ads: 1.6, tip: 'Three darts per click. Deadly accurate when you aim.' },
     { id: 'lob', name: 'Splash Lobber', dmg: 75, splash: 80, radius: 4.2, speed: 21, gravity: 15, rate: 1.1, mag: 2, reserve: 8, reload: 1.8, spread: 0, pellets: 1, projectile: true, auto: false, ads: 1.2, tip: 'Lobs a water balloon in an arc. Throw it over walls and onto roofs.' },
     { id: 'zap', name: 'Zap Ray', dmg: 7, head: 1.3, rate: 17, mag: 70, reserve: 140, reload: 1.7, spread: 0.004, pellets: 1, range: 24, auto: true, ads: 1.3, beam: true, tip: 'A steady beam. Short range, never misses if you keep it on them.' },
+    { id: 'cannon', name: 'Toy Cannon', dmg: 150, splash: 70, radius: 3.6, speed: 40, gravity: 9, recoil: 10, rate: 0.5, mag: 1, reserve: 4, reload: 2.6, spread: 0, pellets: 1, projectile: true, auto: false, ads: 1.3, tip: 'One huge cannonball. Tags anyone it hits, and the kick throws you backwards: fire at the floor to fly.' },
   ];
   // Foam sword: everyone always has it (E or V). Short reach, big hit, and you lunge.
   const MELEE = { name: 'Foam Sword', dmg: 55, range: 2.6, cd: 0.7, lunge: 7 };
+  // Loadout: one of these can be chosen in the locker as a starter blaster (with half the usual spare darts). Everything else is map-only.
+  const LOADOUT = [0, 1, 2, 5];
   const POWERS = {
     mega: { name: 'Mega Darts', time: 12, color: '#ff4dd8', tip: 'Double damage for 12 seconds.' },
     speed: { name: 'Sugar Rush', time: 12, color: '#ffd84d', tip: 'Run much faster and dash twice as often for 12 seconds.' },
@@ -227,5 +230,5 @@
   }
   const falloff = (w, dist) => { if (!w.falloff) return 1; const [a, b, m] = w.falloff; return dist <= a ? 1 : dist >= b ? m : 1 - ((dist - a) / (b - a)) * (1 - m); };
 
-  return { MAP, WEAPONS, MELEE, POWERS, PICKUP_INFO, P, newBody, stepPlayer, overlap, rampAt, rampUnder, dirFrom, rayMap, los, rayPlayer, falloff };
+  return { MAP, WEAPONS, MELEE, LOADOUT, POWERS, PICKUP_INFO, P, newBody, stepPlayer, overlap, rampAt, rampUnder, dirFrom, rayMap, los, rayPlayer, falloff };
 });

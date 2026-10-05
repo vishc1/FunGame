@@ -24,14 +24,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const box = await page.locator('#canvas').boundingBox(); await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2); await sleep(700);
   // new mechanics, captured right after spawning (spawn protection keeps the bots off for a moment)
   if (!CALM) {
-    await page.keyboard.press(']'); await page.keyboard.press(']'); await page.keyboard.press(']'); await page.keyboard.press(']'); await page.keyboard.press(']'); await sleep(700); // ends on the Burst Blaster (5)
+    // the cannon first, straight after spawning and before the bots arrive: take one, look at the floor, fire, measure the lift
+    await page.evaluate(() => window.G.send({ type: 'give', w: 8 })); await sleep(700); await page.screenshot({ path: path.join(OUT, 'bl_cannon.png') });
+    await page.keyboard.down('ArrowDown'); await sleep(800); await page.keyboard.up('ArrowDown'); await page.mouse.down(); await sleep(50); await page.mouse.up();
+    let top = 0; for (let i = 0; i < 14; i++) { await sleep(50); top = Math.max(top, await page.evaluate(() => (window.__blY ? window.__blY() : 0))); }
+    console.log('cannon fired at the floor lifted the player', top.toFixed(1), 'm', top > 2 ? '(ok)' : '(UNEXPECTED)');
+    await page.keyboard.down('ArrowUp'); await sleep(800); await page.keyboard.up('ArrowUp');
+    await page.keyboard.press(']'); await page.keyboard.press(']'); await page.keyboard.press(']'); await page.keyboard.press(']'); await page.keyboard.press(']'); await sleep(300); await page.keyboard.press('6'); await sleep(700); // ends on the Burst Blaster (key 6)
     await page.mouse.down({ button: 'right' }); await sleep(450); await page.screenshot({ path: path.join(OUT, 'bl_aim_burst.png') }); await page.mouse.down(); await sleep(60); await page.mouse.up(); await sleep(350); await page.mouse.up({ button: 'right' });
     const mag = await page.evaluate(() => { let st = null; return new Promise((r) => window.G.socket.once('g:state', (s) => r(s.ps.find((p) => p.id === window.G.me).m))); });
     console.log('burst blaster: one click left', mag, 'of 24 darts in the magazine', mag === 21 ? '(ok, 3 fired)' : '(UNEXPECTED)');
     await page.keyboard.down('c'); await sleep(350); await page.screenshot({ path: path.join(OUT, 'bl_crouch.png') }); await page.keyboard.up('c');
     await page.keyboard.press('e'); await sleep(110); await page.screenshot({ path: path.join(OUT, 'bl_sword.png') }); await sleep(400);
-    await page.keyboard.press(']'); await sleep(600); await page.screenshot({ path: path.join(OUT, 'bl_lobber.png') }); await page.mouse.down(); await sleep(50); await page.mouse.up(); await sleep(500); await page.screenshot({ path: path.join(OUT, 'bl_lobber_flight.png') });
-    await page.keyboard.press(']'); await sleep(600); await page.mouse.down(); await sleep(350); await page.screenshot({ path: path.join(OUT, 'bl_zap.png') }); await page.mouse.up();
+    await page.keyboard.press(']'); await sleep(300); await page.keyboard.press('7'); await sleep(600); await page.screenshot({ path: path.join(OUT, 'bl_lobber.png') }); await page.mouse.down(); await sleep(50); await page.mouse.up(); await sleep(500); await page.screenshot({ path: path.join(OUT, 'bl_lobber_flight.png') });
+    await page.keyboard.press(']'); await sleep(300); await page.keyboard.press('8'); await sleep(600); await page.mouse.down(); await sleep(350); await page.screenshot({ path: path.join(OUT, 'bl_zap.png') }); await page.mouse.up();
+    await page.keyboard.press('g'); await sleep(500); await page.screenshot({ path: path.join(OUT, 'bl_dropped.png') });
   }
   // turn until some other player is roughly in front, then shoot at them
   for (let i = 0; i < 40; i++) {

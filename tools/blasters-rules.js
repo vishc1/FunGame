@@ -31,4 +31,23 @@ for (let i = 0; i < 3; i++) { w.game.onInput('a', { type: 'fire', w: 5, hits: []
 // crouch is reported and shrinks the target for rockets
 w = world(); w.put('a', -3, 0, 25.5, 1); w.tick(); ok('crouch state reaches other players', w.me('a').cr === 1);
 ok('a shot at standing head height passes over a crouched figure', !B.rayPlayer(0, 1.5, 5, 0, 0, -1, 0, 0, 0, 50, true) && !!B.rayPlayer(0, 0.6, 5, 0, 0, -1, 0, 0, 0, 50, true));
+// dropping a blaster and picking it up again
+w = world(); w.put('a', -3, 0, 25.5); w.put('b', 9, 0, 25.5); w.game.onInput('a', { type: 'give', w: 2 }); w.game.onInput('a', { type: 'switch', w: 2 }); w.tick(12);
+for (let i = 0; i < 6; i++) { w.game.onInput('a', { type: 'fire', w: 2, hits: [] }); w.tick(3); } const left = w.me('a').m + w.me('a').r;
+w.game.onInput('a', { type: 'drop', next: 0 }); w.tick();
+ok('G drops the held blaster on the floor', w.state.dr.length === 1 && w.state.dr[0].w === 2 && !((w.me('a').own >> 2) & 1) && w.me('a').w === 0, JSON.stringify(w.state.dr));
+w.tick(24); ok('the dropper does not instantly pick it back up', w.state.dr.length === 1);
+const dr = w.state.dr[0]; w.put('b', dr.x, dr.y, dr.z); w.tick(2); w.game.onInput('b', { type: 'switch', w: 2 }); w.tick(12);
+ok('another player picks it up with the darts that were left', w.state.dr.length === 0 && ((w.me('b').own >> 2) & 1) && w.me('b').m + w.me('b').r === left, `had ${left}, got ${w.me('b').m + w.me('b').r}`);
+w.game.onInput('a', { type: 'drop' }); w.tick(); ok('the sidearm cannot be dropped', w.state.dr.length === 0 && (w.me('a').own & 1) === 1);
+// loadout
+w = world(); w.game.onInput('a', { type: 'hello', lo: 4 }); w.game.onInput('b', { type: 'hello', lo: 2 }); w.put('a', -3, 0, 25.5); w.put('b', -1.4, 0, 25.5); w.tick();
+ok('map-only blasters are refused as a loadout', w.me('a').own === 1);
+for (let i = 0; i < 2; i++) { w.game.onInput('a', { type: 'melee', hits: ['b'] }); w.tick(30); } w.tick(90);
+ok('a loadout blaster is in hand after respawning, with half the spare darts', ((w.me('b').own >> 2) & 1) === 1 && !w.me('b').dead, 'own=' + w.me('b').own);
+// the cannon
+w = world(); w.put('a', -3, 0, 25.5); w.put('b', 7, 0, 25.5); w.game.onInput('a', { type: 'give', w: 8 }); w.game.onInput('a', { type: 'switch', w: 8 }); w.tick(12);
+w.game.onInput('a', { type: 'fire', w: 8, o: [-3, 1.62, 25.5], d: [1, -0.05, 0] }); let hit = false; for (let i = 0; i < 40 && !hit; i++) { w.tick(); hit = w.ev.some((e) => e.type === 'kill' && e.v === 'b'); }
+ok('a direct cannonball tags a full-health player in one hit', hit, 'b hp=' + w.me('b').hp);
+ok('the cannon holds one ball at a time', w.me('a').m === 0);
 console.log(bad ? `${bad} PROBLEMS` : 'blasters rules ok'); process.exit(bad ? 1 : 0);

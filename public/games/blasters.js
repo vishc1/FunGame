@@ -4,7 +4,7 @@
 //
 // BLENDER MODELS: .glb files in public/models/ named fps_* replace the placeholders built below. See fps3d.md.
 registerGame('blasters', (G) => {
-  const B = window.BLASTERS, { MAP, WEAPONS, MELEE, POWERS, PICKUP_INFO, P } = B;
+  const B = window.BLASTERS, { MAP, WEAPONS, MELEE, LOADOUT, POWERS, PICKUP_INFO, P } = B;
   const { ctx, canvas } = G;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W = 900, H = 600, s = null, T = null, failed = null, time = 0;
@@ -15,7 +15,7 @@ registerGame('blasters', (G) => {
 
   // ---- progression (kept in this browser) ----
   let xp = +ls('tbb_xp', 0) || 0; const xpFor = (l) => Math.round(120 * Math.pow(l - 1, 1.7)), levelOf = (x) => { let l = 1; while (l < 99 && xpFor(l + 1) <= x) l++; return l; };
-  let charIdx = (+ls('tbb_char', 0) || 0) % 8, skinIdx = +ls('tbb_skin', 0) || 0;
+  let charIdx = (+ls('tbb_char', 0) || 0) % 8, skinIdx = +ls('tbb_skin', 0) || 0, loadout = +ls('tbb_lo', 0) || 0; if (!LOADOUT.includes(loadout)) loadout = 0;
   // Skins are finishes for the figure's `Paint` material. `lvl` is the level that unlocks it.
   const SKINS = [
     { name: 'Classic', lvl: 1, css: 'var(--pc)' }, { name: 'Pastel', lvl: 2, css: 'linear-gradient(135deg,#fff,var(--pc))' }, { name: 'Midnight', lvl: 3, css: 'radial-gradient(circle,var(--pc) 0,#15181f 60%)' },
@@ -27,7 +27,7 @@ registerGame('blasters', (G) => {
   if (!(skinIdx >= 0 && skinIdx < SKINS.length)) skinIdx = 0;
   const CHAR_NAMES = ['Knight', 'Astronaut', 'Pirate', 'Robot', 'Wizard', 'Ninja', 'Chef', 'Dino Kid'];
   const unlocked = () => (testRoom() ? 8 : Math.min(8, 2 + Math.floor(levelOf(xp) / 2)));
-  const hello = () => G.send({ type: 'hello', lvl: levelOf(xp), ch: charIdx, sk: skinIdx });
+  const hello = () => G.send({ type: 'hello', lvl: levelOf(xp), ch: charIdx, sk: skinIdx, lo: loadout });
   hello();
 
   // ---- local player ----
@@ -51,6 +51,7 @@ registerGame('blasters', (G) => {
   function tone(f0, f1, dur, type = 'square', vol = 0.3, delay = 0) { if (!ac || muted) return; const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02); }
   function noise(dur, vol = 0.4, cutoff = 1200, delay = 0) { if (!ac || muted) return; const t = ac.currentTime + delay, n = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n); const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); src.buffer = buf; f.type = 'lowpass'; f.frequency.value = cutoff; g.gain.value = vol; src.connect(f); f.connect(g); g.connect(master); src.start(t); }
   const SFX = {
+    cannon: (v = 1) => { noise(0.5, 0.9 * v, 500); tone(90, 28, 0.5, 'sine', 0.7 * v); tone(240, 60, 0.18, 'square', 0.25 * v); }, drop: () => tone(520, 260, 0.12, 'triangle', 0.2),
     burst: (v = 1) => { tone(1000, 420, 0.05, 'square', 0.15 * v); noise(0.04, 0.2 * v, 3400); }, lob: (v = 1) => { tone(200, 90, 0.2, 'sine', 0.35 * v); noise(0.1, 0.25 * v, 900); }, zap: (v = 1) => tone(1500, 1100, 0.05, 'sawtooth', 0.07 * v),
     swing: (v = 1) => noise(0.16, 0.35 * v, 1800), bonk: () => { tone(160, 70, 0.16, 'sine', 0.5); noise(0.06, 0.4, 2600); }, splash: (v = 1) => { noise(0.45, 0.6 * v, 2200); tone(300, 80, 0.25, 'sine', 0.3 * v); }, slide: () => noise(0.4, 0.22, 1200),
     dart: (v = 1) => { tone(900, 300, 0.07, 'square', 0.16 * v); noise(0.05, 0.2 * v, 3000); }, scatter: (v = 1) => { noise(0.22, 0.6 * v, 1400); tone(180, 60, 0.18, 'sawtooth', 0.3 * v); },
@@ -244,6 +245,7 @@ registerGame('blasters', (G) => {
       else if (id === 'long') g.add(bx(0.07, 0.09, 0.62, Wt, 0, 0, -0.12), cyl(0.022, 0.022, 0.5, Bl, 0, 0.01, -0.62, 8), cyl(0.035, 0.035, 0.26, D, 0, 0.09, -0.08, 10), bx(0.06, 0.15, 0.08, O, 0, -0.1, 0.1), bx(0.06, 0.1, 0.26, Bl, 0, -0.02, 0.26));
       else if (id === 'burst') g.add(bx(0.07, 0.11, 0.5, M3('#5ee07a', { roughness: 0.4 }), 0, 0, -0.1), bx(0.05, 0.05, 0.22, D, 0, 0.02, -0.42), bx(0.06, 0.16, 0.08, O, 0, -0.1, 0.08), bx(0.06, 0.14, 0.07, D, 0, -0.11, -0.14), bx(0.03, 0.04, 0.16, Y, 0, 0.08, -0.05), bx(0.06, 0.08, 0.2, D, 0, -0.01, 0.24));
       else if (id === 'lob') g.add(cyl(0.11, 0.11, 0.4, M3('#35c8ff', { roughness: 0.35 }), 0, 0.01, -0.12, 12), cyl(0.13, 0.11, 0.1, Wt, 0, 0.01, -0.36, 12), sph(0.1, M3('#ff5d8a', { roughness: 0.3 }), 0, 0.01, -0.42, 10), bx(0.06, 0.16, 0.08, D, 0, -0.13, 0.04), bx(0.07, 0.09, 0.18, O, 0, 0, 0.16));
+      else if (id === 'cannon') g.add(cyl(0.12, 0.14, 0.62, D, 0, 0.02, -0.12, 14), cyl(0.15, 0.15, 0.07, Y, 0, 0.02, -0.42, 14), cyl(0.16, 0.16, 0.06, Y, 0, 0.02, 0.16, 14), sph(0.1, D, 0, 0.02, 0.22, 10), bx(0.2, 0.08, 0.3, M3('#8a5a2b'), 0, -0.12, -0.02), bx(0.06, 0.15, 0.08, M3('#8a5a2b'), 0, -0.2, 0.08));
       else if (id === 'zap') g.add(bx(0.08, 0.1, 0.36, M3('#c77dff', { roughness: 0.35 }), 0, 0, -0.06), cyl(0.05, 0.05, 0.05, Wt, 0, 0, -0.27, 10), cyl(0.065, 0.065, 0.04, Wt, 0, 0, -0.34, 10), cyl(0.05, 0.05, 0.04, Wt, 0, 0, -0.4, 10), sph(0.045, glow('#7df9ff', 2.4), 0, 0, -0.46, 8), bx(0.06, 0.16, 0.08, D, 0, -0.1, 0.07), sph(0.06, glow('#7df9ff', 1.6), 0, 0.08, 0.02, 8));
       else g.add(cyl(0.085, 0.085, 0.72, O, 0, 0, -0.1, 12), cyl(0.11, 0.085, 0.12, Y, 0, 0, -0.5, 12), bx(0.06, 0.14, 0.08, D, 0, -0.12, 0.02), bx(0.06, 0.14, 0.08, D, 0, -0.12, -0.24), cyl(0.1, 0.1, 0.05, Bl, 0, 0, 0.24, 12));
       g.traverse((m) => { if (m.isMesh && m.geometry.type === 'CylinderGeometry') m.rotation.x = Math.PI / 2; });
@@ -369,7 +371,7 @@ registerGame('blasters', (G) => {
       burst(x, y, z, 70, r * 2.6, wet ? ['#4fc3ff', '#bfeaff', '#ffffff', '#2f8fd8'] : ['#ffb030', '#ff5a1f', '#ffe27a', '#999999'], 0.9);
       const d = Math.hypot(body.x - x, body.y + 0.9 - y, body.z - z); shake = Math.max(shake, Math.max(0, 1 - d / 22));
       if (me.alive && d < r) { const k = (1 - d / r) * 15, nx = (body.x - x) / (d || 1), ny = (body.y + 0.9 - y) / (d || 1), nz = (body.z - z) / (d || 1); body.vx += nx * k; body.vz += nz * k; body.vy = Math.max(body.vy, 0) + Math.max(0.35, ny) * k; body.ground = false; body.jumps = Math.max(body.jumps, 1); }
-      play(wet ? 'splash' : 'explode', Math.max(0.15, 1 - d / 45));
+      play(wet ? 'splash' : 'explode', Math.max(0.15, 1 - d / 45)); if (w === 8) shake = Math.max(shake, Math.max(0, 1.4 - d / 18));
     }
 
     // ---- view model (your own blaster) ----
@@ -424,7 +426,7 @@ registerGame('blasters', (G) => {
         }
         const seenD = new Set(); for (const d of s.dr) { seenD.add(d.id); let v = dropViews.get(d.id); if (!v) { v = weaponModel(d.w, true); dropViews.set(d.id, v); scene.add(v); } v.position.set(d.x, d.y + 0.5 + Math.sin(time * 3 + d.id) * 0.08, d.z); v.rotation.y += dt * 2.5; }
         for (const [id, v] of dropViews) if (!seenD.has(id)) { scene.remove(v); dropViews.delete(id); }
-        const seenR = new Set(); for (const r of s.rk) { seenR.add(r.id); let v = rocketViews.get(r.id); if (!v) { const model = (r.w === 6 ? asset('fps_balloon', 0.5) || (() => { const g = new THREE.Group(); const bl = sph(0.24, M3('#ff5d8a', { roughness: 0.25 })); bl.scale.set(0.9, 0.9, 1.15); g.add(bl, mesh(new THREE.ConeGeometry(0.06, 0.1, 6), M3('#ff5d8a'), 0, 0, 0.3)); return g; })() : null) || asset('fps_rocket', 0.6) || (() => { const g = new THREE.Group(); const c = cyl(0.09, 0.09, 0.5, M3('#ff8a3d')); c.rotation.x = Math.PI / 2; g.add(c, mesh(new THREE.ConeGeometry(0.09, 0.2, 8), M3('#f4f4f4'), 0, 0, -0.35)); g.children[1].rotation.x = -Math.PI / 2; return g; })(); model.rotation.y = Math.PI; v = new THREE.Group(); v.add(model); v.userData.p = [r.x, r.y, r.z]; rocketViews.set(r.id, v); scene.add(v); }
+        const seenR = new Set(); for (const r of s.rk) { seenR.add(r.id); let v = rocketViews.get(r.id); if (!v) { const model = (r.w === 8 ? asset('fps_cannonball', 0.5) || (() => { const g = new THREE.Group(); g.add(sph(0.26, M3('#20242c', { roughness: 0.35, metalness: 0.6 }), 0, 0, 0, 14)); return g; })() : null) || (r.w === 6 ? asset('fps_balloon', 0.5) || (() => { const g = new THREE.Group(); const bl = sph(0.24, M3('#ff5d8a', { roughness: 0.25 })); bl.scale.set(0.9, 0.9, 1.15); g.add(bl, mesh(new THREE.ConeGeometry(0.06, 0.1, 6), M3('#ff5d8a'), 0, 0, 0.3)); return g; })() : null) || asset('fps_rocket', 0.6) || (() => { const g = new THREE.Group(); const c = cyl(0.09, 0.09, 0.5, M3('#ff8a3d')); c.rotation.x = Math.PI / 2; g.add(c, mesh(new THREE.ConeGeometry(0.09, 0.2, 8), M3('#f4f4f4'), 0, 0, -0.35)); g.children[1].rotation.x = -Math.PI / 2; return g; })(); model.rotation.y = Math.PI; v = new THREE.Group(); v.add(model); v.userData.p = [r.x, r.y, r.z]; rocketViews.set(r.id, v); scene.add(v); }
           const p = v.userData.p; if (Math.hypot(r.x - p[0], r.y - p[1], r.z - p[2]) > 0.01) v.lookAt(r.x + (r.x - p[0]), r.y + (r.y - p[1]), r.z + (r.z - p[2])); v.position.set(r.x, r.y, r.z); v.userData.p = [r.x, r.y, r.z]; spark(r.x, r.y, r.z, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, r.w === 6 ? '#8fd8ff' : Math.random() < 0.5 ? '#ffb030' : '#bbbbbb', 0.5, r.w === 6 ? 6 : 0); }
         for (const [id, v] of rocketViews) if (!seenR.has(id)) { scene.remove(v); rocketViews.delete(id); }
         for (const pv of padViews) { pv.ar.position.y = 0.5 + ((time * 1.4) % 1) * 0.9; pv.ar.material.opacity = 1; }
@@ -477,9 +479,11 @@ registerGame('blasters', (G) => {
     G.ui.innerHTML = `<div class="tbb-locker" style="--pc:${col}"><h3>Locker</h3><div style="color:#8b91a5;font-size:12px">Level ${lvl}${testRoom() ? ' &nbsp;•&nbsp; test room: everything is unlocked' : ' &nbsp;•&nbsp; play matches to earn XP and unlock more'}</div>
       <h4>Figure</h4><div class="tbb-grid">${CHAR_NAMES.map((n, i) => `<button class="tbb-card ${i === charIdx ? 'sel' : ''} ${i < nFig ? '' : 'lock'}" data-fig="${i}"><div class="tbb-thumb" style="background-position:${[1.5, 33.8, 66.2, 98.5][i % 4]}% ${i < 4 ? 11.5 : 100}%"></div>${n}<small>${i < nFig ? '&nbsp;' : 'Level ' + Math.max(2, (i - 1) * 2)}</small></button>`).join('')}</div>
       <h4>Skin</h4><div class="tbb-grid tbb-skins">${SKINS.map((k, i) => `<button class="tbb-card ${i === skinIdx ? 'sel' : ''} ${skinOpen(i) ? '' : 'lock'}" data-skin="${i}"><div class="tbb-sw" style="background:${k.css}"></div>${k.name}<small>${skinOpen(i) ? '&nbsp;' : 'Level ' + k.lvl}</small></button>`).join('')}</div>
+      <h4>Loadout: starter blaster</h4><div class="tbb-grid tbb-lo">${LOADOUT.map((w) => `<button class="tbb-card ${w === loadout ? 'sel' : ''}" data-lo="${w}">${w === 0 ? 'Sidearm only' : WEAPONS[w].name}<small>${w === 0 ? 'the classic' : 'half the spare darts'}</small></button>`).join('')}</div>
       <h4>Settings</h4><div class="tbb-set"><label>Mouse sensitivity <b id="tbbSensV">${sensMul.toFixed(2)}</b><input id="tbbSens" type="range" min="0.2" max="3" step="0.05" value="${sensMul}"></label><label>Field of view <b id="tbbFovV">${baseFov}</b><input id="tbbFov" type="range" min="60" max="105" step="1" value="${baseFov}"></label></div>
-      <div class="tbb-foot"><span>Skins change your figure's colours. Other players see them.</span><button id="tbbClose" class="primary">Done (L)</button></div></div>`;
+      <div class="tbb-foot"><span>Skins change your figure's colours. The big blasters are only found on the map.</span><button id="tbbClose" class="primary">Done (L)</button></div></div>`;
     for (const b of G.ui.querySelectorAll('[data-fig]')) b.onclick = () => { const i = +b.dataset.fig; if (i >= unlocked()) return G.toast('Reach level ' + Math.max(2, (i - 1) * 2) + ' to unlock ' + CHAR_NAMES[i]); charIdx = i; lset('tbb_char', i); hello(); drawLocker(); if (T) T.preview(charIdx, skinIdx); };
+    for (const b of G.ui.querySelectorAll('[data-lo]')) b.onclick = () => { loadout = +b.dataset.lo; lset('tbb_lo', loadout); hello(); drawLocker(); G.toast(loadout ? `You will start each life with the ${WEAPONS[loadout].name}` : 'You will start with just the Dart Blaster'); };
     for (const b of G.ui.querySelectorAll('[data-skin]')) b.onclick = () => { const i = +b.dataset.skin; if (!skinOpen(i)) return G.toast('Reach level ' + SKINS[i].lvl + ' to unlock ' + SKINS[i].name); skinIdx = i; lset('tbb_skin', i); hello(); drawLocker(); if (T) T.preview(charIdx, skinIdx); };
     G.ui.querySelector('#tbbClose').onclick = () => setLocker(false);
     G.ui.querySelector('#tbbSens').oninput = (e) => { sensMul = +e.target.value; lset('tbb_sens', sensMul); G.ui.querySelector('#tbbSensV').textContent = sensMul.toFixed(2); };
@@ -507,6 +511,14 @@ registerGame('blasters', (G) => {
     shoot();
     if (def.burst) { me.burstLeft = def.burst - 1; me.burstT = time + 1 / def.rate; me.nextFire = time + (def.burst - 1) / def.rate + def.burstGap; }
   }
+  // G: put the blaster you are holding on the floor in front of you, with whatever darts it has left (not the sidearm)
+  function dropWeapon() {
+    const st = mySt(); if (!st || !me.alive || over || locker) return;
+    if (me.w === 0) { G.toast('Your Dart Blaster is glued to your hand. Pick up another blaster first.'); return; }
+    let next = 0; if (me.lastW !== me.w && me.lastW !== 0 && ((st.own >> me.lastW) & 1)) next = me.lastW; else for (let i = WEAPONS.length - 1; i > 0; i--) if (i !== me.w && ((st.own >> i) & 1)) { next = i; break; }
+    G.send({ type: 'drop', next }); play('drop');
+    me.lastW = 0; me.w = next; me.mag = next === 0 ? WEAPONS[0].mag : 0; me.magHold = 0; me.drawT = time + 0.3; me.nextFire = time + 0.3; me.reloadEnd = 0; me.burstLeft = 0; zooming = false; firing = false;
+  }
   // foam sword: quick swipe at whoever is right in front of you, with a small lunge
   function melee() {
     if (!me.alive || over || locker || time < me.nextMelee || !s) return;
@@ -524,6 +536,7 @@ registerGame('blasters', (G) => {
     me.spreadAdd = Math.min(0.03, me.spreadAdd + (def.auto ? 0.004 : 0));
     const fwd = B.dirFrom(me.yaw, me.pitch), hits = new Map(); let firstEnd = null;
     if (def.projectile) { G.send({ type: 'fire', w: me.w, o, d: fwd }); }
+    if (def.recoil) { /* the cannon kicks you back along the barrel: aim at the floor and it throws you into the air */ body.vx -= fwd[0] * def.recoil; body.vz -= fwd[2] * def.recoil; body.vy = Math.max(body.vy, 0) - fwd[1] * def.recoil; if (fwd[1] < -0.2) { body.ground = false; body.jumps = Math.max(body.jumps, 1); } shake = Math.max(shake, 0.8); }
     else {
       for (let i = 0; i < def.pellets; i++) {
         let d = [fwd[0] + (Math.random() - 0.5) * 2 * base, fwd[1] + (Math.random() - 0.5) * 2 * base, fwd[2] + (Math.random() - 0.5) * 2 * base]; const l = Math.hypot(d[0], d[1], d[2]); d = [d[0] / l, d[1] / l, d[2] / l];
@@ -596,7 +609,7 @@ registerGame('blasters', (G) => {
     // death screen
     if (st && st.dead && !over) { ctx.fillStyle = 'rgba(10,0,0,.4)'; ctx.fillRect(0, 0, W, H); txt(deathBy || 'Tagged out!', cx, cy - 40, { size: 30, color: '#ff6b6b', weight: 900 }); txt(`Back in ${Math.max(0, st.dead).toFixed(1)}s`, cx, cy, { size: 18 }); txt(`${CHAR_NAMES[charIdx]} in ${SKINS[skinIdx].name}   •   press L for the locker`, cx, cy + 34, { size: 13, color: '#cfd6e4' }); }
     // not captured yet
-    if (!locked && me.alive && !over && !showGuide && !locker) { ctx.fillStyle = 'rgba(5,8,14,.6)'; ctx.fillRect(0, 0, W, H); txt('Click to play', cx, cy - 46, { size: 36, weight: 900, color: '#ffd84d' }); ['WASD move   •   Space jump (twice)   •   Shift dash   •   C crouch, tap while running to slide', 'Click fire   •   Right-click aim   •   E foam sword   •   R reload   •   1-8 or wheel: switch', 'Tab scores   •   H guide   •   L locker, skins and settings   •   M mute   •   Esc frees the mouse', ...(testRoom() ? ['Test room: [ and ] hand you each blaster in turn'] : [])].forEach((l, i) => txt(l, cx, cy + 4 + i * 24, { size: 14, color: '#e8eaf0' })); }
+    if (!locked && me.alive && !over && !showGuide && !locker) { ctx.fillStyle = 'rgba(5,8,14,.6)'; ctx.fillRect(0, 0, W, H); txt('Click to play', cx, cy - 46, { size: 36, weight: 900, color: '#ffd84d' }); ['WASD move   •   Space jump (twice)   •   Shift dash   •   C crouch, tap while running to slide', 'Click fire   •   Right-click aim   •   E foam sword   •   G drop blaster   •   R reload   •   1-9 or wheel: switch', 'Tab scores   •   H guide   •   L locker, skins and settings   •   M mute   •   Esc frees the mouse', ...(testRoom() ? ['Test room: [ and ] hand you each blaster in turn'] : [])].forEach((l, i) => txt(l, cx, cy + 4 + i * 24, { size: 14, color: '#e8eaf0' })); }
     if (showScores || over) scoreboard();
     if (showGuide) guide();
     if (!locker) txt(`Level ${levelOf(xp)}  •  ${CHAR_NAMES[charIdx]}  •  ${SKINS[skinIdx].name}  (L)`, 20, 52, { size: 11.5, align: 'left', color: '#ffd84d' });
@@ -612,8 +625,8 @@ registerGame('blasters', (G) => {
       const l = levelOf(xp), a = xpFor(l), b = xpFor(l + 1), f = (xp - a) / (b - a), y = y0 + 74; txt(`+${over.gain} XP   Level ${l}${over.up ? '  LEVEL UP!' : ''}`, W / 2, y - 14, { size: 13, color: over.up ? '#5ee07a' : '#ffd84d', stroke: false }); rr(px + 60, y, pw - 120, 10, 5, 'rgba(255,255,255,.12)'); rr(px + 60, y, (pw - 120) * Math.max(0.02, Math.min(1, f)), 10, 5, '#ffd84d'); }
   }
   function guide() {
-    const lines = [...WEAPONS.map((w, i) => [`${i + 1}  ${w.name}`, w.tip, '#ffb347']), ['E  Foam Sword', 'Everyone has one. Big hit up close, and you lunge forward.', '#ffb347'], ['Aim (right-click)', 'Zooms in and tightens your shots, but you walk slower.', '#9fc8ff'], ['Crouch and slide (C)', 'Crouching steadies your aim and makes you smaller. Tap C while running to slide.', '#9fc8ff'], ...Object.values(PICKUP_INFO).map((p) => [p.name, p.tip, '#5ee07a']), ...Object.values(POWERS).map((p) => ['★ ' + p.name, p.tip, p.color]), ['Jump pads', 'Blue pads lift you onto the corner forts. Orange pads fling you to the tower roof.', '#35e6ff'], ['Ramps', 'Wooden ramps walk you up to the galleries. Orange ramps launch you: jump or dash off the top.', '#ff8a3d'], ['Teleporters', 'Glowing rings come in pairs. Step in one, pop out of the matching colour.', '#c77dff'], ['Toy train', 'Runs down the middle road every 30 seconds. Bells and red lights warn you. Do not be on the track.', '#ff5d5d'], ['Dropped blasters', 'Tagged players drop their best blaster. Run over it to take it.', '#ffffff']];
-    const pw = Math.min(W - 24, 780), rh = Math.min(26, (H - 110) / lines.length), ph = lines.length * rh + 66, px = (W - pw) / 2, py = Math.max(8, (H - ph) / 2);
+    const lines = [...WEAPONS.map((w, i) => [`${i + 1}  ${w.name}`, w.tip, '#ffb347']), ['E  Foam Sword', 'Everyone has one. Big hit up close, and you lunge forward.', '#ffb347'], ['G  Drop', 'Puts the blaster you are holding on the floor for someone else. Pick a starter blaster in the locker (L).', '#9fc8ff'], ['Aim (right-click)', 'Zooms in and tightens your shots, but you walk slower.', '#9fc8ff'], ['Crouch and slide (C)', 'Crouching steadies your aim and makes you smaller. Tap C while running to slide.', '#9fc8ff'], ...Object.values(PICKUP_INFO).map((p) => [p.name, p.tip, '#5ee07a']), ...Object.values(POWERS).map((p) => ['★ ' + p.name, p.tip, p.color]), ['Jump pads', 'Blue pads lift you onto the corner forts. Orange pads fling you to the tower roof.', '#35e6ff'], ['Ramps', 'Wooden ramps walk you up to the galleries. Orange ramps launch you: jump or dash off the top.', '#ff8a3d'], ['Teleporters', 'Glowing rings come in pairs. Step in one, pop out of the matching colour.', '#c77dff'], ['Toy train', 'Runs down the middle road every 30 seconds. Bells and red lights warn you. Do not be on the track.', '#ff5d5d'], ['Dropped blasters', 'Tagged players drop their best blaster. Run over it to take it.', '#ffffff']];
+    const pw = Math.min(W - 24, 860), rh = Math.min(26, (H - 110) / lines.length), ph = lines.length * rh + 66, px = (W - pw) / 2, py = Math.max(8, (H - ph) / 2);
     rr(px, py, pw, ph, 16, 'rgba(8,12,20,.94)', 'rgba(255,216,77,.7)'); txt('What everything does', px + 22, py + 26, { size: 18, weight: 800, align: 'left', color: '#ffd84d', stroke: false }); txt('H closes this', px + pw - 22, py + 26, { size: 11.5, align: 'right', color: '#aab', stroke: false });
     lines.forEach(([n, tip, col], i) => { const y = py + 56 + i * rh; txt(n, px + 22, y, { size: 12.5, weight: 800, align: 'left', color: col, stroke: false }); txt(tip, px + 200, y, { size: W < 620 || rh < 22 ? 9.5 : 11.5, align: 'left', color: '#dfe5ee', stroke: false }); });
   }
@@ -625,6 +638,7 @@ registerGame('blasters', (G) => {
     const nearest = (needSight) => { let best = null, bd = 1e9; for (const p of s ? s.ps : []) { if (p.id === G.me || p.dead || (needSight && p.prot)) continue; const v = (T && T.view(p.id)) || p, d = Math.hypot(v.x - body.x, v.z - body.z); if (d >= bd) continue; if (needSight && !B.los(body.x, body.y + P.EYE, body.z, v.x, v.y + 1.0, v.z)) continue; bd = d; best = v; } return best ? { v: best, d: bd } : null; };
     window.__bl = () => { if (!s) return null; const n = nearest(false); if (!n) return { err: null }; const want = Math.atan2(-(n.v.x - body.x), -(n.v.z - body.z)), wantPitch = Math.atan2(n.v.y + 1.0 - (body.y + P.EYE), Math.max(0.5, n.d)); return { err: (((want - me.yaw) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI, perr: wantPitch - me.pitch, dist: n.d, alive: me.alive }; };
     window.__blGo = (x, y, z, yaw, pitch = 0) => { Object.assign(body, B.newBody(x, y, z)); body.teleCd = 5; me.yaw = yaw; me.pitch = pitch; return true; }; // put the player somewhere for a screenshot
+    window.__blY = () => body.y;
     window.__blAim = () => { if (!s || !me.alive) return false; const n = nearest(true); if (!n) return false; me.yaw = Math.atan2(-(n.v.x - body.x), -(n.v.z - body.z)); me.pitch = Math.atan2(n.v.y + 1.0 - (body.y + P.EYE), Math.max(0.5, n.d)); return n.d; };
   }
 
@@ -654,6 +668,7 @@ registerGame('blasters', (G) => {
         if (iV) { play('dead'); killCam = e.k; deathBy = e.k ? `Tagged by ${nm(e.k)}  (${e.w})` : e.w === 'Toy Train' ? 'Flattened by the toy train' : 'You tagged yourself'; firing = false; zooming = false; }
       }
       else if (e.type === 'assist') banner(`Assist  +50`, '#9fc8ff', 1.5);
+      else if (e.type === 'dropped' && mine) showCard(`Dropped the ${WEAPONS[e.w].name}`, 'It stays on the floor for a while with the darts it had left. Anyone can take it.', '#9fc8ff');
       else if (e.type === 'swing' && !mine) { const v = T && T.ready && T.view(e.id); if (v) { play('swing', Math.max(0.1, 1 - Math.hypot(v.x - body.x, v.z - body.z) / 20)); T.burst(v.x - Math.sin(v.yaw) * 0.9, v.y + 1.2, v.z - Math.cos(v.yaw) * 0.9, 8, 3, ['#ffb347', '#ffffff'], 0.25); } }
       else if (e.type === 'trainsoon') { trainWarn = MAP.train.warn + 0.5; play('bell'); banner(`TRAIN coming from the ${e.dir > 0 ? 'west' : 'east'}. Get off the track!`, '#ff5d5d', 3); }
       else if (e.type === 'trainhit') { body.vx = e.dir * 17; body.vy = 9; body.vz += (body.z >= MAP.train.z ? 1 : -1) * 6; body.ground = false; shake = Math.max(shake, 1); }
@@ -674,6 +689,7 @@ registerGame('blasters', (G) => {
       if (k === ' ') jumpQ = true; else if (k === 'Shift') dashQ = true; else if (k === 'r') reload(); else if (k === 'q') switchTo(me.lastW); else if (k === 'h') showGuide = !showGuide;
       else if (k >= '1' && k <= String(WEAPONS.length)) switchTo(+k - 1);
       else if (k === 'e' || k === 'v') melee();
+      else if (k === 'g') dropWeapon();
       else if ((k === '[' || k === ']') && testRoom()) { giveIdx = ((giveIdx || 0) + (k === ']' ? 1 : -1) + (WEAPONS.length - 1) * 4) % (WEAPONS.length - 1); G.send({ type: 'give', w: giveIdx + 1 }); } /* test rooms: [ and ] hand you each blaster in turn */
       else if (k === 'm') { muted = !muted; lset('mk_mute', muted ? '1' : '0'); if (master) master.gain.value = muted ? 0 : 0.25; G.toast(muted ? 'Sound off' : 'Sound on'); }
     },
@@ -707,7 +723,7 @@ registerGame('blasters', (G) => {
     destroy() {
       document.removeEventListener('pointerlockchange', onLock); canvas.removeEventListener('wheel', onWheel); window.removeEventListener('keydown', onTab); window.removeEventListener('keyup', onTab);
       if (document.pointerLockElement === canvas) document.exitPointerLock(); G.clearUI();
-      delete window.__bl; delete window.__blAim; delete window.__blGo;
+      delete window.__bl; delete window.__blAim; delete window.__blGo; delete window.__blY;
       if (T) T.dispose(); T = null; if (ac) { try { ac.close(); } catch (e) { /* ignore */ } }
     },
   };

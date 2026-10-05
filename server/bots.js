@@ -38,7 +38,8 @@ function navGrid(map) {
   const W = map.w || 900, H = map.h || 600, cols = Math.ceil(W / CELL), rows = Math.ceil(H / CELL), blocked = new Uint8Array(cols * rows), pad = 20;
   for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
     const x = cx * CELL + CELL / 2, y = cy * CELL + CELL / 2;
-    if (x < 20 + pad || x > W - 20 - pad || y < 20 + pad || y > H - 20 - pad || map.obstacles.some((o) => x > o.x - pad && x < o.x + o.w + pad && y > o.y - pad && y < o.y + o.h + pad)) blocked[cy * cols + cx] = 1;
+    if (x < 20 + pad || x > W - 20 - pad || y < 20 + pad || y > H - 20 - pad || map.obstacles.some((o) => x > o.x - pad && x < o.x + o.w + pad && y > o.y - pad && y < o.y + o.h + pad)
+      || [[0, 0], [pad, 0], [-pad, 0], [0, pad], [0, -pad]].some(([ox, oy]) => KMAPS.surface(map, x + ox, y + oy) > 0)) blocked[cy * cols + cx] = 1; // bots stay on the ground: decks and ramps are off limits
   }
   g = { cols, rows, blocked, prev: new Int32Array(cols * rows) }; NAV.set(map.id, g); return g;
 }
@@ -74,13 +75,13 @@ function blRoute(from, to) {
   let step = prev[a]; if (prev[step] !== step) step = prev[step];
   return step === z ? to : { x: (step % n) - S + 0.5, z: ((step / n) | 0) - S + 0.5 };
 }
-const BL_AIM = [0.42, 0.6, 0.34, 0.45, 1, 0.4, 1, 0.5]; // per weapon; the Splash Lobber (6) is never chosen by bots // chance a bot's shot connects at point-blank, per weapon
+const BL_AIM = [0.42, 0.6, 0.34, 0.45, 1, 0.4, 1, 0.5, 1]; // per weapon; the Splash Lobber (6) is never chosen by bots // chance a bot's shot connects at point-blank, per weapon
 
 const BRAINS = {
   blasters(b, s, c) {
     const me = find(s.ps, b.id); if (!me) return [];
     const m = b.mem, out = [], P = BL.P;
-    if (!m.hello) { m.hello = 1; out.push({ type: 'hello', lvl: 1 + Math.floor(Math.random() * 9), ch: Math.floor(Math.random() * 8), sk: pick([0, 0, 1, 4]) }); /* bots only wear skins that keep their own colour (Classic, Pastel, Neon) */ }
+    if (!m.hello) { m.hello = 1; out.push({ type: 'hello', lvl: 1 + Math.floor(Math.random() * 9), ch: Math.floor(Math.random() * 8), sk: pick([0, 0, 1, 4]), lo: pick([0, 0, 1, 2]) }); /* bots only wear skins that keep their own colour (Classic, Pastel, Neon) */ }
     if (me.dead) { m.body = null; return out; }
     if (!m.body || Math.hypot(m.body.x - me.x, m.body.z - me.z) > 6) { m.body = BL.newBody(me.x, me.y, me.z); m.yaw = me.yw; m.pitch = 0; m.strafe = 1; m.strafeT = 0; m.see = 0; m.fireCd = 0.6; m.goal = null; m.goalT = 0; }
     const body = m.body, ex = body.x, ey = body.y + P.EYE, ez = body.z;
@@ -117,7 +118,7 @@ const BRAINS = {
     out.push({ type: 'p', x: +body.x.toFixed(2), y: +body.y.toFixed(2), z: +body.z.toFixed(2), yaw: +m.yaw.toFixed(2), pitch: +m.pitch.toFixed(2), cr: m.cr || 0 });
     // weapon choice, reload, fire
     const has = (w) => (me.own >> w) & 1;
-    const want = tgt ? (td < 9 && has(1) ? 1 : td > 6 && has(4) ? 4 : td > 18 && has(3) ? 3 : td < 20 && has(7) ? 7 : has(5) ? 5 : has(2) ? 2 : has(1) && td < 14 ? 1 : 0) : (me.w === 6 ? 0 : me.w);
+    const want = tgt ? (td < 9 && has(1) ? 1 : td > 7 && td < 30 && has(8) ? 8 : td > 6 && has(4) ? 4 : td > 18 && has(3) ? 3 : td < 20 && has(7) ? 7 : has(5) ? 5 : has(2) ? 2 : has(1) && td < 14 ? 1 : 0) : (me.w === 6 ? 0 : me.w);
     if (want !== me.w && (!m.swT || m.swT <= 0)) { out.push({ type: 'switch', w: want }); m.swT = 1.2; m.fireCd = Math.max(m.fireCd, 0.45); return out; }
     if (m.swT > 0) m.swT -= c.dt;
     if (me.m === 0 && !me.rl) { if (me.r !== 0) out.push({ type: 'reload' }); else if (me.w !== 0) out.push({ type: 'switch', w: 0 }); return out; }
@@ -144,8 +145,8 @@ const BRAINS = {
   memekarts(b, s, c) {
     const me = find(s.karts, b.id); if (!me || me.dead) return [];
     const map = KMAPS.find((m) => m.id === s.mapId) || KMAPS[0];
-    let t = nearest(s.karts, me, (k) => !k.dead && !k.ghost);
-    if (!me.weapon) { let bd = t ? dist(t, me) * 1.4 : 1e9; map.boxes.forEach(([x, y], i) => { if (!s.boxes[i]) return; const d = Math.hypot(x - me.x, y - me.y); if (d < bd) { bd = d; t = { x, y }; } }); }
+    let t = nearest(s.karts, me, (k) => !k.dead && !k.ghost && !(k.el > 12));
+    if (!me.weapon) { let bd = t ? dist(t, me) * 1.4 : 1e9; map.boxes.forEach(([x, y], i) => { if (!s.boxes[i] || KMAPS.surface(map, x, y) > 0) return; const d = Math.hypot(x - me.x, y - me.y); if (d < bd) { bd = d; t = { x, y }; } }); }
     if (!t) t = { x: (map.w || 900) / 2, y: (map.h || 600) / 2 };
     const wp = route(map, me, t); // steer along a path around the walls instead of straight at the target
     const out = [drive(b, me, wp.x, wp.y, c.dt)];

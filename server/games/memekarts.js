@@ -105,16 +105,16 @@ const WEIGHT_SUM = WEAPONS.reduce((a, w) => a + (w.w || 5), 0);
 // Items that hit everyone at once are held back for the first 20 seconds, so nobody is inked and shrunk the moment a match starts.
 const LATE_ONLY = new Set(['bolt', 'ink', 'blue']);
 function randomWeapon(early) { for (let tries = 0; tries < 20; tries++) { let r = Math.random() * WEIGHT_SUM; for (const w of WEAPONS) { r -= w.w || 5; if (r <= 0) { if (early && LATE_ONLY.has(w.id)) break; return w.id; } } } return WEAPONS[0].id; }
-function explode(g, x, y, r, dmg, by, name) {
+function explode(g, x, y, r, dmg, by, name, el) { // el: the height it went off at; karts on a different level are safe
   g.api.emit('g:event', { type: 'boom', x: Math.round(x), y: Math.round(y), r });
-  for (const k of [...g.karts.values()]) if (!k.dead && !k.air && Math.hypot(k.x - x, k.y - y) < r + R) g.damage(k, dmg, by, name);
+  for (const k of [...g.karts.values()]) if (!k.dead && !k.air && (el == null || Math.abs(k.el - el) < 30) && Math.hypot(k.x - x, k.y - y) < r + R) g.damage(k, dmg, by, name);
 }
 
 function projHit(e, g) {
   for (const k of g.karts.values()) {
     if (k.dead || k.air || k.ghost > 0) continue;
     if (k.id === e.owner && e.age < 0.4) continue;
-    if (Math.hypot(k.x - e.x, k.y - e.y) < (e.r || 8) + R) { KINDS[e.kind].hit(e, g, k); return false; }
+    if (Math.hypot(k.x - e.x, k.y - e.y) < (e.r || 8) + R && Math.abs(k.el - (e.el || 0)) < 24) { KINDS[e.kind].hit(e, g, k); return false; }
   }
   return true;
 }
@@ -142,14 +142,14 @@ const KINDS = {
     update() { return true; },
     expire(e, g) {
       g.api.emit('g:event', { type: 'boom', x: Math.round(e.x), y: Math.round(e.y), r: 110 });
-      for (const k of [...g.karts.values()]) if (!k.dead && !k.air && Math.hypot(k.x - e.x, k.y - e.y) < 110 + R) g.damage(k, 2, e.owner, 'TNT');
+      for (const k of [...g.karts.values()]) if (!k.dead && !k.air && Math.abs(k.el - (e.el || 0)) < 30 && Math.hypot(k.x - e.x, k.y - e.y) < 110 + R) g.damage(k, 2, e.owner, 'TNT');
     },
   },
   pad: {
     update(e, g) {
       for (const k of g.karts.values()) {
         if (k.dead || k.air || k.padCd > 0) continue;
-        if (Math.hypot(k.x - e.x, k.y - e.y) < 28) {
+        if (Math.hypot(k.x - e.x, k.y - e.y) < 28 && Math.abs(k.el - (e.el || 0)) < 24) {
           k.air = 1.2; k.avx = Math.cos(k.a) * 300 / 1.2; k.avy = Math.sin(k.a) * 300 / 1.2; k.vx = k.avx * 0.5; k.vy = k.avy * 0.5; k.launcher = e.owner;
           g.api.emit('g:event', { type: 'launch', id: k.id });
         }
@@ -162,7 +162,7 @@ const KINDS = {
       for (const k of g.karts.values()) {
         if (k.dead || k.air) continue;
         if (k.id === e.owner && e.age < 0.6) continue;
-        if (Math.hypot(k.x - e.x, k.y - e.y) < 26) { k.spin = 1.2; k.vx = 0; k.vy = 0; g.api.emit('g:event', { type: 'slip', id: k.id }); return false; }
+        if (Math.hypot(k.x - e.x, k.y - e.y) < 26 && Math.abs(k.el - (e.el || 0)) < 24) { k.spin = 1.2; k.vx = 0; k.vy = 0; g.api.emit('g:event', { type: 'slip', id: k.id }); return false; }
       }
       return true;
     },
@@ -184,18 +184,18 @@ const KINDS = {
   },
   bomb: { // lobbed, then sits with a lit fuse, explodes on contact or timeout
     update(e, g, dt) {
-      if (e.fly > 0) { e.fly -= dt; e.x += e.vx * dt; e.y += e.vy * dt; e.z = Math.sin(Math.min(1, 1 - e.fly) * Math.PI) * 60; if (g.wallHit(e, e.r, 0.3)) { e.fly = 0; } if (e.fly <= 0) { e.z = 0; e.vx = e.vy = 0; e.life = 1.6; } return true; }
-      for (const k of g.karts.values()) { if (k.dead || k.air || k.ghost > 0) continue; if (k.id === e.owner && e.age < 0.8) continue; if (Math.hypot(k.x - e.x, k.y - e.y) < 24) { explode(g, e.x, e.y, 100, 2, e.owner, 'Bob-omb'); return false; } }
+      if (e.fly > 0) { e.fly -= dt; e.x += e.vx * dt; e.y += e.vy * dt; e.z = Math.sin(Math.min(1, 1 - e.fly) * Math.PI) * 60; if (g.wallHit(e, e.r, 0.3)) { e.fly = 0; } if (e.fly <= 0) { e.z = 0; e.el = g.surf(e.x, e.y); e.vx = e.vy = 0; e.life = 1.6; } return true; }
+      for (const k of g.karts.values()) { if (k.dead || k.air || k.ghost > 0) continue; if (k.id === e.owner && e.age < 0.8) continue; if (Math.hypot(k.x - e.x, k.y - e.y) < 24 && Math.abs(k.el - (e.el || 0)) < 24) { explode(g, e.x, e.y, 100, 2, e.owner, 'Bob-omb', e.el); return false; } }
       return true;
     },
-    expire(e, g) { if (e.fly <= 0) explode(g, e.x, e.y, 100, 2, e.owner, 'Bob-omb'); },
+    expire(e, g) { if (e.fly <= 0) explode(g, e.x, e.y, 100, 2, e.owner, 'Bob-omb', e.el); },
   },
   fake: { // looks like an item box; touching it spins you out and eats your weapon
     update(e, g) {
       for (const k of g.karts.values()) {
         if (k.dead || k.air || k.star > 0 || k.ghost > 0) continue;
         if (k.id === e.owner && e.age < 1) continue;
-        if (Math.hypot(k.x - e.x, k.y - e.y) < 26) { k.spin = 1.2; k.vx = 0; k.vy = 0; k.weapon = null; g.api.emit('g:event', { type: 'fakebox', id: k.id, x: Math.round(e.x), y: Math.round(e.y) }); return false; }
+        if (Math.hypot(k.x - e.x, k.y - e.y) < 26 && Math.abs(k.el - (e.el || 0)) < 24) { k.spin = 1.2; k.vx = 0; k.vy = 0; k.weapon = null; g.api.emit('g:event', { type: 'fakebox', id: k.id, x: Math.round(e.x), y: Math.round(e.y) }); return false; }
       }
       return true;
     },
@@ -229,7 +229,7 @@ const KINDS = {
 module.exports = {
   id: 'memekarts',
   name: 'Meme Karts',
-  tagline: '3D kart battle on big maps with ramps, portals and hazards. 18 items.',
+  tagline: '3D kart battle on big maps with raised decks, ramps, portals and hazards. 18 items.',
   min: 2, max: 8,
   controls: 'WASD / arrows to drive. Drive through ? boxes. Space or click uses your item. H shows what every item does. Hold C to look behind. M mutes sound.',
   create(api) {
@@ -239,8 +239,39 @@ module.exports = {
     const hitWall = (o, r, rest) => wallHit(o, r, rest, map.obstacles, W, H);
     const karts = new Map();
     const ents = []; let eid = 0;
-    const boxes = BOXES.map(([x, y]) => ({ x, y, t: 0 }));
-    const ramps = map.ramps || []; let elapsed = 0;
+    // ---- height: decks and ramps (see public/memekarts-maps.js). `el` is how high a kart or item is standing. ----
+    const surf = (x, y) => MAPS.surface(map, x, y), STEP = 10; // a rise of more than STEP is a wall; a drop of more than STEP is a fall
+    const boxes = BOXES.map(([x, y]) => ({ x, y, t: 0, el: surf(x, y) }));
+    let elapsed = 0;
+    // Keeps a kart on the ground it can reach after it moved from (px, py). Returns true when it ran into a deck or ramp side.
+    function terrain(k, px, py, dt, rest) {
+      if (surf(px, py) - k.el > STEP) { k.el = surf(k.x, k.y); return false; } // shoved inside a deck by a collision: pop up onto it
+      const mx = k.x - px, my = k.y - py, ml = Math.hypot(mx, my) || 1, lx = (mx / ml) * R * 0.75, ly = (my / ml) * R * 0.75;
+      const wall = (x, y, ox, oy) => surf(x, y) - k.el > STEP || surf(x + ox, y + oy) - k.el > STEP;
+      let hit = false;
+      if (wall(k.x, k.y, lx, ly)) {
+        hit = true;
+        if (!wall(k.x, py, lx, 0)) { k.y = py; k.vy = -k.vy * rest; }
+        else if (!wall(px, k.y, 0, ly)) { k.x = px; k.vx = -k.vx * rest; }
+        else { k.x = px; k.y = py; k.vx = -k.vx * rest; k.vy = -k.vy * rest; }
+      }
+      const h = surf(k.x, k.y);
+      if (k.el - h > STEP) { k.el = Math.max(h, k.el - 300 * dt); if (!k.falling) { k.falling = true; } } // drove off an edge: fall
+      else { if (k.falling) { k.falling = false; api.emit('g:event', { type: 'land', x: Math.round(k.x), y: Math.round(k.y), drop: 1 }); } k.el = h; }
+      return hit;
+    }
+    // the same idea for shells and other things that slide along the ground: decks and ramp sides bounce them, edges drop them
+    function entWall(o, r, rest) {
+      let hit = hitWall(o, r, rest); if (o.fly > 0) return hit;
+      const el = o.el || 0, s = surf(o.x, o.y);
+      if (s - el > STEP) {
+        hit = true; const bx = o.x - Math.sign(o.vx || 0) * (r + 8), by = o.y - Math.sign(o.vy || 0) * (r + 8);
+        if (surf(bx, o.y) - el <= STEP) { o.x = bx; o.vx = -(o.vx || 0) * rest; }
+        else if (surf(o.x, by) - el <= STEP) { o.y = by; o.vy = -(o.vy || 0) * rest; }
+        else { o.x = bx; o.y = by; o.vx = -(o.vx || 0) * rest; o.vy = -(o.vy || 0) * rest; }
+      } else o.el = s;
+      return hit;
+    }
     const zones = map.zones || [], portals = map.portals || [], movers = (map.movers || []).map((m) => ({ def: m, x: m.path[0][0], y: m.path[0][1], len: Math.hypot(m.path[1][0] - m.path[0][0], m.path[1][1] - m.path[0][1]) || 1 }));
     let mapT = 0;
     const fast = api.memory.__fast; let t = fast ? (typeof fast === "number" ? fast : 8) : MATCH, over = false, vi = 0;
@@ -252,13 +283,13 @@ module.exports = {
     }
     function addKart(id) {
       const s = spawnPoint();
-      karts.set(id, { id, x: s[0], y: s[1], a: Math.atan2(CY - s[1], CX - s[0]), vx: 0, vy: 0, hp: 3, weapon: null, egg: 0, air: 0, spin: 0, mush: 0, dead: 0, inv: 1.5, padCd: 0, ramCd: 0, kills: 0, deaths: 0, v: vi++ % 8, ctl: {}, star: 0, ghost: 0, small: 0, bill: 0, ink: 0, stolen: null, boost: 0, streak: 0, hitCd: 0, tpCd: 0, hazCd: 0 });
+      karts.set(id, { id, x: s[0], y: s[1], a: Math.atan2(CY - s[1], CX - s[0]), vx: 0, vy: 0, hp: 3, weapon: null, egg: 0, air: 0, spin: 0, mush: 0, dead: 0, inv: 1.5, padCd: 0, ramCd: 0, kills: 0, deaths: 0, v: vi++ % 8, ctl: {}, el: 0, star: 0, ghost: 0, small: 0, bill: 0, ink: 0, stolen: null, boost: 0, streak: 0, hitCd: 0, tpCd: 0, hazCd: 0 });
     }
     for (const p of api.players()) addKart(p.id);
 
     const g = {
-      api, karts, ents, wallHit: hitWall, W, H,
-      spawn(e) { e.age = 0; e.id = ++eid; if (e.life == null) e.life = 10; ents.push(e); },
+      api, karts, ents, wallHit: entWall, surf, W, H,
+      spawn(e) { e.age = 0; e.id = ++eid; if (e.life == null) e.life = 10; if (e.el == null) { const o = karts.get(e.owner); e.el = o ? o.el : surf(e.x, e.y); } ents.push(e); },
       behind(k, d) { return { x: k.x - Math.cos(k.a) * d, y: k.y - Math.sin(k.a) * d }; },
       damage(k, amt, by, weapon) {
         if (k.dead || k.inv > 0 || k.star > 0 || k.bill > 0 || k.ghost > 0) return;
@@ -290,6 +321,9 @@ module.exports = {
       onInput(pid, msg) {
         const k = karts.get(pid); if (!k || over) return;
         if (msg.type === 'ctl') k.ctl = { up: !!msg.up, down: !!msg.down, left: !!msg.left, right: !!msg.right };
+        else if (msg.type === 'tp') { // test rooms only (a room with bots): place your kart somewhere, for screenshots and checks
+          if (api.room && api.room.bots && api.room.bots.size && !k.dead && [msg.x, msg.y, msg.a].every(Number.isFinite)) { k.x = clamp(msg.x, M + R, W - M - R); k.y = clamp(msg.y, M + R, H - M - R); k.a = msg.a; k.el = surf(k.x, k.y); k.falling = false; k.vx = k.vy = 0; k.air = 0; k.spin = 0; k.inv = Math.max(k.inv, 4); }
+        }
         else if (msg.type === 'give') { // test mode only (room has bots): hand yourself any item
           if (api.room && api.room.bots && api.room.bots.size && !k.dead && WEAPONS.some((w) => w.id === msg.weapon)) k.weapon = msg.weapon;
         }
@@ -306,12 +340,12 @@ module.exports = {
         for (const k of karts.values()) {
           for (const f of ['egg', 'spin', 'mush', 'inv', 'padCd', 'ramCd', 'star', 'small', 'ink', 'boost', 'hitCd', 'tpCd', 'hazCd']) if (k[f] > 0) k[f] = Math.max(0, k[f] - dt);
           if (k.ghost > 0) { k.ghost = Math.max(0, k.ghost - dt); if (k.ghost <= 0 && k.stolen) { if (!k.weapon) k.weapon = k.stolen; k.stolen = null; } }
-          if (k.dead > 0) { k.dead -= dt; if (k.dead <= 0) { const s = spawnPoint(); Object.assign(k, { dead: 0, x: s[0], y: s[1], vx: 0, vy: 0, hp: 3, egg: 0, air: 0, spin: 0, inv: 2, a: Math.atan2(CY - s[1], CX - s[0]) }); } continue; }
+          if (k.dead > 0) { k.dead -= dt; if (k.dead <= 0) { const s = spawnPoint(); Object.assign(k, { dead: 0, x: s[0], y: s[1], el: 0, falling: false, vx: 0, vy: 0, hp: 3, egg: 0, air: 0, spin: 0, inv: 2, a: Math.atan2(CY - s[1], CX - s[0]) }); } continue; }
           if (k.air > 0) {
             k.air -= dt; k.x += k.avx * dt; k.y += k.avy * dt; k.x = clamp(k.x, M + R, W - M - R); k.y = clamp(k.y, M + R, H - M - R);
             if (k.air <= 0) {
-              k.air = 0; k.padCd = 0.8;
-              for (const o of [...karts.values()]) if (o !== k && !o.dead && !o.air && Math.hypot(o.x - k.x, o.y - k.y) < 70) g.damage(o, 1, k.id, 'Launch pad');
+              k.air = 0; k.padCd = 0.8; k.el = surf(k.x, k.y); k.falling = false; // you can land on top of a deck
+              for (const o of [...karts.values()]) if (o !== k && !o.dead && !o.air && Math.abs(o.el - k.el) < 30 && Math.hypot(o.x - k.x, o.y - k.y) < 70) g.damage(o, 1, k.id, 'Launch pad');
               api.emit('g:event', { type: 'land', x: Math.round(k.x), y: Math.round(k.y) });
             }
             continue;
@@ -320,21 +354,22 @@ module.exports = {
             k.bill -= dt; if (k.bill <= 0) { k.bill = 0; k.inv = Math.max(k.inv, 0.8); }
             let best = null, bd = 1e9; for (const o of karts.values()) { if (o === k || o.dead || o.ghost > 0) continue; const d = Math.hypot(o.x - k.x, o.y - k.y); if (d < bd) { bd = d; best = o; } }
             if (best) { const want = Math.atan2(best.y - k.y, best.x - k.x); const da = ((want - k.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; k.a += clamp(da, -2.2 * dt, 2.2 * dt); }
-            k.vx = Math.cos(k.a) * 520; k.vy = Math.sin(k.a) * 520; k.x += k.vx * dt; k.y += k.vy * dt;
-            if (hitWall(k, R, 1)) k.a = Math.atan2(k.vy, k.vx);
-            for (const o of karts.values()) if (o !== k && !o.dead && !o.air && o.ramCd <= 0 && Math.hypot(o.x - k.x, o.y - k.y) < R * 2 + 4) { o.ramCd = 0.8; g.damage(o, 2, k.id, 'Bullet Bill'); }
+            const bx0 = k.x, by0 = k.y; k.vx = Math.cos(k.a) * 520; k.vy = Math.sin(k.a) * 520; k.x += k.vx * dt; k.y += k.vy * dt;
+            if (hitWall(k, R, 1) | terrain(k, bx0, by0, dt, 1)) k.a = Math.atan2(k.vy, k.vx);
+            for (const o of karts.values()) if (o !== k && !o.dead && !o.air && o.ramCd <= 0 && Math.abs(o.el - k.el) < 22 && Math.hypot(o.x - k.x, o.y - k.y) < R * 2 + 4) { o.ramCd = 0.8; g.damage(o, 2, k.id, 'Bullet Bill'); }
             continue;
           }
           if (k.spin > 0) k.a += 10 * dt;
-          k.mud = zones.some((z) => k.x > z.x && k.x < z.x + z.w && k.y > z.y && k.y < z.y + z.h); // quicksand / mud zones
+          k.mud = k.el < 6 && zones.some((z) => k.x > z.x && k.x < z.x + z.w && k.y > z.y && k.y < z.y + z.h); // quicksand / mud zones
           const spd = (k.egg > 0 ? 0.5 : 1) * (k.mush > 0 ? 1.8 : k.boost > 0 ? 1.55 : 1) * (k.star > 0 ? 1.35 : 1) * (k.small > 0 ? 0.65 : 1) * (k.ink > 0 ? 0.92 : 1) * (k.mud ? (k.star > 0 || k.mush > 0 ? 0.8 : 0.5) : 1);
+          const px = k.x, py = k.y;
           stepCar(k, dt, { maxF: 300 * spd, maxR: 150, accel: 420 * (k.mush > 0 || k.star > 0 || k.boost > 0 ? 1.8 : 1), turn: 3.2 });
-          hitWall(k, R, 0.4);
+          hitWall(k, R, 0.4); terrain(k, px, py, dt, 0.3);
         }
         const live = [...karts.values()].filter((k) => !k.dead && !k.air && !k.ghost && !k.bill);
         for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
           const a = live[i], b = live[j];
-          if (circleHit(a, b, R, R, 0.5)) {
+          if (Math.abs(a.el - b.el) < 22 && circleHit(a, b, R, R, 0.5)) { // karts on different levels pass over each other
             if (a.star > 0 && b.ramCd <= 0) { b.ramCd = 0.8; g.damage(b, 3, a.id, 'Star'); }
             else if (a.mush > 0 && b.ramCd <= 0) { b.ramCd = 0.6; g.damage(b, 1, a.id, 'Boost mushroom'); }
             if (b.star > 0 && a.ramCd <= 0) { a.ramCd = 0.8; g.damage(a, 3, b.id, 'Star'); }
@@ -343,7 +378,7 @@ module.exports = {
         }
         // warp portals: drive into one end, come out of the other with your speed and heading intact
         for (const pair of portals) for (const k of live) {
-          if (k.tpCd > 0) continue;
+          if (k.tpCd > 0 || k.el > 12) continue;
           for (let e = 0; e < 2; e++) {
             const a = pair[e], b = pair[1 - e];
             if (Math.hypot(k.x - a.x, k.y - a.y) < 24) { k.x = b.x; k.y = b.y; k.tpCd = 1.2; api.emit('g:event', { type: 'warp', id: k.id, x: a.x, y: a.y, tx: b.x, ty: b.y }); break; }
@@ -356,7 +391,7 @@ module.exports = {
           m.x = m.def.path[0][0] + (m.def.path[1][0] - m.def.path[0][0]) * u; m.y = m.def.path[0][1] + (m.def.path[1][1] - m.def.path[0][1]) * u;
           for (const k of live) {
             const dx = k.x - m.x, dy = k.y - m.y, dist = Math.hypot(dx, dy) || 1;
-            if (dist > m.def.r + R || k.hazCd > 0) continue;
+            if (dist > m.def.r + R || k.hazCd > 0 || k.el > 20) continue;
             k.hazCd = 1;
             if (k.inv > 0 || k.star > 0) continue; // fresh spawns and star karts shrug it off
             k.vx = (dx / dist) * 320; k.vy = (dy / dist) * 320; k.spin = Math.max(k.spin, 0.5);
@@ -364,24 +399,14 @@ module.exports = {
             g.damage(k, 1, null, m.def.kind === 'drone' ? 'Drone' : 'Boulder');
           }
         }
-        // ramps: drive up one in its direction and you take off. Speed decides the distance; in the air you clear everything.
-        for (const rp of ramps) for (const k of live) {
-          if (k.padCd > 0 || k.x < rp.x || k.x > rp.x + rp.w || k.y < rp.y || k.y > rp.y + rp.h) continue;
-          const dx = rp.dir === 'E' ? 1 : rp.dir === 'W' ? -1 : 0, dy = rp.dir === 'S' ? 1 : rp.dir === 'N' ? -1 : 0, along = k.vx * dx + k.vy * dy;
-          const prog = dx ? (dx > 0 ? k.x - rp.x : rp.x + rp.w - k.x) / rp.w : (dy > 0 ? k.y - rp.y : rp.y + rp.h - k.y) / rp.h;
-          if (along < 110 || prog < 0.7) continue;
-          const sp = Math.max(250, along * 1.2), side = (k.vx * -dy + k.vy * dx) * 0.4; // keep a little of the sideways drift
-          k.air = 1.2; k.avx = dx * sp + -dy * side; k.avy = dy * sp + dx * side; k.vx = k.avx * 0.5; k.vy = k.avy * 0.5; k.launcher = k.id;
-          api.emit('g:event', { type: 'launch', id: k.id, ramp: 1 });
-        }
         for (const pd of (map.pads || [])) for (const k of live) { // optional per-map floor pads: { x, y, kind: 'boost' | 'jump' }
-          if (Math.hypot(k.x - pd.x, k.y - pd.y) > 30) continue;
+          if (k.el > 12 || Math.hypot(k.x - pd.x, k.y - pd.y) > 30) continue;
           if (pd.kind === 'boost') { if (k.boost < 0.6) api.emit('g:event', { type: 'boostpad', id: k.id }); k.boost = 1.1; }
           else if (k.padCd <= 0 && Math.hypot(k.vx, k.vy) > 60) { k.air = 1.2; k.avx = Math.cos(k.a) * 300 / 1.2; k.avy = Math.sin(k.a) * 300 / 1.2; k.vx = k.avx * 0.5; k.vy = k.avy * 0.5; k.launcher = k.id; api.emit('g:event', { type: 'launch', id: k.id }); }
         }
         for (const bx of boxes) {
           if (bx.t > 0) { bx.t -= dt; continue; }
-          for (const k of live) if (!k.weapon && Math.hypot(k.x - bx.x, k.y - bx.y) < 28) { k.weapon = randomWeapon(elapsed < 20); bx.t = 8; api.emit('g:event', { type: 'pickup', id: k.id, weapon: k.weapon }); break; }
+          for (const k of live) if (!k.weapon && Math.abs(k.el - bx.el) < 14 && Math.hypot(k.x - bx.x, k.y - bx.y) < 28) { k.weapon = randomWeapon(elapsed < 20); bx.t = 8; api.emit('g:event', { type: 'pickup', id: k.id, weapon: k.weapon }); break; }
         }
         for (let i = ents.length - 1; i >= 0; i--) {
           const e = ents[i]; e.age += dt; e.life -= dt;
@@ -400,8 +425,8 @@ module.exports = {
         t: Math.ceil(t),
         mapId: map.id,
         haz: movers.length ? movers.map((m) => [Math.round(m.x), Math.round(m.y)]) : undefined, // live positions of the map's moving hazards
-        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1) })),
-        ents: ents.filter((e) => e.kind !== 'burst' && e.kind !== 'gunfire').map((e) => ({ id: e.id, k: e.kind, x: Math.round(e.x), y: Math.round(e.y), z: Math.round(e.z || 0), a: +(e.a || 0).toFixed(2), o: e.owner, f: +e.life.toFixed(1) })),
+        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1) })),
+        ents: ents.filter((e) => e.kind !== 'burst' && e.kind !== 'gunfire').map((e) => ({ id: e.id, k: e.kind, x: Math.round(e.x), y: Math.round(e.y), el: Math.round(e.el || 0), z: Math.round(e.z || 0), a: +(e.a || 0).toFixed(2), o: e.owner, f: +e.life.toFixed(1) })),
         boxes: boxes.map((b) => (b.t > 0 ? 0 : 1)),
       };
     }

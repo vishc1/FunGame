@@ -110,13 +110,13 @@ try {
         const g=ramps.find(g=>Math.abs(g.position.x-cx)<.01&&Math.abs(g.position.z-cz)<.01);
         if(!g) throw Error('Ramp missing at map coordinates');
         const bb=new T.Box3().setFromObject(g),size=bb.getSize(new T.Vector3());
-        if(Math.abs(size.x-rp.w)>.02||Math.abs(size.z-rp.h)>.02||Math.abs(size.y-15)>.02||Math.abs(bb.min.y)>.02) throw Error('Ramp collision footprint/height mismatch');
+        if(Math.abs(size.x-rp.w)>.02||Math.abs(size.z-rp.h)>.02||Math.abs(size.y-32)>.02 /* RAMP_H in public/games/memekarts.js, raised from 15 by the game-code owner */||Math.abs(bb.min.y)>.02) throw Error('Ramp collision footprint/height mismatch');
         const dx=rp.dir==='E'?1:rp.dir==='W'?-1:0,dz=rp.dir==='S'?1:rp.dir==='N'?-1:0;
         const len=dx?rp.w:rp.h,ray=new T.Raycaster(new T.Vector3(cx-dx*len*.25,40,cz-dz*len*.25),new T.Vector3(0,-1,0));
         const low=ray.intersectObject(g.getObjectByName('ramp_core'))[0]?.point.y;
         ray.ray.origin.set(cx+dx*len*.25,40,cz+dz*len*.25);
         const high=ray.intersectObject(g.getObjectByName('ramp_core'))[0]?.point.y;
-        if(Math.abs(low-3.75)>.02||Math.abs(high-11.25)>.02) throw Error('Ramp slopes against launch direction');
+        if(Math.abs(low-8)>.02||Math.abs(high-24)>.02) throw Error('Ramp slopes against its uphill direction'); /* a quarter and three quarters of the way up a 32-unit ramp (was 15) */
       }
       for (const g of obstacles) {
         const b = new T.Box3().setFromObject(g), size = b.getSize(new T.Vector3()), o = g.userData.obstacle;

@@ -9,7 +9,7 @@
 // The map, physics and weapon table live in public/games/blasters.shared.js so the server, bots and browser agree.
 // Testing: api.memory.__fast = seconds shortens the match.
 const B = require('../../public/games/blasters.shared.js');
-const { MAP, WEAPONS, MELEE, POWERS, P } = B;
+const { MAP, WEAPONS, MELEE, LOADOUT, POWERS, P } = B;
 const NONE = () => WEAPONS.map((w, i) => i === 0); // which blasters a fresh player owns: only the sidearm
 const MATCH = 300, KILL_GOAL = 20, RESPAWN = 2.5, POWER_EVERY = 40, POWER_WARN = 6, DROP_LIFE = 14;
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -18,9 +18,9 @@ const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 module.exports = {
   id: 'blasters',
   name: 'Toy Box Blasters',
-  tagline: 'First-person foam-dart arena. Eight blasters, a foam sword, crouch, slide and aim. Ramps, teleporters, a toy train, skins.',
+  tagline: 'First-person foam-dart arena. Nine blasters including a cannon, a foam sword, loadouts, crouch, slide and aim.',
   min: 2, max: 8,
-  controls: 'Click the game to capture the mouse. WASD move, Space jump (twice), Shift dash, C crouch (tap while running to slide), click fire, right-click aim, E sword, R reload, 1-8 or wheel switch, Tab scores, H guide, L locker and settings.',
+  controls: 'Click the game to capture the mouse. WASD move, Space jump (twice), Shift dash, C crouch (tap while running to slide), click fire, right-click aim, E sword, G drop blaster, R reload, 1-9 or wheel switch, Tab scores, H guide, L locker and settings.',
   create(api) {
     const players = new Map();
     const pick = MAP.pickups.map((p) => ({ def: p, t: p.kind === 'power' ? POWER_EVERY * 0.5 : 0, kind: null }));
@@ -32,18 +32,22 @@ module.exports = {
 
     function addPlayer(id) {
       const p = { id, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, hp: 100, armor: 0, w: 0, own: NONE(), mag: WEAPONS.map((w) => w.mag), res: WEAPONS.map((w) => w.reserve),
-        dead: 0, prot: 0, kills: 0, deaths: 0, score: 0, streak: 0, best: 0, heads: 0, dmg: 0, lastKiller: null, hurtBy: new Map(), power: null, powerT: 0, nextFire: 0, nextMelee: 0, cr: 0, reloadT: 0, lvl: 1, ch: players.size % 8, sk: 0, lastKillT: -99, multi: 0 };
+        dead: 0, prot: 0, kills: 0, deaths: 0, score: 0, streak: 0, best: 0, heads: 0, dmg: 0, lastKiller: null, hurtBy: new Map(), power: null, powerT: 0, nextFire: 0, nextMelee: 0, cr: 0, lo: 0, bornT: 0, reloadT: 0, lvl: 1, ch: players.size % 8, sk: 0, lastKillT: -99, multi: 0 };
       players.set(id, p); spawn(p); return p;
     }
     function spawn(p) {
       let best = MAP.spawns[0], bd = -1;
       for (const s of MAP.spawns) { let d = 1e9; for (const o of players.values()) if (o !== p && !o.dead) d = Math.min(d, Math.hypot(o.x - s.x, o.z - s.z)); d += Math.random() * 6; if (d > bd) { bd = d; best = s; } }
       Object.assign(p, { x: best.x, y: 0, z: best.z, yaw: best.yaw, pitch: 0, hp: 100, armor: 0, w: 0, own: NONE(), mag: WEAPONS.map((w) => w.mag), res: WEAPONS.map((w) => w.reserve), dead: 0, prot: 2.5, power: null, powerT: 0, reloadT: 0, nextFire: 0, streak: 0 });
-      p.hurtBy.clear();
+      p.hurtBy.clear(); p.bornT = t; starter(p);
       api.emit('g:event', { type: 'spawn', id: p.id, x: p.x, y: p.y, z: p.z, yaw: r2(p.yaw) });
     }
     for (const pl of api.players()) addPlayer(pl.id);
 
+    // loadout: the starter blaster chosen in the locker, with half the usual spare darts
+    function starter(p) { const w = p.lo; if (!w || p.own[w]) return; p.own[w] = true; p.mag[w] = WEAPONS[w].mag; p.res[w] = Math.round(WEAPONS[w].reserve / 2); }
+    // take a blaster off the floor with exactly the darts that were left in it
+    function takeDrop(p, dr) { const def = WEAPONS[dr.w]; if (dr.ammo == null) return give(p, dr.w, 0.6); if (!p.own[dr.w]) { p.own[dr.w] = true; p.mag[dr.w] = Math.min(def.mag, dr.ammo); p.res[dr.w] = dr.ammo - p.mag[dr.w]; } else p.res[dr.w] = Math.min(def.reserve * 2, p.res[dr.w] + dr.ammo); }
     function give(p, w, ammoScale = 1) {
       const def = WEAPONS[w]; const had = p.own[w]; p.own[w] = true;
       if (!had) { p.mag[w] = def.mag; p.res[w] = Math.round(def.reserve * ammoScale); } else p.res[w] = Math.min(def.reserve * 2, p.res[w] + Math.round((def.reserve + def.mag) * ammoScale));
@@ -77,7 +81,7 @@ module.exports = {
         for (const [oid, h] of v.hurtBy) { const o = players.get(oid); if (o && o !== by && h.n >= 30 && t - h.t < 6) { o.score += 50; api.to(oid, 'g:event', { type: 'assist', v: v.id }); } }
       } else if (self) { v.score = Math.max(0, v.score - 50); }
       // the victim drops their best pickup weapon so someone can grab it
-      let bw = 0; for (const i of [4, 3, 6, 5, 2, 7, 1]) if (v.own[i] && v.mag[i] + v.res[i] > 0) { bw = i; break; }
+      let bw = 0; for (const i of [8, 4, 3, 6, 5, 2, 7, 1]) if (v.own[i] && v.mag[i] + v.res[i] > 0) { bw = i; break; }
       if (bw) drops.push({ id: ++seq, w: bw, x: v.x, y: v.y, z: v.z, t: DROP_LIFE });
       v.deaths++; v.dead = RESPAWN; v.hp = 0; v.power = null; v.powerT = 0; v.reloadT = 0;
       api.emit('g:event', { type: 'kill', k: by ? by.id : null, v: v.id, w: weapon, head: head ? 1 : 0, streak: by ? by.streak : 0, ended: v.streak, tags, x: r2(v.x), y: r2(v.y), z: r2(v.z) });
@@ -116,9 +120,19 @@ module.exports = {
         if (m.type === 'p') {
           if (p.dead || !fin(m.x) || !fin(m.y) || !fin(m.z) || !fin(m.yaw) || !fin(m.pitch)) return;
           const lim = MAP.size - P.R; p.x = Math.max(-lim, Math.min(lim, m.x)); p.z = Math.max(-lim, Math.min(lim, m.z)); p.y = Math.max(0, Math.min(40, m.y)); p.yaw = m.yaw; p.pitch = Math.max(-1.55, Math.min(1.55, m.pitch)); p.cr = m.cr ? 1 : 0;
-        } else if (m.type === 'hello') { if (fin(m.lvl)) p.lvl = Math.max(1, Math.min(99, m.lvl | 0)); if (fin(m.ch)) p.ch = Math.abs(m.ch | 0) % 8; if (fin(m.sk)) p.sk = Math.abs(m.sk | 0) % 16; }
+        } else if (m.type === 'hello') { if (fin(m.lvl)) p.lvl = Math.max(1, Math.min(99, m.lvl | 0)); if (fin(m.ch)) p.ch = Math.abs(m.ch | 0) % 8; if (fin(m.sk)) p.sk = Math.abs(m.sk | 0) % 16;
+          if (fin(m.lo) && LOADOUT.includes(m.lo | 0)) { p.lo = m.lo | 0; if (!p.dead && t - p.bornT < 4) starter(p); } } // a loadout chosen in the first seconds of a life applies right away
         else if (m.type === 'switch') { const w = m.w | 0; if (!p.dead && w >= 0 && w < WEAPONS.length && p.own[w] && w !== p.w) { p.w = w; p.reloadT = 0; p.nextFire = Math.max(p.nextFire, t + 0.3); } }
         else if (m.type === 'reload') { const def = WEAPONS[p.w]; if (!p.dead && p.reloadT <= 0 && p.mag[p.w] < def.mag && p.res[p.w] > 0) p.reloadT = def.reload; }
+        else if (m.type === 'drop') { // throw the blaster you are holding on the floor in front of you (not the sidearm)
+          const w = p.w; if (p.dead || w === 0 || !p.own[w]) return;
+          const f = B.dirFrom(p.yaw, 0); let dx = p.x + f[0] * 1.7, dz = p.z + f[2] * 1.7; const lim = MAP.size - 1;
+          if (Math.abs(dx) > lim || Math.abs(dz) > lim || B.overlap(dx, p.y + 0.05, dz) || !B.los(p.x, p.y + 1, p.z, dx, p.y + 1, dz)) { dx = p.x; dz = p.z; }
+          drops.push({ id: ++seq, w, x: dx, y: p.y, z: dz, t: DROP_LIFE + 10, ammo: p.mag[w] + p.res[w], by: pid, hold: 1.5 });
+          p.own[w] = false; p.mag[w] = 0; p.res[w] = 0; p.reloadT = 0;
+          const next = m.next | 0; p.w = next > 0 && next < WEAPONS.length && p.own[next] ? next : 0; p.nextFire = Math.max(p.nextFire, t + 0.3);
+          api.emit('g:event', { type: 'dropped', id: pid, w });
+        }
         else if (m.type === 'give') { // test rooms only (a room with bots): hand yourself any blaster
           const w = m.w | 0; if (api.room && api.room.bots && api.room.bots.size && !p.dead && w > 0 && w < WEAPONS.length) { give(p, w); api.to(pid, 'g:event', { type: 'pickup', id: pid, kind: 'weapon', w, drop: 1 }); }
         }
@@ -190,8 +204,8 @@ module.exports = {
         }
         // dropped weapons
         for (let i = drops.length - 1; i >= 0; i--) {
-          const dr = drops[i]; dr.t -= dt; let taken = dr.t <= 0;
-          if (!taken && dr.t < DROP_LIFE - 0.6) for (const p of players.values()) if (!p.dead && Math.hypot(p.x - dr.x, p.z - dr.z) < 1.3 && Math.abs(p.y - dr.y) < 1.5) { give(p, dr.w, 0.6); api.emit('g:event', { type: 'pickup', id: p.id, kind: 'weapon', w: dr.w, drop: 1 }); taken = true; break; }
+          const dr = drops[i]; dr.t -= dt; dr.age = (dr.age || 0) + dt; let taken = dr.t <= 0;
+          if (!taken && dr.age > 0.6) for (const p of players.values()) if (!p.dead && !(dr.by === p.id && dr.age < dr.hold) && Math.hypot(p.x - dr.x, p.z - dr.z) < 1.3 && Math.abs(p.y - dr.y) < 1.5) { takeDrop(p, dr); api.emit('g:event', { type: 'pickup', id: p.id, kind: 'weapon', w: dr.w, drop: 1 }); taken = true; break; }
           if (taken) drops.splice(i, 1);
         }
         // rockets

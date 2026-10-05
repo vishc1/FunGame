@@ -127,6 +127,7 @@ The map gained features that the game draws itself. `node tools/blasters-map.js`
   - `fps_w_burst.glb` Burst Blaster: a slim green carbine with a long thin barrel and a small box magazine.
   - `fps_w_lob.glb` Splash Lobber: a short, fat, sky-blue tube with a pink water balloon visibly loaded in the muzzle.
   - `fps_w_zap.glb` Zap Ray: a purple retro ray gun with three white rings on the barrel and a glowing cyan tip (use emission).
+- **Toy Cannon.** `fps_w_cannon.glb`: a ninth blaster, same rules as the others. A stubby black toy cannon barrel with gold bands on a small wooden hand-carriage with a grip underneath, about 0.8 m long, max 700 triangles. `fps_cannonball.glb`: its projectile, a dark iron ball with a highlight, fitted to 0.5 m, max 150 triangles.
 - **Water balloon.** `fps_balloon.glb`: the Splash Lobber's projectile. A pink water balloon with a knot, **knot toward Blender −Y** (it flies toward +Y), fitted to 0.5 m, max 200 triangles.
 - **Foam sword.** `fps_sword.glb`: every player's melee weapon, seen only in first person during a swing. A chunky orange foam blade with a blue crossguard and dark grip, **blade pointing up Blender +Z, grip at the origin**, fitted to 1.2 m tall, max 300 triangles.
 - **Crouching.** Crouched figures are squashed to 62% height by the game. Nothing to model, but check that each figure still reads when squashed.

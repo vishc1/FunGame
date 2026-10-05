@@ -243,8 +243,8 @@ registerGame('memekarts', (G) => {
       // item boxes
       BOXES.forEach(([x, y], i) => {
         const g = asset('item_box', 24) || itemBox('#ffcf33', '?');
-        g.position.set(x - OX, 16, y - OZ); boxViews.push(g); scene.add(g);
-        const ring = mesh(new THREE.RingGeometry(14, 17, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide }), x - OX, 0.4, y - OZ); ring.rotation.x = -Math.PI / 2; ring.castShadow = false; scene.add(ring);
+        g.userData.base = surfaceAt(x, y); g.position.set(x - OX, 16 + g.userData.base, y - OZ); boxViews.push(g); scene.add(g);
+        const ring = mesh(new THREE.RingGeometry(14, 17, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide }), x - OX, 0.4 + g.userData.base, y - OZ); ring.rotation.x = -Math.PI / 2; ring.castShadow = false; scene.add(ring);
         const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:particleTexture,color:night?'#67eaff':'#c7faff',opacity:.22,blending:THREE.AdditiveBlending,depthWrite:false}));halo.position.set(0,12,0);halo.scale.set(58,58,1);g.add(halo);
       });
       scene.add(points,skids);
@@ -288,13 +288,35 @@ registerGame('memekarts', (G) => {
     const padViews = [], portalViews = [], moverViews = [], PORTAL_COLORS = ['#35e6ff', '#ff4dd8', '#ffd84d'];
     function flat(geo, mat, x, y, z) { const m = mesh(geo, mat, x, y, z); m.rotation.x = -Math.PI / 2; m.castShadow = false; m.receiveShadow = false; return m; }
     /* Ramps: height of the ramp surface under a point (0 when not on one). RAMP_H is the height of the high end. */
-    const RAMP_H = 15;
-    function rampHeight(x, y) { for (const rp of map.ramps || []) { if (x < rp.x || x > rp.x + rp.w || y < rp.y || y > rp.y + rp.h) continue; const p = rp.dir === 'E' ? (x - rp.x) / rp.w : rp.dir === 'W' ? (rp.x + rp.w - x) / rp.w : rp.dir === 'S' ? (y - rp.y) / rp.h : (rp.y + rp.h - y) / rp.h; return Math.max(0, Math.min(1, p)) * RAMP_H; } return 0; }
+    const RAMP_H = window.MEMEKARTS_MAPS.DECK_Z; /* height of every deck and of the top of every ramp */
+    const surfaceAt = (x, y) => window.MEMEKARTS_MAPS.surface(map, x, y); /* ground height: 0 floor, RAMP_H deck, in between on a ramp */
+    function buildDecks() {
+      /* Raised decks: solid blocks you drive on top of. A bright rim marks the edge you can drop off. */
+      const night = map.theme === 'neon', desert = map.theme === 'canyon';
+      const side = M3(night ? '#1b2440' : desert ? '#b9773f' : '#5d7f86', { roughness: 0.85 }), hot = night ? '#68efff' : '#ffd21f';
+      for (const d of map.decks || []) {
+        const cx = d.x + d.w / 2 - OX, cz = d.y + d.h / 2 - OZ;
+        const topTex = tex(256, 256, (c, cw, ch) => { c.fillStyle = night ? '#2a3760' : desert ? '#d9a066' : '#8fb0b4'; c.fillRect(0, 0, cw, ch); c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 3; for (let i = 0; i <= cw; i += 32) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, ch); c.moveTo(0, i); c.lineTo(cw, i); c.stroke(); } for (let i = 0; i < 500; i++) { c.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; c.fillRect(Math.random() * cw, Math.random() * ch, 4, 4); } });
+        topTex.wrapS = topTex.wrapT = THREE.RepeatWrapping; topTex.repeat.set(d.w / 80, d.h / 80);
+        const blockM = [side, side, new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.8 }), side, side, side];
+        const blk = mesh(new THREE.BoxGeometry(d.w, RAMP_H, d.h), blockM, cx, RAMP_H / 2, cz); blk.name = 'deck'; scene.add(blk);
+        /* glowing rim, with gaps where a ramp meets the deck */
+        const edges = [[d.x, d.y, d.x + d.w, d.y], [d.x, d.y + d.h, d.x + d.w, d.y + d.h], [d.x, d.y, d.x, d.y + d.h], [d.x + d.w, d.y, d.x + d.w, d.y + d.h]];
+        for (const [x0, y0, x1, y1] of edges) {
+          const horiz = y0 === y1, lo = horiz ? x0 : y0, hi = horiz ? x1 : y1; let cuts = [];
+          for (const rp of map.ramps || []) { const touch = horiz ? ((rp.dir === 'S' && Math.abs(rp.y + rp.h - y0) < 2) || (rp.dir === 'N' && Math.abs(rp.y - y0) < 2)) && rp.x < hi && rp.x + rp.w > lo : ((rp.dir === 'E' && Math.abs(rp.x + rp.w - x0) < 2) || (rp.dir === 'W' && Math.abs(rp.x - x0) < 2)) && rp.y < hi && rp.y + rp.h > lo; if (touch) cuts.push(horiz ? [rp.x, rp.x + rp.w] : [rp.y, rp.y + rp.h]); }
+          cuts.sort((p, q) => p[0] - q[0]); let at = lo; const segs = []; for (const [c0, c1] of cuts) { if (c0 > at) segs.push([at, c0]); at = Math.max(at, c1); } if (at < hi) segs.push([at, hi]);
+          for (const [s0, s1] of segs) { const len = s1 - s0, mid = (s0 + s1) / 2; const rim = horiz ? box(len, 2.4, 3, glow(hot, night ? 1.8 : 0.9), mid - OX, RAMP_H + 1.2, y0 - OZ) : box(3, 2.4, len, glow(hot, night ? 1.8 : 0.9), x0 - OX, RAMP_H + 1.2, mid - OZ); rim.castShadow = false; scene.add(rim); }
+        }
+      }
+    }
     function buildRamps() {
       for (const rp of map.ramps || []) {
         const horiz = rp.dir === 'E' || rp.dir === 'W', len = horiz ? rp.w : rp.h, wid = horiz ? rp.h : rp.w, g = new THREE.Group();
         const custom = asset('ramp', 60); /* optional model: rises toward +X in Blender; stretched to the footprint */
-        if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RAMP_H / sz.y, wid / sz.z); g.add(custom); }
+        if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RAMP_H / sz.y, wid / sz.z);
+          custom.traverse((m) => { if (m.isMesh && /ink|dark|runway/i.test((m.material.name || '') + m.name)) m.material.color.set(map.theme === 'neon' ? '#ff3fd0' : '#ff8a1f'); }); /* the runway is painted a loud colour: a dark ramp reads as a floor marking */
+          g.add(custom); }
         else {
           /* a wedge that rises along local +X, with chevrons painted up the slope and a glowing lip */
           const l = len / 2, w = wid / 2, v = [[-l, 0, -w], [-l, 0, w], [l, RAMP_H, w], [-l, 0, -w], [l, RAMP_H, w], [l, RAMP_H, -w], [l, RAMP_H, -w], [l, RAMP_H, w], [l, 0, w], [l, RAMP_H, -w], [l, 0, w], [l, 0, -w], [-l, 0, -w], [l, RAMP_H, -w], [l, 0, -w], [-l, 0, w], [l, 0, w], [l, RAMP_H, w]].flat();
@@ -305,11 +327,21 @@ registerGame('memekarts', (G) => {
           /* lay the chevrons flat, then tilt them to the slope */ deco.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.atan2(RAMP_H, len))); deco.castShadow = false; g.add(deco);
           const lip = box(2.5, 1.6, wid, glow(map.accent, map.theme === 'neon' ? 2 : 0.9), l - 1, RAMP_H + 0.6, 0); lip.castShadow = false; g.add(lip);
         }
-        g.position.set(rp.x + rp.w / 2 - OX, 0, rp.y + rp.h / 2 - OZ); g.rotation.y = rp.dir === 'E' ? 0 : rp.dir === 'W' ? Math.PI : rp.dir === 'N' ? Math.PI / 2 : -Math.PI / 2; scene.add(g);
+        /* Dressing so nobody can miss it: glowing side rails up the slope, two beacon posts at the entrance, chevrons
+           painted on the floor leading in, and a big arrow floating above. Local +X is uphill. */
+        const dress = new THREE.Group(); /* decoration lives beside the ramp group so the ramp itself keeps its exact footprint */
+        const hot = map.theme === 'neon' ? '#68efff' : '#ffd21f', tilt = Math.atan2(RAMP_H, len), slopeLen = Math.hypot(len, RAMP_H);
+        for (const sd of [-1, 1]) {
+          const rail = box(slopeLen, 3.2, 3.2, glow(hot, 1.4), 0, RAMP_H / 2 + 2.2, sd * (wid / 2 - 1.6)); rail.rotation.z = tilt; rail.castShadow = false; dress.add(rail);
+          dress.add(box(3.2, RAMP_H, 3.2, M3('#f4f4f4'), len / 2 - 1.6, RAMP_H / 2, sd * (wid / 2 - 1.6)));
+        }
+        const lead = tex(256, 128, (c, cw, ch) => { c.clearRect(0, 0, cw, ch); c.strokeStyle = '#ffffff'; c.lineWidth = 16; c.lineCap = 'round'; c.lineJoin = 'round'; for (const x of [40, 110, 180]) { c.beginPath(); c.moveTo(x - 16, 22); c.lineTo(x + 22, 64); c.lineTo(x - 16, 106); c.stroke(); } });
+        const runway = mesh(new THREE.PlaneGeometry(90, wid * 0.8), new THREE.MeshBasicMaterial({ map: lead, transparent: true, depthWrite: false, color: new THREE.Color(hot).multiplyScalar(1.5) }), -len / 2 - 50, 0.8, 0); runway.rotation.x = -Math.PI / 2; runway.castShadow = false; dress.add(runway);
+        g.position.set(rp.x + rp.w / 2 - OX, 0, rp.y + rp.h / 2 - OZ); g.rotation.y = rp.dir === 'E' ? 0 : rp.dir === 'W' ? Math.PI : rp.dir === 'N' ? Math.PI / 2 : -Math.PI / 2; scene.add(g); dress.position.copy(g.position); dress.rotation.y = g.rotation.y; scene.add(dress);
       }
     }
     function buildMapFeatures() {
-      buildRamps();
+      buildDecks(); buildRamps();
       for (const pd of map.pads || []) {
         const boostPad = pd.kind === 'boost', col = boostPad ? '#ffb347' : '#7dffb0';
         const t = tex(128, 128, (c, w, h) => {
@@ -509,12 +541,15 @@ registerGame('memekarts', (G) => {
         if(previousAir>0&&v.airTime===0)v.landingAge=0;
         v.wasAir=k.air>0;v.landingAge+=dt;
         const air = v.airTime > 0 ? Math.sin((1 - v.airTime / 1.2) * Math.PI) * 75 : 0;
-        v.h = air;
-        const onRamp = air > 0 ? 0 : rampHeight(v.x, v.y); v.rampH = (v.rampH || 0) + (onRamp - (v.rampH || 0)) * Math.min(1, dt * 22); /* ride up the wedge */
-        v.g.position.set(v.x - OX, air + v.rampH + (k.ghost ? 6 + Math.sin(time * 4) * 2 : 0), v.y - OZ);
+        v.el = (v.el ?? (k.el || 0)) + ((k.el || 0) - (v.el ?? 0)) * Math.min(1, dt * 16); /* height from the server, smoothed */
+        v.h = air + v.el;
+        const fx = Math.cos(v.a) * 18, fy = Math.sin(v.a) * 18, slope = air > 0 ? 0 : Math.atan2(surfaceAt(v.x + fx, v.y + fy) - surfaceAt(v.x - fx, v.y - fy), 36);
+        v.tilt = (v.tilt || 0) + ((Math.abs(slope) < 0.6 ? slope : 0) - (v.tilt || 0)) * Math.min(1, dt * 12); /* nose up going up a ramp, down coming off it */
+        v.g.position.set(v.x - OX, v.h + (k.ghost ? 6 + Math.sin(time * 4) * 2 : 0), v.y - OZ);
+        v.g.rotation.z = reducedMotion ? 0 : v.tilt;
         v.g.rotation.y = -v.a;
         v.sc=damp(v.sc,k.small?.55:1,13,dt);v.g.scale.setScalar(v.sc);
-        u.contact.visible=!k.ghost&&v.rampH<.2;u.contact.position.y=(.14-air)/v.sc;u.contact.material.opacity=.3/(1+air/28);u.contact.scale.setScalar(1+air/150);
+        u.contact.visible=!k.ghost&&Math.abs(v.tilt)<.05;u.contact.position.y=(.14-air-Math.max(0,v.el-surfaceAt(v.x,v.y)))/v.sc;u.contact.material.opacity=.3/(1+air/28);u.contact.scale.setScalar(1+air/150);
         const pitchTarget=v.airTime>0?Math.cos((1-v.airTime/1.2)*Math.PI)*.28:Math.max(-.09,Math.min(.09,(v.spd-oldSpeed)/Math.max(.001,dt)*.00015));
         v.pitch=damp(v.pitch,pitchTarget,9,dt);
         const landing=reducedMotion?0:Math.sin(v.landingAge*21)*Math.exp(-v.landingAge*8)*1.2;
@@ -577,7 +612,8 @@ registerGame('memekarts', (G) => {
         if (!v) { const g = (ENT[e.k] || ENT.egg)(); v = { g, x: e.x, y: e.y, k: e.k }; ents.set(e.id, v); scene.add(g); }
         const f = 1 - Math.exp(-28 * dt); v.x += (e.x - v.x) * f; v.y += (e.y - v.y) * f;
         const g = v.g, X = v.x - OX, Z = v.y - OZ;
-        g.position.set(X, (e.z || 0) + (e.k === 'blue' ? 22 + Math.sin(time * 6) * 3 : 0) + (e.k === 'fake' ? 16 + Math.sin(time * 2 + e.id) * 3 : 0), Z);
+        v.el = (v.el ?? (e.el || 0)) + ((e.el || 0) - (v.el ?? 0)) * Math.min(1, dt * 18);
+        g.position.set(X, v.el + (e.z || 0) + (e.k === 'blue' ? 22 + Math.sin(time * 6) * 3 : 0) + (e.k === 'fake' ? 16 + Math.sin(time * 2 + e.id) * 3 : 0), Z);
         if (e.k === 'red' || e.k === 'blue' || e.k === 'pad' || e.k === 'bullet') g.rotation.y = -e.a;
         if (g.userData.spin) g.userData.spin.rotation.y += dt * 14; else if (e.k === 'shell' || e.k === 'egg' || e.k === 'fireball') g.rotation.y += dt * 10;
         if (e.k === 'fake') g.rotation.y += dt * 1.5;
@@ -641,7 +677,7 @@ registerGame('memekarts', (G) => {
             const available=!!s.boxes[i];
             if(g.userData.available!==available){if(g.userData.available===true&&!available){burst(g.position.x,26,g.position.z,18,48,['#aaf5ff','#ffeaa1'],.45);ringFx(g.position.x+OX,g.position.z+OZ,28,map.accent);}g.userData.available=available;g.userData.appear=0;}
             g.userData.appear=Math.min(1,(g.userData.appear||0)+dt*3.5);const p=g.userData.appear,scale=reducedMotion?1:1+2.3*Math.pow(p-1,3)+1.3*Math.pow(p-1,2);
-            g.visible=available;g.scale.setScalar(Math.max(.01,scale));g.rotation.y+=dt*(reducedMotion?.3:1.1);g.rotation.x=reducedMotion?0:Math.sin(time*1.3+i)*.12;g.position.y=17+(reducedMotion?0:Math.sin(time*2.2+i)*2.5);
+            g.visible=available;g.scale.setScalar(Math.max(.01,scale));g.rotation.y+=dt*(reducedMotion?.3:1.1);g.rotation.x=reducedMotion?0:Math.sin(time*1.3+i)*.12;g.position.y=(g.userData.base||0)+17+(reducedMotion?0:Math.sin(time*2.2+i)*2.5);
           });
         }
         for (const c of clouds) { c.position.x += c.userData.drift * dt; if (c.position.x > 2400) c.position.x = -2400; }
@@ -706,7 +742,8 @@ registerGame('memekarts', (G) => {
     const mx = 16, my = W<700?90:70, ms = (W<700?117:153)/MW;
     rr(mx - 4, my - 4, MW * ms + 8, MH * ms + 8, 8, 'rgba(0,0,0,.5)', 'rgba(255,255,255,.25)');
     for (const z of map.zones || []) { ctx.fillStyle = 'rgba(140,90,40,.75)'; ctx.fillRect(mx + z.x * ms, my + z.y * ms, z.w * ms, z.h * ms); }
-    for (const rp of map.ramps || []) { const cx = mx + (rp.x + rp.w / 2) * ms, cy = my + (rp.y + rp.h / 2) * ms, a = rp.dir === 'E' ? 0 : rp.dir === 'S' ? Math.PI / 2 : rp.dir === 'W' ? Math.PI : -Math.PI / 2; ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(4.5, 0); ctx.lineTo(-3.5, -3.5); ctx.lineTo(-3.5, 3.5); ctx.closePath(); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.restore(); }
+    for (const d of map.decks || []) { ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(mx + d.x * ms, my + d.y * ms, d.w * ms, d.h * ms); }
+    for (const rp of map.ramps || []) { ctx.fillStyle = 'rgba(255,210,31,.55)'; ctx.fillRect(mx + rp.x * ms, my + rp.y * ms, rp.w * ms, rp.h * ms); const cx = mx + (rp.x + rp.w / 2) * ms, cy = my + (rp.y + rp.h / 2) * ms, a = rp.dir === 'E' ? 0 : rp.dir === 'S' ? Math.PI / 2 : rp.dir === 'W' ? Math.PI : -Math.PI / 2; ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(4.5, 0); ctx.lineTo(-3.5, -3.5); ctx.lineTo(-3.5, 3.5); ctx.closePath(); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.restore(); }
     for (const pd of map.pads || []) { ctx.fillStyle = pd.kind === 'boost' ? '#ff9f43' : '#5ee07a'; ctx.fillRect(mx + pd.x * ms - 2.5, my + pd.y * ms - 2.5, 5, 5); }
     (map.portals || []).forEach((pair, i) => pair.forEach((e) => { ctx.beginPath(); ctx.arc(mx + e.x * ms, my + e.y * ms, 4, 0, 7); ctx.strokeStyle = ['#35e6ff', '#ff4dd8', '#ffd84d'][i % 3]; ctx.lineWidth = 2; ctx.stroke(); }));
     for (const h of s.haz || []) G.circle(mx + h[0] * ms, my + h[1] * ms, 3.5, map.theme === 'neon' ? '#ff4dd8' : '#c9a37a', '#3a2410');
