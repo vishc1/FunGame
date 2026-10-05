@@ -1,6 +1,6 @@
 # Toy Box Blasters: Blender delivery
 
-Built from `fps3d.md`, starting with eight figures, five blasters, five pickups/props, then the arena. Later deliveries add a train, three more blasters, a water balloon and a foam sword. All **25 GLBs** are in `../../public/models/`, with matching editable `.blend` sources here. All designs are original moulded-plastic toys. The game-code owner's sword-loading fix is verified: the custom model appears and swings in-game.
+Built from `fps3d.md`, starting with eight figures, five blasters, five pickups/props, then the arena. Later deliveries add a train, four more blasters, a water balloon, a foam sword and a cannonball. All **27 GLBs** are in `../../public/models/`, with matching editable `.blend` sources here. All designs are original moulded-plastic toys. The game-code owner's sword-loading fix is verified: the custom model appears and swings in-game.
 
 ## Assets and triangle counts
 
@@ -24,6 +24,8 @@ Counts are measured in Blender and independently checked after GLTFLoader import
 | `fps_w_burst.glb` | Slim green carbine, thin barrel, small magazine and three-shot markings | 496 | 700 |
 | `fps_w_lob.glb` | Sky-blue wide tube, carry handle, white rim and loaded pink balloon | 584 | 700 |
 | `fps_w_zap.glb` | Purple retro ray gun, three white barrel rings and emissive cyan tip | 572 | 700 |
+| `fps_w_cannon.glb` | Stubby charcoal cannon, gold bands, recessed muzzle and wooden hand-carriage | 588 | 700 |
+| `fps_cannonball.glb` | Dark iron-look ball with a pale highlight facet | 120 | 150 |
 | `fps_balloon.glb` | Pink water balloon with a darker tied neck and flared knot | 176 | 200 |
 | `fps_sword.glb` | Beveled orange foam blade, blue crossguard and wrapped dark grip | 288 | 300 |
 | `fps_health.glb` | Juice carton, bent straw and red plus | 196 | 300 |
@@ -34,7 +36,7 @@ Counts are measured in Blender and independently checked after GLTFLoader import
 | `fps_arena.glb` | Complete decorated 101-box arena and 64 × 64 m play-mat | 15,752 | 80,000 |
 | `fps_train.glb` | Red/yellow engine, open green and blue wagons, toy-block cargo | 2,468 | 2,500 |
 
-The complete set contains **35,560 triangles**, counting each unique asset once. In-game totals depend on how many instances are visible.
+The complete set contains **36,268 triangles**, counting each unique asset once. In-game totals depend on how many instances are visible.
 
 ## Arena
 
@@ -153,3 +155,23 @@ The renderer now has stronger directional lighting with cool fill, subtle paper 
 All six requested checks were rerun and passed. Both solo runs ended in-game with zero browser errors. The hit test recorded 24 confirmed hits from 32 fired darts (75%, above its 70% threshold). The asset audit checked all 25 exports and eight-player integration. Map/rules checks and the Blender ramp/teleporter clearance audit also passed. Blender's first clearance-check launch crashed during sandboxed Metal initialization; the same check passed outside the sandbox.
 
 Server files, shared shooter physics and kart map data match their starting SHA-256 hashes. Comparison captures and rendering notes are in `../graphics/README.md`.
+
+## Toy Cannon delivery
+
+Built `fps_w_cannon.glb` and `fps_cannonball.glb` from the new Toy Cannon bullet in `fps3d.md`. The original cannon has a rounded charcoal breech, gold barrel hoops, a recessed annular muzzle and a honey-coloured wooden hand-carriage with a grip underneath. It is 0.8 m long, points Blender +Y, and retains the bottom-of-grip origin and 0.27 m barrel centre line. Its 588 triangles fit the 700-triangle budget.
+
+The cannonball is 0.5 m in diameter and has smooth-shaded iron-look material with a pale highlight facet. It uses 120 of its 150 allowed triangles. Both exports use plain Principled materials without textures, cameras, rigs or animations. Editable sources are `fps_w_cannon.blend` and `fps_cannonball.blend`.
+
+Rebuild this pair only:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/blasters/build_cannon.py
+```
+
+`validation.json` contains Blender measurements. `check-assets.mjs` now independently checks all 27 GLBs, including the cannon's length/orientation and the ball's diameter/highlight. `cannon-catalog.png` shows the exported pair. The live-item check now allows all nine blasters and samples the custom cannonball in flight.
+
+All checks requested in `codex.md` passed: the full-game suite, map and kart-height checks, ramp driving on all three maps, both 25-second solo runs, hit detection, and both art audits. The hit check confirmed 30 of 31 fired darts (97%); both solo runs completed in-game with zero browser errors. Detailed height results are in `../memekarts/README.md`.
+
+This delivery changed no protected game files, and their SHA-256 hashes match the starting baseline. GitHub and deployment state were not touched. A local server was already listening on port 3000; the start attempt skipped `prestart` to avoid regenerating protected files.
+
+The supplementary `node art/blasters/check-new-items.mjs` also passes: all eight non-default blasters load through `]`, the custom cannonball moves in flight, and the balloon and sword checks remain clean. `new-items-runtime.json` records 11 cannonball samples with two position changes, zero browser errors and no blockers. The diagnostic now waits briefly after its test-only teleport before firing; the initial immediate-fire probe missed the cannon projectile. `in-game-cannon.png` shows the custom first-person cannon.

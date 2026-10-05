@@ -299,6 +299,30 @@
         1.2000000476837158,
         0.125
       ]
+    },
+    {
+      "name": "fps_w_cannon",
+      "triangles": 588,
+      "budget": 700,
+      "meshes": 7,
+      "paint": 0,
+      "size": [
+        0.3610000014305115,
+        0.42000001668930054,
+        0.7999999821186066
+      ]
+    },
+    {
+      "name": "fps_cannonball",
+      "triangles": 120,
+      "budget": 150,
+      "meshes": 2,
+      "paint": 0,
+      "size": [
+        0.5,
+        0.5,
+        0.5
+      ]
     }
   ],
   "integration": {

@@ -14,12 +14,14 @@ try {
   await page.evaluate(()=>{
     const add=THREE.Scene.prototype.add;
     THREE.Scene.prototype.add=function(...objects){const r=add.apply(this,objects);if(objects.some(o=>o.getObjectByName('collision_000_wall')))window.itemScene=this;return r;};
-    window.balloonFrames=[];window.swordFrames=[];
+    window.balloonFrames=[];window.cannonFrames=[];window.swordFrames=[];
     function sample(){
       if(window.itemScene){
         const camera=itemScene.children.find(o=>o.isPerspectiveCamera),sword=camera.children[1];
         if(sword?.visible)swordFrames.push({rotation:sword.rotation.toArray().slice(0,3),custom:!!sword.getObjectByName('sword_blade')});
         const knot=itemScene.getObjectByName('balloon_knot');
+        const cannonball=itemScene.getObjectByName('Cannonball');
+        if(cannonball){let root=cannonball;while(root.parent!==itemScene)root=root.parent;cannonFrames.push({position:root.position.toArray()});}
         if(knot){let root=knot;while(root.parent!==itemScene)root=root.parent;
           const body=new THREE.Box3().setFromObject(root.getObjectByName('Balloon_body')).getCenter(new THREE.Vector3());
           const tail=new THREE.Box3().setFromObject(knot).getCenter(new THREE.Vector3());
@@ -35,15 +37,17 @@ try {
   await page.locator('[data-id="blasters"]').evaluate(e=>e.click());
   await page.waitForFunction(()=>G.room.gameId==='blasters');await page.locator('#startBtn').click();
   await page.waitForFunction(()=>window.itemScene?.getObjectByName('head_core')&&window.__blGo);
+  await page.evaluate(()=>{window.itemEvents=[];G.socket.on('g:event',e=>itemEvents.push(e));G.socket.on('g:state',s=>window.itemState=s);});
   await page.evaluate(()=>__blGo(0,3.2,0,0,.35));
   await page.locator('#canvas').click();await page.waitForTimeout(600);
   const weapons=[];
-  for(let w=1;w<=7;w++){
+  const count=await page.evaluate(()=>BLASTERS.WEAPONS.length);assert.equal(count,9);
+  for(let w=1;w<count;w++){
     const id=await page.evaluate(w=>BLASTERS.WEAPONS[w].id,w);
     await page.keyboard.press(']');
     await page.waitForFunction(n=>{const c=itemScene.children.find(o=>o.isPerspectiveCamera),g=c.children.find(o=>o.getObjectByName('muzzle_tip'));return g&&meshTris(g)===n;},specs['fps_w_'+id].triangles);
     weapons.push(id);
-    if(['burst','lob','zap'].includes(id)){
+    if(['burst','lob','zap','cannon'].includes(id)){
       await page.waitForTimeout(400);await page.screenshot({path:`art/blasters/in-game-${id}.png`});
     }
     if(id==='lob'){
@@ -51,14 +55,23 @@ try {
       await page.mouse.down();await page.waitForTimeout(70);await page.mouse.up();
       await page.waitForFunction(()=>balloonFrames.length>=5);
     }
+    if(id==='cannon'){
+      await page.evaluate(()=>__blGo(0,3.2,0,0,.35));
+      await page.waitForTimeout(150);
+      await page.mouse.down();await page.waitForTimeout(70);await page.mouse.up();
+      try{await page.waitForFunction(()=>cannonFrames.length>=5,undefined,{timeout:5000});}
+      catch(e){console.error(await page.evaluate(()=>({frames:cannonFrames.length,events:itemEvents.slice(-15),mine:itemState?.ps.find(p=>p.id===G.me),rockets:itemState?.rk,errors:window.__bl?.()})));throw e;}
+    }
   }
   await page.keyboard.press('e');await page.waitForFunction(()=>swordFrames.length>=5);
   const live=await page.evaluate(()=>{
     const camera=itemScene.children.find(o=>o.isPerspectiveCamera);
     const frames=balloonFrames.filter((s,i,a)=>i>0&&new THREE.Vector3(...s.position).distanceTo(new THREE.Vector3(...a[i-1].position))>.005);
-    return {sword:{customLoaded:!!camera.getObjectByName('sword_blade'),samples:swordFrames.length,first:swordFrames[0],last:swordFrames.at(-1)},balloon:{samples:balloonFrames.length,movingSamples:frames.length,first:balloonFrames[0],last:balloonFrames.at(-1)}};
+    const movingCannon=cannonFrames.filter((s,i,a)=>i>0&&new THREE.Vector3(...s.position).distanceTo(new THREE.Vector3(...a[i-1].position))>.005);
+    return {sword:{customLoaded:!!camera.getObjectByName('sword_blade'),samples:swordFrames.length,first:swordFrames[0],last:swordFrames.at(-1)},balloon:{samples:balloonFrames.length,movingSamples:frames.length,first:balloonFrames[0],last:balloonFrames.at(-1)},cannonball:{samples:cannonFrames.length,movingSamples:movingCannon.length,first:cannonFrames[0],last:cannonFrames.at(-1)}};
   });
   assert(live.balloon.movingSamples>=2,'Custom balloon not moving');
+  assert(live.cannonball.movingSamples>=2,'Custom cannonball not moving');
   assert(live.sword.first.rotation.some((n,i)=>Math.abs(n-live.sword.last.rotation[i])>.01),'Sword swing stalled');
   assert(fetched.includes('fps_sword.glb'),'Sword GLB was not fetched');
   assert.deepEqual(errors,[]);

@@ -79,6 +79,11 @@ try {
         const knot = new T.Box3().setFromObject(scene.getObjectByName('balloon_knot')).getCenter(new T.Vector3());
         ensure(knot.z > bb.getCenter(new T.Vector3()).z && Math.abs(size.z-.5)<.0001, 'Balloon knot must trail flight direction');
       }
+      if (name === 'fps_cannonball') {
+        ensure(size.distanceTo(new T.Vector3(.5,.5,.5))<.0001, 'Cannonball diameter');
+        let highlight=false;scene.traverse(o=>{if(o.isMesh&&o.material.name==='Iron highlight')highlight=true;});
+        ensure(highlight,'Cannonball highlight missing');
+      }
       if (name === 'fps_sword') {
         ensure(Math.abs(size.y-1.2)<.0001 && scene.getObjectByName('grip'), 'Sword size/grip');
         ensure(new T.Box3().setFromObject(scene.getObjectByName('sword_blade')).getCenter(new T.Vector3()).y>.6, 'Sword must point up');
@@ -122,9 +127,9 @@ try {
     window.fpsColors = colors;
     return result;
   }, { report, map });
-  assert.equal(result.length, 25);
+  assert.equal(result.length, 27);
   // Contact sheets are rendered from the exported GLBs, not Blender's source viewport.
-  for (const group of ['figures', 'crouched', 'items', 'new-items', 'arena', 'train']) {
+  for (const group of ['figures', 'crouched', 'items', 'new-items', 'cannon', 'arena', 'train']) {
     await page.evaluate(group => {
       const T = THREE;
       window.fpsCatalog?.remove();
@@ -132,9 +137,9 @@ try {
       root.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#1b2838;color:white;font:700 18px system-ui';
       document.body.appendChild(root);
       const r = new T.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(1440, 1000); r.toneMapping = T.ACESFilmicToneMapping; root.appendChild(r.domElement); r.setScissorTest(true);
-      const newNames = ['fps_w_burst','fps_w_lob','fps_w_zap','fps_balloon','fps_sword'];
-      const names = Object.keys(fpsArt).filter(n => ['figures','crouched'].includes(group) ? n.startsWith('fps_char_') : ['arena','train'].includes(group) ? n === 'fps_'+group : group === 'new-items' ? newNames.includes(n) : !n.startsWith('fps_char_') && !['fps_arena','fps_train',...newNames].includes(n));
-      const cols = ['figures','crouched'].includes(group) ? 4 : group === 'items' ? 5 : group === 'new-items' ? 3 : 1, rows = ['arena','train'].includes(group) ? 1 : 2;
+      const newNames = ['fps_w_burst','fps_w_lob','fps_w_zap','fps_balloon','fps_sword'], cannonNames=['fps_w_cannon','fps_cannonball'];
+      const names = Object.keys(fpsArt).filter(n => ['figures','crouched'].includes(group) ? n.startsWith('fps_char_') : ['arena','train'].includes(group) ? n === 'fps_'+group : group === 'cannon' ? cannonNames.includes(n) : group === 'new-items' ? newNames.includes(n) : !n.startsWith('fps_char_') && !['fps_arena','fps_train',...newNames,...cannonNames].includes(n));
+      const cols = group==='cannon'?2:['figures','crouched'].includes(group) ? 4 : group === 'items' ? 5 : group === 'new-items' ? 3 : 1, rows = ['arena','train','cannon'].includes(group) ? 1 : 2;
       names.forEach((name, i) => {
         const model = fpsArt[name].clone(true);
         if (['figures','crouched'].includes(group)) model.traverse(o => { if (o.isMesh && o.material.name === 'Paint') { o.material = o.material.clone(); o.material.color.set(fpsColors[i]); } });
@@ -188,5 +193,5 @@ try {
   assert.deepEqual([...new Set(errors)], []);
   await writeFile('art/blasters/browser-validation.json', JSON.stringify({ assets: result, integration, errors, checks: ['budgets', 'grounding', 'head alignment', 'body bounds', '64 Paint recolors', 'hand and barrel orientation', '101 arena boxes', '5 cm decoration envelope', 'body/head/outside rays', 'real eight-player match uses GLBs for arena/remote figures/held blasters'] }, null, 2) + '\n');
   console.log(JSON.stringify(result.map(r => ({ name: r.name, triangles: r.triangles })), null, 2));
-  console.log('25 assets, figure proportions/colors/crouching, orientations, new blasters/balloon/sword, train tunnel fit, all 101 collision boxes, decoration envelope, and browser errors: PASS');
+  console.log('27 assets, figure proportions/colors/crouching, orientations, new blasters/balloon/sword/cannonball, train tunnel fit, all 101 collision boxes, decoration envelope, and browser errors: PASS');
 } finally { await browser.close(); }

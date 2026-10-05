@@ -1,0 +1,168 @@
+{
+  "deck": {
+    "triangles": 402,
+    "budget": 600,
+    "min": [
+      -10.0,
+      -8.0,
+      0.0
+    ],
+    "max": [
+      10.0,
+      8.0,
+      3.200000047683716
+    ],
+    "materials": [
+      "Coral enamel",
+      "Court teal",
+      "Ivory paint",
+      "Podium concrete",
+      "Safety lemon"
+    ],
+    "nominal_size": [
+      20,
+      16,
+      3.2
+    ],
+    "flat_top": true,
+    "full_footprint": true
+  },
+  "deck_neon": {
+    "triangles": 482,
+    "budget": 800,
+    "min": [
+      -15.0,
+      -11.0,
+      0.0
+    ],
+    "max": [
+      15.0,
+      11.0,
+      3.200000047683716
+    ],
+    "materials": [
+      "Cyan enamel",
+      "Midnight alloy",
+      "Roof slate",
+      "Window glow"
+    ],
+    "nominal_size": [
+      30,
+      22,
+      3.2
+    ],
+    "flat_top": true,
+    "full_footprint": true
+  },
+  "deck_canyon": {
+    "triangles": 210,
+    "budget": 600,
+    "min": [
+      -11.0,
+      -6.0,
+      0.0
+    ],
+    "max": [
+      11.0,
+      6.0,
+      3.200000047683716
+    ],
+    "materials": [
+      "Chalk cream",
+      "Clay orange",
+      "Mesa sand",
+      "Red sandstone"
+    ],
+    "nominal_size": [
+      22,
+      12,
+      3.2
+    ],
+    "flat_top": true,
+    "full_footprint": true
+  },
+  "ramp": {
+    "triangles": 62,
+    "budget": 400,
+    "min": [
+      -5.0,
+      -4.199999809265137,
+      0.0
+    ],
+    "max": [
+      5.0,
+      4.199999809265137,
+      3.200000047683716
+    ],
+    "materials": [
+      "Coral enamel",
+      "Ivory paint",
+      "Podium concrete",
+      "Runway enamel",
+      "Safety lemon"
+    ],
+    "facing": "+X",
+    "rises_toward": "+X",
+    "nominal_size": [
+      10,
+      8.4,
+      3.2
+    ]
+  },
+  "ramp_neon": {
+    "triangles": 62,
+    "budget": 400,
+    "min": [
+      -5.0,
+      -4.199999809265137,
+      0.0
+    ],
+    "max": [
+      5.0,
+      4.199999809265137,
+      3.200000047683716
+    ],
+    "materials": [
+      "Cyan enamel",
+      "Midnight alloy",
+      "Raspberry enamel",
+      "Runway enamel",
+      "Window glow"
+    ],
+    "facing": "+X",
+    "rises_toward": "+X",
+    "nominal_size": [
+      10,
+      8.4,
+      3.2
+    ]
+  },
+  "ramp_canyon": {
+    "triangles": 62,
+    "budget": 400,
+    "min": [
+      -5.0,
+      -4.199999809265137,
+      0.0
+    ],
+    "max": [
+      5.0,
+      4.199999809265137,
+      3.200000047683716
+    ],
+    "materials": [
+      "Chalk cream",
+      "Clay orange",
+      "Red sandstone",
+      "Runway enamel",
+      "Turquoise paint"
+    ],
+    "facing": "+X",
+    "rises_toward": "+X",
+    "nominal_size": [
+      10,
+      8.4,
+      3.2
+    ]
+  }
+}

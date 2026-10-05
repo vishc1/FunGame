@@ -1,30 +1,30 @@
 {
   "ramp": {
-    "triangles": 44,
+    "triangles": 62,
     "budget": 400,
     "min": [
-      -3.5999999046325684,
-      -3.2009999752044678,
+      -5.0,
+      -4.199999809265137,
       0.0
     ],
     "max": [
-      3.5999999046325684,
-      3.2009999752044678,
-      1.5
+      5.0,
+      4.199999809265137,
+      3.200000047683716
     ],
     "materials": [
-      "Blueberry",
-      "Ink navy",
-      "Lemon",
-      "Tangerine",
-      "Vanilla plastic"
+      "Coral enamel",
+      "Ivory paint",
+      "Podium concrete",
+      "Runway enamel",
+      "Safety lemon"
     ],
     "facing": "+X",
     "rises_toward": "+X",
     "nominal_size": [
-      7.2,
-      6.4,
-      1.5
+      10,
+      8.4,
+      3.2
     ]
   }
 }

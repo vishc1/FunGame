@@ -2,6 +2,7 @@
 import { launchArtBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { validateHeightAssets } from './check-height-assets.mjs';
 
 const specs = JSON.parse(await readFile('art/memekarts/environment-validation.json', 'utf8'));
 const rampSpec = JSON.parse(await readFile('art/memekarts/ramp-validation.json', 'utf8')).ramp;
@@ -14,6 +15,7 @@ const base = process.env.TEST_URL || 'http://127.0.0.1:3000';
 try {
   await page.goto(base + '/?bloom=0');
   await page.waitForFunction(() => window.THREE && window.GLTFLoader);
+  await validateHeightAssets(page);
   const rampAsset = await page.evaluate(async () => {
     const gltf = await new GLTFLoader().loadAsync('/models/ramp.glb');
     let triangles=0; gltf.scene.traverse(o=>{ if(o.isMesh) triangles+=(o.geometry.index?.count ?? o.geometry.attributes.position.count)/3; });
@@ -25,7 +27,7 @@ try {
   });
   assert.equal(rampAsset.triangles,rampSpec.triangles); assert(rampAsset.triangles<=400);
   assert.equal(rampAsset.animations,0); assert(Math.abs(rampAsset.floor)<.0001);
-  assert(rampAsset.high>rampAsset.low && Math.abs(rampAsset.size[0]-7.2)<.001 && Math.abs(rampAsset.size[2]-6.4)<.01 && Math.abs(rampAsset.size[1]-1.5)<.001);
+  assert(rampAsset.high>rampAsset.low && Math.abs(rampAsset.size[0]-10)<.001 && Math.abs(rampAsset.size[2]-8.4)<.01 && Math.abs(rampAsset.size[1]-3.2)<.001);
   const assets = await page.evaluate(async specs => {
     const T = THREE, root = document.createElement('div');
     root.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#172330;color:#fff;font:700 20px system-ui';
@@ -103,6 +105,19 @@ try {
         if (!(b.min.x >= map.w / 2 - 20 || b.max.x <= -map.w / 2 + 20 || b.min.z >= map.h / 2 - 20 || b.max.z <= -map.h / 2 + 20)) throw Error('Scenery enters driveable area');
       }
       const obstacles = scene.children.filter(o => o.userData.obstacle);
+      const decks=scene.children.filter(o=>o.name==='deck');
+      if(decks.length!==map.decks.length)throw Error('Missing decks');
+      for(const d of map.decks){
+        const cx=d.x+d.w/2-map.w/2,cz=d.y+d.h/2-map.h/2;
+        const g=decks.find(o=>Math.abs(o.position.x-cx)<.01&&Math.abs(o.position.z-cz)<.01);
+        if(!g?.userData.glb)throw Error('Deck is a placeholder');
+        const bb=new T.Box3().setFromObject(g),sz=bb.getSize(new T.Vector3());
+        if(Math.abs(sz.x-d.w)>.01||Math.abs(sz.z-d.h)>.01||Math.abs(sz.y-32)>.01||Math.abs(bb.min.y)>.01)throw Error('Deck collision bounds mismatch');
+        for(const u of [-.49,0,.49])for(const v of [-.49,0,.49]){
+          const ray=new T.Raycaster(new T.Vector3(cx+u*d.w,40,cz+v*d.h),new T.Vector3(0,-1,0));
+          if(Math.abs((ray.intersectObject(g,true)[0]?.point.y??-999)-32)>.01)throw Error('Deck top not solid/flat');
+        }
+      }
       const ramps = scene.children.filter(o=>o.getObjectByName('ramp_core'));
       if(ramps.length !== (map.ramps||[]).length) throw Error('Missing custom ramps');
       for(const rp of map.ramps||[]) {
@@ -124,7 +139,7 @@ try {
       }
       const pivots = []; scene.traverse(o => { if (o.name.endsWith('_pivot')) pivots.push(o); });
       window.environmentPivot = pivots[0];
-      return { landmarks: landmarks.length, obstacles: obstacles.length, expectedObstacles: map.obstacles.length, ramps:ramps.length, pivots: pivots.length, angle: pivots[0]?.rotation.toArray().slice(0, 3) };
+      return { landmarks: landmarks.length, obstacles: obstacles.length, expectedObstacles: map.obstacles.length, decks:decks.length, ramps:ramps.length, pivots: pivots.length, angle: pivots[0]?.rotation.toArray().slice(0, 3) };
     }, id);
     assert.equal(result.landmarks, 4); assert.equal(result.pivots, 4); assert.equal(result.obstacles, result.expectedObstacles);
     await page.waitForTimeout(1000);
@@ -176,7 +191,7 @@ try {
     console.log(`Landmark animation, reduced motion ${reduce}: ${JSON.stringify(angles)}`);
   }
   assert.deepEqual([...new Set(errors)], []);
-  console.log('Seven GLBs grounded and within budget; three maps, exact ramp/obstacle footprints and slope directions, safe scenery, moving landmarks, no browser errors: PASS');
+  console.log('Twelve environment/height GLBs grounded and within budget; three maps, solid flat decks, exact ramp/obstacle footprints and slopes, safe scenery, moving landmarks, no browser errors: PASS');
 } catch (error) {
   console.error('Browser errors:', errors);
   throw error;

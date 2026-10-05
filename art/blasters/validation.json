@@ -2010,5 +2010,50 @@
     "blade_direction": "+Z",
     "origin": "bottom of grip",
     "height": 1.2
+  },
+  "fps_w_cannon": {
+    "triangles": 588,
+    "budget": 700,
+    "min": [
+      -0.18050000071525574,
+      -0.3199999928474426,
+      0.0
+    ],
+    "max": [
+      0.18050000071525574,
+      0.47999998927116394,
+      0.42000001668930054
+    ],
+    "materials": [
+      "Charcoal toy iron",
+      "End grain",
+      "Honey wood",
+      "Recess shadow",
+      "Warm gold bands"
+    ],
+    "facing": "+Y",
+    "origin": "bottom of grip at (0,0,0)",
+    "length": 0.8,
+    "barrel_height": 0.27
+  },
+  "fps_cannonball": {
+    "triangles": 120,
+    "budget": 150,
+    "min": [
+      -0.25,
+      -0.25,
+      0.0
+    ],
+    "max": [
+      0.25,
+      0.25,
+      0.5
+    ],
+    "materials": [
+      "Iron highlight",
+      "Polished toy iron"
+    ],
+    "diameter": 0.5,
+    "highlight": true
   }
 }
