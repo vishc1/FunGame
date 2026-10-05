@@ -1,0 +1,7 @@
+# not needed to run the site
+art/
+tools/
+node_modules/
+*.blend
+*.md
+.DS_Store

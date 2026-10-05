@@ -1,0 +1,1829 @@
+{
+ "note": "Blender units are metres. Blender X = game x, Blender Y = -game z, Blender Z = game y (up). Origin is the arena centre at floor level.",
+ "arena": {
+  "half_size": 32,
+  "wall_height": 9
+ },
+ "boxes": [
+  {
+   "i": 0,
+   "type": "wall",
+   "blender_center": [
+    0,
+    32.5,
+    4.5
+   ],
+   "blender_size": [
+    66,
+    1,
+    9
+   ]
+  },
+  {
+   "i": 1,
+   "type": "wall",
+   "blender_center": [
+    0,
+    -32.5,
+    4.5
+   ],
+   "blender_size": [
+    66,
+    1,
+    9
+   ]
+  },
+  {
+   "i": 2,
+   "type": "wall",
+   "blender_center": [
+    -32.5,
+    0,
+    4.5
+   ],
+   "blender_size": [
+    1,
+    66,
+    9
+   ]
+  },
+  {
+   "i": 3,
+   "type": "wall",
+   "blender_center": [
+    32.5,
+    0,
+    4.5
+   ],
+   "blender_size": [
+    1,
+    66,
+    9
+   ]
+  },
+  {
+   "i": 4,
+   "type": "tower",
+   "blender_center": [
+    0,
+    3.25,
+    1.6
+   ],
+   "blender_size": [
+    10,
+    3.5,
+    3.2
+   ]
+  },
+  {
+   "i": 5,
+   "type": "tower",
+   "blender_center": [
+    0,
+    -3.25,
+    1.6
+   ],
+   "blender_size": [
+    10,
+    3.5,
+    3.2
+   ]
+  },
+  {
+   "i": 6,
+   "type": "tower",
+   "blender_center": [
+    0,
+    0,
+    2.85
+   ],
+   "blender_size": [
+    10,
+    3,
+    0.7
+   ]
+  },
+  {
+   "i": 7,
+   "type": "step",
+   "blender_center": [
+    0,
+    8.5,
+    0.2
+   ],
+   "blender_size": [
+    3,
+    7,
+    0.4
+   ]
+  },
+  {
+   "i": 8,
+   "type": "step",
+   "blender_center": [
+    0,
+    8.063,
+    0.4
+   ],
+   "blender_size": [
+    3,
+    6.125,
+    0.8
+   ]
+  },
+  {
+   "i": 9,
+   "type": "step",
+   "blender_center": [
+    0,
+    7.625,
+    0.6
+   ],
+   "blender_size": [
+    3,
+    5.25,
+    1.2
+   ]
+  },
+  {
+   "i": 10,
+   "type": "step",
+   "blender_center": [
+    0,
+    7.188,
+    0.8
+   ],
+   "blender_size": [
+    3,
+    4.375,
+    1.6
+   ]
+  },
+  {
+   "i": 11,
+   "type": "step",
+   "blender_center": [
+    0,
+    6.75,
+    1
+   ],
+   "blender_size": [
+    3,
+    3.5,
+    2
+   ]
+  },
+  {
+   "i": 12,
+   "type": "step",
+   "blender_center": [
+    0,
+    6.313,
+    1.2
+   ],
+   "blender_size": [
+    3,
+    2.625,
+    2.4
+   ]
+  },
+  {
+   "i": 13,
+   "type": "step",
+   "blender_center": [
+    0,
+    5.875,
+    1.4
+   ],
+   "blender_size": [
+    3,
+    1.75,
+    2.8
+   ]
+  },
+  {
+   "i": 14,
+   "type": "step",
+   "blender_center": [
+    0,
+    5.438,
+    1.6
+   ],
+   "blender_size": [
+    3,
+    0.875,
+    3.2
+   ]
+  },
+  {
+   "i": 15,
+   "type": "step",
+   "blender_center": [
+    0,
+    -8.5,
+    0.2
+   ],
+   "blender_size": [
+    3,
+    7,
+    0.4
+   ]
+  },
+  {
+   "i": 16,
+   "type": "step",
+   "blender_center": [
+    0,
+    -8.062,
+    0.4
+   ],
+   "blender_size": [
+    3,
+    6.125,
+    0.8
+   ]
+  },
+  {
+   "i": 17,
+   "type": "step",
+   "blender_center": [
+    0,
+    -7.625,
+    0.6
+   ],
+   "blender_size": [
+    3,
+    5.25,
+    1.2
+   ]
+  },
+  {
+   "i": 18,
+   "type": "step",
+   "blender_center": [
+    0,
+    -7.187,
+    0.8
+   ],
+   "blender_size": [
+    3,
+    4.375,
+    1.6
+   ]
+  },
+  {
+   "i": 19,
+   "type": "step",
+   "blender_center": [
+    0,
+    -6.75,
+    1
+   ],
+   "blender_size": [
+    3,
+    3.5,
+    2
+   ]
+  },
+  {
+   "i": 20,
+   "type": "step",
+   "blender_center": [
+    0,
+    -6.312,
+    1.2
+   ],
+   "blender_size": [
+    3,
+    2.625,
+    2.4
+   ]
+  },
+  {
+   "i": 21,
+   "type": "step",
+   "blender_center": [
+    0,
+    -5.875,
+    1.4
+   ],
+   "blender_size": [
+    3,
+    1.75,
+    2.8
+   ]
+  },
+  {
+   "i": 22,
+   "type": "step",
+   "blender_center": [
+    0,
+    -5.437,
+    1.6
+   ],
+   "blender_size": [
+    3,
+    0.875,
+    3.2
+   ]
+  },
+  {
+   "i": 23,
+   "type": "bridge",
+   "blender_center": [
+    12,
+    0,
+    3
+   ],
+   "blender_size": [
+    14,
+    2.6,
+    0.4
+   ]
+  },
+  {
+   "i": 24,
+   "type": "bridge",
+   "blender_center": [
+    -12,
+    0,
+    3
+   ],
+   "blender_size": [
+    14,
+    2.6,
+    0.4
+   ]
+  },
+  {
+   "i": 25,
+   "type": "plat",
+   "blender_center": [
+    22,
+    0,
+    3
+   ],
+   "blender_size": [
+    6,
+    18,
+    0.4
+   ]
+  },
+  {
+   "i": 26,
+   "type": "pillar",
+   "blender_center": [
+    19.6,
+    8.4,
+    1.4
+   ],
+   "blender_size": [
+    0.8,
+    0.8,
+    2.8
+   ]
+  },
+  {
+   "i": 27,
+   "type": "pillar",
+   "blender_center": [
+    24.4,
+    8.4,
+    1.4
+   ],
+   "blender_size": [
+    0.8,
+    0.8,
+    2.8
+   ]
+  },
+  {
+   "i": 28,
+   "type": "pillar",
+   "blender_center": [
+    19.6,
+    -8.4,
+    1.4
+   ],
+   "blender_size": [
+    0.8,
+    0.8,
+    2.8
+   ]
+  },
+  {
+   "i": 29,
+   "type": "pillar",
+   "blender_center": [
+    24.4,
+    -8.4,
+    1.4
+   ],
+   "blender_size": [
+    0.8,
+    0.8,
+    2.8
+   ]
+  },
+  {
+   "i": 30,
+   "type": "step",
+   "blender_center": [
+    22,
+    12.5,
+    0.2
+   ],
+   "blender_size": [
+    3,
+    7,
+    0.4
+   ]
+  },
+  {
+   "i": 31,
+   "type": "step",
+   "blender_center": [
+    22,
+    12.063,
+    0.4
+   ],
+   "blender_size": [
+    3,
+    6.125,
+    0.8
+   ]
+  },
+  {
+   "i": 32,
+   "type": "step",
+   "blender_center": [
+    22,
+    11.625,
+    0.6
+   ],
+   "blender_size": [
+    3,
+    5.25,
+    1.2
+   ]
+  },
+  {
+   "i": 33,
+   "type": "step",
+   "blender_center": [
+    22,
+    11.188,
+    0.8
+   ],
+   "blender_size": [
+    3,
+    4.375,
+    1.6
+   ]
+  },
+  {
+   "i": 34,
+   "type": "step",
+   "blender_center": [
+    22,
+    10.75,
+    1
+   ],
+   "blender_size": [
+    3,
+    3.5,
+    2
+   ]
+  },
+  {
+   "i": 35,
+   "type": "step",
+   "blender_center": [
+    22,
+    10.313,
+    1.2
+   ],
+   "blender_size": [
+    3,
+    2.625,
+    2.4
+   ]
+  },
+  {
+   "i": 36,
+   "type": "step",
+   "blender_center": [
+    22,
+    9.875,
+    1.4
+   ],
+   "blender_size": [
+    3,
+    1.75,
+    2.8
+   ]
+  },
+  {
+   "i": 37,
+   "type": "step",
+   "blender_center": [
+    22,
+    9.438,
+    1.6
+   ],
+   "blender_size": [
+    3,
+    0.875,
+    3.2
+   ]
+  },
+  {
+   "i": 38,
+   "type": "rail",
+   "blender_center": [
+    25.2,
+    0,
+    3.65
+   ],
+   "blender_size": [
+    0.4,
+    18,
+    0.9
+   ]
+  },
+  {
+   "i": 39,
+   "type": "plat",
+   "blender_center": [
+    -22,
+    0,
+    3
+   ],
+   "blender_size": [
+    6,
+    18,
+    0.4
+   ]
+  },
+  {
+   "i": 40,
+   "type": "pillar",
+   "blender_center": [
+    -19.6,
+    8.4,
+    1.4
+   ],
+   "blender_size": [
+    0.8,
+    0.8,
+    2.8
+   ]
+  },
+  {
+   "i": 41,
+   "type": "pillar",
+   "blender_center": [
+    -24.4,
+    8.4,
+    1.4
+   ],
+   "blender_size": [
+    0.8,
+    0.8,
+    2.8
+   ]
+  },
+  {
+   "i": 42,
+   "type": "pillar",
+   "blender_center": [
+    -19.6,
+    -8.4,
+    1.4
+   ],
+   "blender_size": [
+    0.8,
+    0.8,
+    2.8
+   ]
+  },
+  {
+   "i": 43,
+   "type": "pillar",
+   "blender_center": [
+    -24.4,
+    -8.4,
+    1.4
+   ],
+   "blender_size": [
+    0.8,
+    0.8,
+    2.8
+   ]
+  },
+  {
+   "i": 44,
+   "type": "step",
+   "blender_center": [
+    -22,
+    -12.5,
+    0.2
+   ],
+   "blender_size": [
+    3,
+    7,
+    0.4
+   ]
+  },
+  {
+   "i": 45,
+   "type": "step",
+   "blender_center": [
+    -22,
+    -12.062,
+    0.4
+   ],
+   "blender_size": [
+    3,
+    6.125,
+    0.8
+   ]
+  },
+  {
+   "i": 46,
+   "type": "step",
+   "blender_center": [
+    -22,
+    -11.625,
+    0.6
+   ],
+   "blender_size": [
+    3,
+    5.25,
+    1.2
+   ]
+  },
+  {
+   "i": 47,
+   "type": "step",
+   "blender_center": [
+    -22,
+    -11.187,
+    0.8
+   ],
+   "blender_size": [
+    3,
+    4.375,
+    1.6
+   ]
+  },
+  {
+   "i": 48,
+   "type": "step",
+   "blender_center": [
+    -22,
+    -10.75,
+    1
+   ],
+   "blender_size": [
+    3,
+    3.5,
+    2
+   ]
+  },
+  {
+   "i": 49,
+   "type": "step",
+   "blender_center": [
+    -22,
+    -10.312,
+    1.2
+   ],
+   "blender_size": [
+    3,
+    2.625,
+    2.4
+   ]
+  },
+  {
+   "i": 50,
+   "type": "step",
+   "blender_center": [
+    -22,
+    -9.875,
+    1.4
+   ],
+   "blender_size": [
+    3,
+    1.75,
+    2.8
+   ]
+  },
+  {
+   "i": 51,
+   "type": "step",
+   "blender_center": [
+    -22,
+    -9.437,
+    1.6
+   ],
+   "blender_size": [
+    3,
+    0.875,
+    3.2
+   ]
+  },
+  {
+   "i": 52,
+   "type": "rail",
+   "blender_center": [
+    -25.2,
+    0,
+    3.65
+   ],
+   "blender_size": [
+    0.4,
+    18,
+    0.9
+   ]
+  },
+  {
+   "i": 53,
+   "type": "fort",
+   "blender_center": [
+    26,
+    26,
+    1.2
+   ],
+   "blender_size": [
+    9,
+    9,
+    2.4
+   ]
+  },
+  {
+   "i": 54,
+   "type": "rail",
+   "blender_center": [
+    21.7,
+    28.2,
+    2.85
+   ],
+   "blender_size": [
+    0.4,
+    4.6,
+    0.9
+   ]
+  },
+  {
+   "i": 55,
+   "type": "rail",
+   "blender_center": [
+    28.2,
+    21.7,
+    2.85
+   ],
+   "blender_size": [
+    4.6,
+    0.4,
+    0.9
+   ]
+  },
+  {
+   "i": 56,
+   "type": "fort",
+   "blender_center": [
+    26,
+    -26,
+    1.2
+   ],
+   "blender_size": [
+    9,
+    9,
+    2.4
+   ]
+  },
+  {
+   "i": 57,
+   "type": "rail",
+   "blender_center": [
+    21.7,
+    -28.2,
+    2.85
+   ],
+   "blender_size": [
+    0.4,
+    4.6,
+    0.9
+   ]
+  },
+  {
+   "i": 58,
+   "type": "rail",
+   "blender_center": [
+    28.2,
+    -21.7,
+    2.85
+   ],
+   "blender_size": [
+    4.6,
+    0.4,
+    0.9
+   ]
+  },
+  {
+   "i": 59,
+   "type": "fort",
+   "blender_center": [
+    -26,
+    -26,
+    1.2
+   ],
+   "blender_size": [
+    9,
+    9,
+    2.4
+   ]
+  },
+  {
+   "i": 60,
+   "type": "rail",
+   "blender_center": [
+    -21.7,
+    -28.2,
+    2.85
+   ],
+   "blender_size": [
+    0.4,
+    4.6,
+    0.9
+   ]
+  },
+  {
+   "i": 61,
+   "type": "rail",
+   "blender_center": [
+    -28.2,
+    -21.7,
+    2.85
+   ],
+   "blender_size": [
+    4.6,
+    0.4,
+    0.9
+   ]
+  },
+  {
+   "i": 62,
+   "type": "fort",
+   "blender_center": [
+    -26,
+    26,
+    1.2
+   ],
+   "blender_size": [
+    9,
+    9,
+    2.4
+   ]
+  },
+  {
+   "i": 63,
+   "type": "rail",
+   "blender_center": [
+    -21.7,
+    28.2,
+    2.85
+   ],
+   "blender_size": [
+    0.4,
+    4.6,
+    0.9
+   ]
+  },
+  {
+   "i": 64,
+   "type": "rail",
+   "blender_center": [
+    -28.2,
+    21.7,
+    2.85
+   ],
+   "blender_size": [
+    4.6,
+    0.4,
+    0.9
+   ]
+  },
+  {
+   "i": 65,
+   "type": "step",
+   "blender_center": [
+    -26,
+    18.75,
+    0.2
+   ],
+   "blender_size": [
+    3,
+    5.5,
+    0.4
+   ]
+  },
+  {
+   "i": 66,
+   "type": "step",
+   "blender_center": [
+    -26,
+    19.208,
+    0.4
+   ],
+   "blender_size": [
+    3,
+    4.583,
+    0.8
+   ]
+  },
+  {
+   "i": 67,
+   "type": "step",
+   "blender_center": [
+    -26,
+    19.667,
+    0.6
+   ],
+   "blender_size": [
+    3,
+    3.667,
+    1.2
+   ]
+  },
+  {
+   "i": 68,
+   "type": "step",
+   "blender_center": [
+    -26,
+    20.125,
+    0.8
+   ],
+   "blender_size": [
+    3,
+    2.75,
+    1.6
+   ]
+  },
+  {
+   "i": 69,
+   "type": "step",
+   "blender_center": [
+    -26,
+    20.583,
+    1
+   ],
+   "blender_size": [
+    3,
+    1.833,
+    2
+   ]
+  },
+  {
+   "i": 70,
+   "type": "step",
+   "blender_center": [
+    -26,
+    21.042,
+    1.2
+   ],
+   "blender_size": [
+    3,
+    0.917,
+    2.4
+   ]
+  },
+  {
+   "i": 71,
+   "type": "step",
+   "blender_center": [
+    26,
+    -18.75,
+    0.2
+   ],
+   "blender_size": [
+    3,
+    5.5,
+    0.4
+   ]
+  },
+  {
+   "i": 72,
+   "type": "step",
+   "blender_center": [
+    26,
+    -19.208,
+    0.4
+   ],
+   "blender_size": [
+    3,
+    4.583,
+    0.8
+   ]
+  },
+  {
+   "i": 73,
+   "type": "step",
+   "blender_center": [
+    26,
+    -19.667,
+    0.6
+   ],
+   "blender_size": [
+    3,
+    3.667,
+    1.2
+   ]
+  },
+  {
+   "i": 74,
+   "type": "step",
+   "blender_center": [
+    26,
+    -20.125,
+    0.8
+   ],
+   "blender_size": [
+    3,
+    2.75,
+    1.6
+   ]
+  },
+  {
+   "i": 75,
+   "type": "step",
+   "blender_center": [
+    26,
+    -20.583,
+    1
+   ],
+   "blender_size": [
+    3,
+    1.833,
+    2
+   ]
+  },
+  {
+   "i": 76,
+   "type": "step",
+   "blender_center": [
+    26,
+    -21.042,
+    1.2
+   ],
+   "blender_size": [
+    3,
+    0.917,
+    2.4
+   ]
+  },
+  {
+   "i": 77,
+   "type": "crate",
+   "blender_center": [
+    11,
+    15,
+    0.75
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.5
+   ]
+  },
+  {
+   "i": 78,
+   "type": "crate",
+   "blender_center": [
+    15,
+    -11,
+    0.75
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.5
+   ]
+  },
+  {
+   "i": 79,
+   "type": "crate",
+   "blender_center": [
+    -11,
+    -15,
+    0.75
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.5
+   ]
+  },
+  {
+   "i": 80,
+   "type": "crate",
+   "blender_center": [
+    -15,
+    11,
+    0.75
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.5
+   ]
+  },
+  {
+   "i": 81,
+   "type": "crate",
+   "blender_center": [
+    15.5,
+    11,
+    0.75
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.5
+   ]
+  },
+  {
+   "i": 82,
+   "type": "crate",
+   "blender_center": [
+    11,
+    -15.5,
+    0.75
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.5
+   ]
+  },
+  {
+   "i": 83,
+   "type": "crate",
+   "blender_center": [
+    -15.5,
+    -11,
+    0.75
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.5
+   ]
+  },
+  {
+   "i": 84,
+   "type": "crate",
+   "blender_center": [
+    -11,
+    15.5,
+    0.75
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.5
+   ]
+  },
+  {
+   "i": 85,
+   "type": "crate",
+   "blender_center": [
+    13.2,
+    13.2,
+    2.05
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.1
+   ]
+  },
+  {
+   "i": 86,
+   "type": "crate",
+   "blender_center": [
+    13.2,
+    -13.2,
+    2.05
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.1
+   ]
+  },
+  {
+   "i": 87,
+   "type": "crate",
+   "blender_center": [
+    -13.2,
+    -13.2,
+    2.05
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.1
+   ]
+  },
+  {
+   "i": 88,
+   "type": "crate",
+   "blender_center": [
+    -13.2,
+    13.2,
+    2.05
+   ],
+   "blender_size": [
+    2.2,
+    2.2,
+    1.1
+   ]
+  },
+  {
+   "i": 89,
+   "type": "lowwall",
+   "blender_center": [
+    7,
+    24,
+    0.6
+   ],
+   "blender_size": [
+    6,
+    0.7,
+    1.2
+   ]
+  },
+  {
+   "i": 90,
+   "type": "lowwall",
+   "blender_center": [
+    24,
+    -7,
+    0.6
+   ],
+   "blender_size": [
+    6,
+    0.7,
+    1.2
+   ]
+  },
+  {
+   "i": 91,
+   "type": "lowwall",
+   "blender_center": [
+    -7,
+    -24,
+    0.6
+   ],
+   "blender_size": [
+    6,
+    0.7,
+    1.2
+   ]
+  },
+  {
+   "i": 92,
+   "type": "lowwall",
+   "blender_center": [
+    -24,
+    7,
+    0.6
+   ],
+   "blender_size": [
+    6,
+    0.7,
+    1.2
+   ]
+  },
+  {
+   "i": 93,
+   "type": "pillar",
+   "blender_center": [
+    -9,
+    27,
+    2.25
+   ],
+   "blender_size": [
+    1.6,
+    1.6,
+    4.5
+   ]
+  },
+  {
+   "i": 94,
+   "type": "pillar",
+   "blender_center": [
+    27,
+    9,
+    2.25
+   ],
+   "blender_size": [
+    1.6,
+    1.6,
+    4.5
+   ]
+  },
+  {
+   "i": 95,
+   "type": "pillar",
+   "blender_center": [
+    9,
+    -27,
+    2.25
+   ],
+   "blender_size": [
+    1.6,
+    1.6,
+    4.5
+   ]
+  },
+  {
+   "i": 96,
+   "type": "pillar",
+   "blender_center": [
+    -27,
+    -9,
+    2.25
+   ],
+   "blender_size": [
+    1.6,
+    1.6,
+    4.5
+   ]
+  },
+  {
+   "i": 97,
+   "type": "lowwall",
+   "blender_center": [
+    12,
+    -20,
+    0.6
+   ],
+   "blender_size": [
+    0.7,
+    5,
+    1.2
+   ]
+  },
+  {
+   "i": 98,
+   "type": "lowwall",
+   "blender_center": [
+    -12,
+    20,
+    0.6
+   ],
+   "blender_size": [
+    0.7,
+    5,
+    1.2
+   ]
+  },
+  {
+   "i": 99,
+   "type": "crate",
+   "blender_center": [
+    -13,
+    -8,
+    1
+   ],
+   "blender_size": [
+    3,
+    3,
+    2
+   ]
+  },
+  {
+   "i": 100,
+   "type": "crate",
+   "blender_center": [
+    13,
+    8,
+    1
+   ],
+   "blender_size": [
+    3,
+    3,
+    2
+   ]
+  }
+ ],
+ "jump_pads": [
+  {
+   "blender_pos": [
+    19.8,
+    19.8,
+    0
+   ],
+   "radius": 1.15,
+   "big": false
+  },
+  {
+   "blender_pos": [
+    19.8,
+    -19.8,
+    0
+   ],
+   "radius": 1.15,
+   "big": false
+  },
+  {
+   "blender_pos": [
+    -19.8,
+    -19.8,
+    0
+   ],
+   "radius": 1.15,
+   "big": false
+  },
+  {
+   "blender_pos": [
+    -19.8,
+    19.8,
+    0
+   ],
+   "radius": 1.15,
+   "big": false
+  },
+  {
+   "blender_pos": [
+    0,
+    28.5,
+    0
+   ],
+   "radius": 1.3,
+   "big": true
+  },
+  {
+   "blender_pos": [
+    0,
+    -28.5,
+    0
+   ],
+   "radius": 1.3,
+   "big": true
+  }
+ ],
+ "pickups": [
+  {
+   "kind": "power",
+   "blender_pos": [
+    0,
+    0,
+    3.2
+   ]
+  },
+  {
+   "kind": "mega",
+   "blender_pos": [
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "boom",
+   "blender_pos": [
+    0,
+    19.5,
+    0
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "long",
+   "blender_pos": [
+    26,
+    26,
+    2.4
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "long",
+   "blender_pos": [
+    -26,
+    -26,
+    2.4
+   ]
+  },
+  {
+   "kind": "armor",
+   "blender_pos": [
+    -26,
+    26,
+    2.4
+   ]
+  },
+  {
+   "kind": "armor",
+   "blender_pos": [
+    26,
+    -26,
+    2.4
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "scatter",
+   "blender_pos": [
+    22,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "scatter",
+   "blender_pos": [
+    -22,
+    0,
+    0
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "rapid",
+   "blender_pos": [
+    9,
+    -21,
+    0
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "rapid",
+   "blender_pos": [
+    -9,
+    21,
+    0
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "rapid",
+   "blender_pos": [
+    22,
+    -6,
+    3.2
+   ]
+  },
+  {
+   "kind": "weapon",
+   "weapon": "scatter",
+   "blender_pos": [
+    -22,
+    6,
+    3.2
+   ]
+  },
+  {
+   "kind": "health",
+   "blender_pos": [
+    8,
+    8.5,
+    0
+   ]
+  },
+  {
+   "kind": "health",
+   "blender_pos": [
+    8.5,
+    -8,
+    0
+   ]
+  },
+  {
+   "kind": "health",
+   "blender_pos": [
+    -8,
+    -8.5,
+    0
+   ]
+  },
+  {
+   "kind": "health",
+   "blender_pos": [
+    -8.5,
+    8,
+    0
+   ]
+  },
+  {
+   "kind": "health",
+   "blender_pos": [
+    29,
+    9,
+    0
+   ]
+  },
+  {
+   "kind": "health",
+   "blender_pos": [
+    9,
+    -29,
+    0
+   ]
+  },
+  {
+   "kind": "health",
+   "blender_pos": [
+    -29,
+    -9,
+    0
+   ]
+  },
+  {
+   "kind": "health",
+   "blender_pos": [
+    -9,
+    29,
+    0
+   ]
+  },
+  {
+   "kind": "armor",
+   "blender_pos": [
+    0,
+    -19.5,
+    0
+   ]
+  }
+ ],
+ "spawns": [
+  {
+   "blender_pos": [
+    29.5,
+    3,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    3,
+    -29.5,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    -29.5,
+    -3,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    -3,
+    29.5,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    17,
+    29.5,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    29.5,
+    -17,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    -17,
+    -29.5,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    -29.5,
+    17,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    3.5,
+    -17,
+    0
+   ]
+  },
+  {
+   "blender_pos": [
+    -3.5,
+    17,
+    0
+   ]
+  }
+ ],
+ "ramps": [
+  {
+   "kind": "walk",
+   "blender_min": [
+    20.5,
+    -17,
+    0
+   ],
+   "blender_max": [
+    23.5,
+    -9,
+    3.2
+   ],
+   "rises_toward": "+Y"
+  },
+  {
+   "kind": "walk",
+   "blender_min": [
+    -23.5,
+    9,
+    0
+   ],
+   "blender_max": [
+    -20.5,
+    17,
+    3.2
+   ],
+   "rises_toward": "-Y"
+  },
+  {
+   "kind": "launch",
+   "blender_min": [
+    10.5,
+    -7.6,
+    0
+   ],
+   "blender_max": [
+    13.5,
+    -3.4,
+    2.1
+   ],
+   "rises_toward": "+Y"
+  },
+  {
+   "kind": "launch",
+   "blender_min": [
+    -13.5,
+    3.4,
+    0
+   ],
+   "blender_max": [
+    -10.5,
+    7.6,
+    2.1
+   ],
+   "rises_toward": "-Y"
+  }
+ ],
+ "teleporters": [
+  [
+   [
+    20,
+    29.6,
+    0
+   ],
+   [
+    -20,
+    -29.6,
+    0
+   ]
+  ],
+  [
+   [
+    22,
+    6,
+    3.2
+   ],
+   [
+    -22,
+    -6,
+    3.2
+   ]
+  ]
+ ],
+ "train": {
+  "track_along": "X",
+  "blender_y": 0,
+  "track_half_width": 0.95,
+  "max_height": 2.4,
+  "length": 8.2
+ }
+}

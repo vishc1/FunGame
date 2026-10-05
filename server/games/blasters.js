@@ -1,0 +1,217 @@
+// Toy Box Blasters: first-person foam-dart arena (Shell Shockers shape, toy figures instead of eggs).
+// Everyone spawns with a sidearm; better weapons, health, armour and power-ups are picked up off the map.
+//
+// Networking model (chosen for feel among friends, not for anti-cheat):
+//   - Movement is simulated by each client and reported with { type:'p' }. The server only sanity-checks it.
+//   - Hitscan hits are decided by the shooter's client (what you see is what you hit) and reported in { type:'fire' }.
+//     The server enforces fire rate, ammo, range and damage.
+//   - Rockets, pickups, health, scoring and respawns are fully server-side.
+// The map, physics and weapon table live in public/games/blasters.shared.js so the server, bots and browser agree.
+// Testing: api.memory.__fast = seconds shortens the match.
+const B = require('../../public/games/blasters.shared.js');
+const { MAP, WEAPONS, MELEE, POWERS, P } = B;
+const NONE = () => WEAPONS.map((w, i) => i === 0); // which blasters a fresh player owns: only the sidearm
+const MATCH = 300, KILL_GOAL = 20, RESPAWN = 2.5, POWER_EVERY = 40, POWER_WARN = 6, DROP_LIFE = 14;
+const r2 = (v) => Math.round(v * 100) / 100;
+const fin = (v) => typeof v === 'number' && Number.isFinite(v);
+
+module.exports = {
+  id: 'blasters',
+  name: 'Toy Box Blasters',
+  tagline: 'First-person foam-dart arena. Eight blasters, a foam sword, crouch, slide and aim. Ramps, teleporters, a toy train, skins.',
+  min: 2, max: 8,
+  controls: 'Click the game to capture the mouse. WASD move, Space jump (twice), Shift dash, C crouch (tap while running to slide), click fire, right-click aim, E sword, R reload, 1-8 or wheel switch, Tab scores, H guide, L locker and settings.',
+  create(api) {
+    const players = new Map();
+    const pick = MAP.pickups.map((p) => ({ def: p, t: p.kind === 'power' ? POWER_EVERY * 0.5 : 0, kind: null }));
+    const drops = [], rockets = [];
+    const fast = api.memory.__fast;
+    let t = 0, left = fast ? (typeof fast === 'number' ? fast : 20) : MATCH, over = false, firstBlood = false, seq = 0;
+    // the toy train: counts down, warns, then crosses the map along the middle road
+    const TR = MAP.train, train = { wait: TR.every * 0.5, x: null, dir: 1, warned: false, hit: new Set() };
+
+    function addPlayer(id) {
+      const p = { id, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, hp: 100, armor: 0, w: 0, own: NONE(), mag: WEAPONS.map((w) => w.mag), res: WEAPONS.map((w) => w.reserve),
+        dead: 0, prot: 0, kills: 0, deaths: 0, score: 0, streak: 0, best: 0, heads: 0, dmg: 0, lastKiller: null, hurtBy: new Map(), power: null, powerT: 0, nextFire: 0, nextMelee: 0, cr: 0, reloadT: 0, lvl: 1, ch: players.size % 8, sk: 0, lastKillT: -99, multi: 0 };
+      players.set(id, p); spawn(p); return p;
+    }
+    function spawn(p) {
+      let best = MAP.spawns[0], bd = -1;
+      for (const s of MAP.spawns) { let d = 1e9; for (const o of players.values()) if (o !== p && !o.dead) d = Math.min(d, Math.hypot(o.x - s.x, o.z - s.z)); d += Math.random() * 6; if (d > bd) { bd = d; best = s; } }
+      Object.assign(p, { x: best.x, y: 0, z: best.z, yaw: best.yaw, pitch: 0, hp: 100, armor: 0, w: 0, own: NONE(), mag: WEAPONS.map((w) => w.mag), res: WEAPONS.map((w) => w.reserve), dead: 0, prot: 2.5, power: null, powerT: 0, reloadT: 0, nextFire: 0, streak: 0 });
+      p.hurtBy.clear();
+      api.emit('g:event', { type: 'spawn', id: p.id, x: p.x, y: p.y, z: p.z, yaw: r2(p.yaw) });
+    }
+    for (const pl of api.players()) addPlayer(pl.id);
+
+    function give(p, w, ammoScale = 1) {
+      const def = WEAPONS[w]; const had = p.own[w]; p.own[w] = true;
+      if (!had) { p.mag[w] = def.mag; p.res[w] = Math.round(def.reserve * ammoScale); } else p.res[w] = Math.min(def.reserve * 2, p.res[w] + Math.round((def.reserve + def.mag) * ammoScale));
+      return had;
+    }
+    function hurt(v, amount, byId, weapon, head, from) {
+      if (v.dead || v.prot > 0 || over) return 0;
+      const by = players.get(byId);
+      if (by && by !== v && by.power === 'mega') amount *= 2;
+      amount = Math.max(1, Math.round(amount));
+      const soak = Math.min(v.armor, Math.round(amount * 0.5)); v.armor -= soak; v.hp -= amount - soak;
+      if (by && by !== v) { by.dmg += amount; const h = v.hurtBy.get(byId) || { n: 0, t: 0 }; h.n += amount; h.t = t; v.hurtBy.set(byId, h); }
+      const dead = v.hp <= 0;
+      if (by && by !== v) api.to(byId, 'g:event', { type: 'dmg', v: v.id, n: amount, head: head ? 1 : 0, kill: dead ? 1 : 0, x: r2(v.x), y: r2(v.y + 1.3), z: r2(v.z) });
+      api.to(v.id, 'g:event', { type: 'hurt', n: amount, x: from ? r2(from.x) : r2(v.x), z: from ? r2(from.z) : r2(v.z) });
+      if (dead) kill(v, by && by !== v ? by : null, weapon, head, by === v);
+      return amount;
+    }
+    function kill(v, by, weapon, head, self) {
+      const tags = [];
+      if (by) {
+        by.kills++; by.streak++; by.best = Math.max(by.best, by.streak); by.score += 100; if (head) { by.heads++; by.score += 25; tags.push('headshot'); }
+        if (weapon === MELEE.name) { by.score += 50; tags.push('bonk'); }
+        if (!firstBlood) { firstBlood = true; by.score += 50; tags.push('first'); }
+        if (by.lastKiller === v.id) { by.score += 25; by.lastKiller = null; tags.push('revenge'); }
+        if (v.streak >= 3) { by.score += 50; tags.push('shutdown'); }
+        by.multi = t - by.lastKillT < 4 ? by.multi + 1 : 1; by.lastKillT = t;
+        if (by.multi === 2) tags.push('double'); else if (by.multi === 3) tags.push('triple'); else if (by.multi >= 4) tags.push('rampage');
+        if (by.streak === 3 || by.streak === 5 || by.streak === 8 || by.streak === 12) tags.push('streak');
+        v.lastKiller = by.id;
+        for (const [oid, h] of v.hurtBy) { const o = players.get(oid); if (o && o !== by && h.n >= 30 && t - h.t < 6) { o.score += 50; api.to(oid, 'g:event', { type: 'assist', v: v.id }); } }
+      } else if (self) { v.score = Math.max(0, v.score - 50); }
+      // the victim drops their best pickup weapon so someone can grab it
+      let bw = 0; for (const i of [4, 3, 6, 5, 2, 7, 1]) if (v.own[i] && v.mag[i] + v.res[i] > 0) { bw = i; break; }
+      if (bw) drops.push({ id: ++seq, w: bw, x: v.x, y: v.y, z: v.z, t: DROP_LIFE });
+      v.deaths++; v.dead = RESPAWN; v.hp = 0; v.power = null; v.powerT = 0; v.reloadT = 0;
+      api.emit('g:event', { type: 'kill', k: by ? by.id : null, v: v.id, w: weapon, head: head ? 1 : 0, streak: by ? by.streak : 0, ended: v.streak, tags, x: r2(v.x), y: r2(v.y), z: r2(v.z) });
+      v.streak = 0;
+      if (by && by.kills >= KILL_GOAL) finish();
+    }
+    function explode(x, y, z, ownerId, direct, w = 4) {
+      const def = WEAPONS[w];
+      api.emit('g:event', { type: 'explode', x: r2(x), y: r2(y), z: r2(z), r: def.radius, o: ownerId, w });
+      for (const v of [...players.values()]) {
+        if (v.dead) continue;
+        const d = Math.hypot(v.x - x, v.y + 0.9 - y, v.z - z); if (d > def.radius && v !== direct) continue;
+        let amt = v === direct ? def.dmg : def.splash * Math.pow(Math.max(0, 1 - d / def.radius), 0.8);
+        if (v.id === ownerId) amt *= 0.45;
+        if (amt >= 1) hurt(v, amt, ownerId, def.name, false, { x, z });
+      }
+    }
+    function finish() {
+      if (over) return; over = true;
+      const list = [...players.values()].sort((a, b) => b.kills - a.kills || b.score - a.score);
+      const pts = {}; list.forEach((p, i) => { pts[p.id] = Math.max(1, list.length - i) + Math.floor(p.kills / 4); });
+      const nm = (p) => (api.player(p.id) || { name: '?' }).name;
+      const top = (f) => list.slice().sort((a, b) => f(b) - f(a))[0];
+      const awards = []; if (list.length) { const a = top((p) => p.heads), b = top((p) => p.best), c = top((p) => p.dmg); if (a.heads) awards.push(['Sharpshooter', a.id, a.heads + ' headshots']); if (b.best >= 2) awards.push(['On a roll', b.id, b.best + ' in a row']); if (c.dmg) awards.push(['Heavy hitter', c.id, c.dmg + ' damage']); }
+      api.emit('g:event', { type: 'over', winner: list[0] ? list[0].id : null, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills })) });
+      const w = list[0];
+      api.after(5000, () => api.end(pts, w ? `${nm(w)} wins with ${w.kills} tags.${awards.length ? ' ' + awards.map(([n, id, d]) => `${n}: ${(api.player(id) || { name: '?' }).name} (${d})`).join('. ') + '.' : ''}` : 'Nobody played.'));
+    }
+
+    return {
+      onJoin(pid) { if (!players.has(pid)) addPlayer(pid); },
+      onRejoin(pid) { const p = players.get(pid); if (p) api.to(pid, 'g:event', { type: 'spawn', id: pid, x: p.x, y: p.y, z: p.z, yaw: r2(p.yaw), keep: 1 }); },
+      onLeave(pid) { players.delete(pid); if (!over && players.size < 2) finish(); },
+      onInput(pid, m) {
+        const p = players.get(pid); if (!p || over) return;
+        if (m.type === 'p') {
+          if (p.dead || !fin(m.x) || !fin(m.y) || !fin(m.z) || !fin(m.yaw) || !fin(m.pitch)) return;
+          const lim = MAP.size - P.R; p.x = Math.max(-lim, Math.min(lim, m.x)); p.z = Math.max(-lim, Math.min(lim, m.z)); p.y = Math.max(0, Math.min(40, m.y)); p.yaw = m.yaw; p.pitch = Math.max(-1.55, Math.min(1.55, m.pitch)); p.cr = m.cr ? 1 : 0;
+        } else if (m.type === 'hello') { if (fin(m.lvl)) p.lvl = Math.max(1, Math.min(99, m.lvl | 0)); if (fin(m.ch)) p.ch = Math.abs(m.ch | 0) % 8; if (fin(m.sk)) p.sk = Math.abs(m.sk | 0) % 16; }
+        else if (m.type === 'switch') { const w = m.w | 0; if (!p.dead && w >= 0 && w < WEAPONS.length && p.own[w] && w !== p.w) { p.w = w; p.reloadT = 0; p.nextFire = Math.max(p.nextFire, t + 0.3); } }
+        else if (m.type === 'reload') { const def = WEAPONS[p.w]; if (!p.dead && p.reloadT <= 0 && p.mag[p.w] < def.mag && p.res[p.w] > 0) p.reloadT = def.reload; }
+        else if (m.type === 'give') { // test rooms only (a room with bots): hand yourself any blaster
+          const w = m.w | 0; if (api.room && api.room.bots && api.room.bots.size && !p.dead && w > 0 && w < WEAPONS.length) { give(p, w); api.to(pid, 'g:event', { type: 'pickup', id: pid, kind: 'weapon', w, drop: 1 }); }
+        }
+        else if (m.type === 'melee') { // foam sword: the swinger's client says who was in reach; we check distance and cooldown
+          if (p.dead || t < p.nextMelee) return;
+          p.nextMelee = t + MELEE.cd - 0.08; p.prot = 0;
+          api.emit('g:event', { type: 'swing', id: pid });
+          for (const id of Array.isArray(m.hits) ? m.hits.slice(0, 3) : []) { const v = players.get(id); if (!v || v === p || v.dead) continue; if (Math.hypot(v.x - p.x, v.y - p.y, v.z - p.z) > MELEE.range + 1.6) continue; hurt(v, MELEE.dmg, pid, MELEE.name, false, p); if (over) return; }
+        }
+        else if (m.type === 'fire') {
+          const def = WEAPONS[p.w];
+          if (p.dead || (m.w | 0) !== p.w || p.reloadT > 0 || p.mag[p.w] <= 0 || t < p.nextFire - 0.06) return;
+          p.mag[p.w]--; p.nextFire = t + 1 / def.rate; p.prot = 0;
+          const o = Array.isArray(m.o) && m.o.length === 3 && m.o.every(fin) && Math.hypot(m.o[0] - p.x, m.o[1] - p.y, m.o[2] - p.z) < 4 ? m.o : [p.x, p.y + P.EYE, p.z];
+          let d = Array.isArray(m.d) && m.d.length === 3 && m.d.every(fin) ? m.d : B.dirFrom(p.yaw, p.pitch); const dl = Math.hypot(d[0], d[1], d[2]) || 1; d = [d[0] / dl, d[1] / dl, d[2] / dl];
+          if (def.projectile) { rockets.push({ id: ++seq, o: pid, w: p.w, g: def.gravity || 0, x: o[0], y: o[1], z: o[2], vx: d[0] * def.speed, vy: d[1] * def.speed + (def.gravity ? 2.5 : 0), vz: d[2] * def.speed, life: def.gravity ? 6 : 4, age: 0 }); api.emit('g:event', { type: 'shot', id: pid, w: p.w }); return; }
+          const e = Array.isArray(m.e) && m.e.length === 3 && m.e.every(fin) ? m.e.map(r2) : null;
+          api.emit('g:event', { type: 'shot', id: pid, w: p.w, o: o.map(r2), e });
+          let pellets = def.pellets;
+          for (const h of Array.isArray(m.hits) ? m.hits.slice(0, 8) : []) {
+            const v = players.get(h && h.id); if (!v || v === p || v.dead || pellets <= 0) continue;
+            const n = Math.max(1, Math.min(pellets, h.n | 0 || 1)), hd = Math.max(0, Math.min(n, h.h | 0)); pellets -= n;
+            const dist = Math.hypot(v.x - p.x, v.y - p.y, v.z - p.z); if (dist > def.range * 1.15) continue;
+            hurt(v, def.dmg * B.falloff(def, dist) * ((n - hd) + hd * def.head), pid, def.name, hd * 2 >= n && hd > 0, p);
+          }
+        }
+      },
+      tick(dt) {
+        if (over) return;
+        t += dt; left -= dt; if (left <= 0) { left = 0; finish(); return; }
+        for (const p of players.values()) {
+          if (p.dead > 0) { p.dead -= dt; if (p.dead <= 0) spawn(p); continue; }
+          if (p.prot > 0) p.prot -= dt;
+          if (p.powerT > 0) { p.powerT -= dt; if (p.powerT <= 0) { p.power = null; api.to(p.id, 'g:event', { type: 'powerend' }); } }
+          if (p.hp > 100) p.hp = Math.max(100, p.hp - 3 * dt);
+          if (p.reloadT > 0) { p.reloadT -= dt; if (p.reloadT <= 0) { const def = WEAPONS[p.w], need = def.mag - p.mag[p.w], got = Math.min(need, p.res[p.w]); p.mag[p.w] += got; if (p.res[p.w] !== Infinity) p.res[p.w] -= got; } }
+        }
+        // map pickups
+        for (let i = 0; i < pick.length; i++) {
+          const k = pick[i], d = k.def;
+          if (d.kind === 'power') { // cycles: announce, appear, get taken, wait
+            if (k.t > 0) { const before = k.t; k.t -= dt; if (before > POWER_WARN && k.t <= POWER_WARN) { k.kind = Object.keys(POWERS)[Math.floor(Math.random() * 4)]; api.emit('g:event', { type: 'powersoon', kind: k.kind }); } if (k.t <= 0 && !k.kind) k.kind = Object.keys(POWERS)[Math.floor(Math.random() * 4)]; continue; }
+          } else if (k.t > 0) { k.t -= dt; continue; }
+          for (const p of players.values()) {
+            if (p.dead || Math.hypot(p.x - d.x, p.z - d.z) > 1.35 || Math.abs(p.y - d.y) > 1.5) continue;
+            if (d.kind === 'health') { if (p.hp >= 100) continue; p.hp = Math.min(100, p.hp + 30); }
+            else if (d.kind === 'mega') { if (p.hp >= 150) continue; p.hp = Math.min(150, p.hp + 100); }
+            else if (d.kind === 'armor') { if (p.armor >= 100) continue; p.armor = Math.min(100, p.armor + 50); }
+            else if (d.kind === 'weapon') give(p, d.w);
+            else if (d.kind === 'power') { if (k.kind === 'tank') { p.hp = 150; p.armor = 100; } else { p.power = k.kind; p.powerT = POWERS[k.kind].time; } api.emit('g:event', { type: 'power', id: p.id, kind: k.kind }); }
+            api.emit('g:event', { type: 'pickup', id: p.id, i, kind: d.kind, w: d.w, pk: d.kind === 'power' ? k.kind : undefined });
+            k.t = d.kind === 'power' ? POWER_EVERY : d.respawn; if (d.kind === 'power') k.kind = null; break;
+          }
+        }
+        // toy train
+        if (train.x === null) {
+          train.wait -= dt;
+          if (!train.warned && train.wait <= TR.warn) { train.warned = true; train.dir = Math.random() < 0.5 ? 1 : -1; api.emit('g:event', { type: 'trainsoon', dir: train.dir }); }
+          if (train.wait <= 0) { train.x = -train.dir * (MAP.size + 1); train.hit.clear(); }
+        } else {
+          train.x += train.dir * TR.speed * dt; // x is the nose; the body trails behind it
+          const a = Math.min(train.x, train.x - train.dir * TR.len), b = Math.max(train.x, train.x - train.dir * TR.len);
+          for (const p of [...players.values()]) {
+            if (p.dead || train.hit.has(p.id) || p.y > TR.h || Math.abs(p.z - TR.z) > TR.half + P.R || p.x < a - P.R || p.x > b + P.R) continue;
+            train.hit.add(p.id); api.to(p.id, 'g:event', { type: 'trainhit', dir: train.dir });
+            hurt(p, TR.dmg, null, 'Toy Train', false, { x: p.x - train.dir * 3, z: p.z }); if (over) return;
+          }
+          if ((train.x - train.dir * TR.len) * train.dir > MAP.size + 1) { train.x = null; train.wait = TR.every; train.warned = false; }
+        }
+        // dropped weapons
+        for (let i = drops.length - 1; i >= 0; i--) {
+          const dr = drops[i]; dr.t -= dt; let taken = dr.t <= 0;
+          if (!taken && dr.t < DROP_LIFE - 0.6) for (const p of players.values()) if (!p.dead && Math.hypot(p.x - dr.x, p.z - dr.z) < 1.3 && Math.abs(p.y - dr.y) < 1.5) { give(p, dr.w, 0.6); api.emit('g:event', { type: 'pickup', id: p.id, kind: 'weapon', w: dr.w, drop: 1 }); taken = true; break; }
+          if (taken) drops.splice(i, 1);
+        }
+        // rockets
+        for (let i = rockets.length - 1; i >= 0; i--) {
+          const rk = rockets[i]; rk.age += dt; rk.life -= dt; if (rk.g) rk.vy -= rk.g * dt; const sp = Math.hypot(rk.vx, rk.vy, rk.vz) || 0.001, step = sp * dt, dx = rk.vx / sp, dy = rk.vy / sp, dz = rk.vz / sp;
+          let hitT = B.rayMap(rk.x, rk.y, rk.z, dx, dy, dz, step), direct = null;
+          for (const v of players.values()) { if (v.dead || (v.id === rk.o && rk.age < 0.25)) continue; const h = B.rayPlayer(rk.x, rk.y, rk.z, dx, dy, dz, v.x, v.y, v.z, Math.min(step, hitT), v.cr); if (h) { hitT = h.t; direct = v; } }
+          if (hitT !== Infinity || rk.life <= 0) { const tt = hitT === Infinity ? step : Math.max(0, hitT - 0.05); explode(rk.x + dx * tt, rk.y + dy * tt, rk.z + dz * tt, rk.o, direct, rk.w); rockets.splice(i, 1); if (over) return; continue; }
+          rk.x += dx * step; rk.y += dy * step; rk.z += dz * step;
+        }
+        const pw = pick[0];
+        api.emit('g:state', {
+          t: Math.ceil(left), goal: KILL_GOAL,
+          ps: [...players.values()].map((p) => ({ id: p.id, x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch), hp: Math.ceil(p.hp), ar: Math.round(p.armor), w: p.w, m: p.mag[p.w], r: p.res[p.w] === Infinity ? -1 : p.res[p.w], own: p.own.reduce((a, v, i) => a | (v ? 1 << i : 0), 0), rl: p.reloadT > 0 ? 1 : 0, dead: p.dead > 0 ? r2(p.dead) : 0, prot: p.prot > 0 ? 1 : 0, k: p.kills, d: p.deaths, sc: p.score, st: p.streak, pw: p.power || 0, pwt: p.powerT > 0 ? Math.ceil(p.powerT) : 0, lvl: p.lvl, ch: p.ch, sk: p.sk, cr: p.cr })),
+          pk: pick.map((k) => (k.t > 0 ? 0 : 1)), pw: { kind: pw.kind || 0, up: pw.t <= 0 ? 1 : 0, in: Math.max(0, Math.ceil(pw.t)) },
+          dr: drops.map((d) => ({ id: d.id, w: d.w, x: r2(d.x), y: r2(d.y), z: r2(d.z) })), rk: rockets.map((k) => ({ id: k.id, w: k.w, x: r2(k.x), y: r2(k.y), z: r2(k.z) })),
+          tr: train.x === null ? null : [r2(train.x), train.dir],
+        });
+      },
+      destroy() {},
+    };
+  },
+};

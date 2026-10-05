@@ -1,0 +1,47 @@
+{
+  "results": [
+    {
+      "game": "blasters",
+      "lights": [
+        {
+          "type": "HemisphereLight",
+          "intensity": 1.5
+        },
+        {
+          "type": "DirectionalLight",
+          "intensity": 2.3
+        }
+      ],
+      "medianFrameMs": 8.300000000000182,
+      "p95FrameMs": 9.299999999999727,
+      "calls": 6,
+      "triangles": 316,
+      "geometries": 381,
+      "textures": 30
+    },
+    {
+      "game": "memekarts",
+      "lights": [
+        {
+          "type": "HemisphereLight",
+          "intensity": 1.25
+        },
+        {
+          "type": "DirectionalLight",
+          "intensity": 2.2
+        },
+        {
+          "type": "DirectionalLight",
+          "intensity": 0.7
+        }
+      ],
+      "medianFrameMs": 8.400000000000091,
+      "p95FrameMs": 16.700000000000273,
+      "calls": 1,
+      "triangles": 1,
+      "geometries": 611,
+      "textures": 36
+    }
+  ],
+  "errors": []
+}

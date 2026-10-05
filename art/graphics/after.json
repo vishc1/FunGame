@@ -1,0 +1,90 @@
+{
+  "results": [
+    {
+      "game": "blasters",
+      "lights": [
+        {
+          "type": "HemisphereLight",
+          "intensity": 0.85
+        },
+        {
+          "type": "DirectionalLight",
+          "intensity": 3
+        },
+        {
+          "type": "DirectionalLight",
+          "intensity": 0.55
+        }
+      ],
+      "contacts": [
+        {
+          "finite": true,
+          "depthWrite": false,
+          "castShadow": false
+        },
+        {
+          "finite": true,
+          "depthWrite": false,
+          "castShadow": false
+        },
+        {
+          "finite": true,
+          "depthWrite": false,
+          "castShadow": false
+        }
+      ],
+      "medianFrameMs": 8.300000000000182,
+      "p95FrameMs": 9.200000000000273,
+      "lastPassCalls": 6,
+      "lastPassTriangles": 316,
+      "geometries": 367,
+      "textures": 30
+    },
+    {
+      "game": "memekarts",
+      "lights": [
+        {
+          "type": "HemisphereLight",
+          "intensity": 0.8
+        },
+        {
+          "type": "DirectionalLight",
+          "intensity": 2.8
+        },
+        {
+          "type": "DirectionalLight",
+          "intensity": 0.7
+        }
+      ],
+      "contacts": [
+        {
+          "finite": true,
+          "depthWrite": false,
+          "castShadow": false
+        },
+        {
+          "finite": true,
+          "depthWrite": false,
+          "castShadow": false
+        },
+        {
+          "finite": true,
+          "depthWrite": false,
+          "castShadow": false
+        },
+        {
+          "finite": true,
+          "depthWrite": false,
+          "castShadow": false
+        }
+      ],
+      "medianFrameMs": 8.300000000000182,
+      "p95FrameMs": 16.700000000000273,
+      "lastPassCalls": 1,
+      "lastPassTriangles": 1,
+      "geometries": 607,
+      "textures": 37
+    }
+  ],
+  "errors": []
+}

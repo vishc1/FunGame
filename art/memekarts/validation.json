@@ -1,0 +1,552 @@
+[
+  {
+    "name": "kart_0",
+    "triangles": 1732,
+    "budget": 3000,
+    "bounds_min": [
+      -1.6424999833106995,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.6424999833106995,
+      1.2300000190734863,
+      2.31000018119812
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "kart_1",
+    "triangles": 1684,
+    "budget": 3000,
+    "bounds_min": [
+      -1.6074999570846558,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.6074999570846558,
+      1.2300000190734863,
+      2.424999952316284
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Coral",
+      "Ivory",
+      "Lemon",
+      "Paint",
+      "Peach",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "kart_2",
+    "triangles": 1852,
+    "budget": 3000,
+    "bounds_min": [
+      -1.5839711427688599,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.5839711427688599,
+      1.2300000190734863,
+      2.4700000286102295
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Coral",
+      "Ivory",
+      "Lemon",
+      "Mint",
+      "Paint",
+      "Peach",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "kart_3",
+    "triangles": 2070,
+    "budget": 3500,
+    "bounds_min": [
+      -1.5699999332427979,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.5699999332427979,
+      1.2300000190734863,
+      4.980000019073486
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "kart_4",
+    "triangles": 1588,
+    "budget": 3000,
+    "bounds_min": [
+      -1.7500000596046448,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.7500000596046448,
+      1.2300000190734863,
+      2.2300000190734863
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Ivory",
+      "Lemon",
+      "Paint",
+      "Peach",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "kart_5",
+    "triangles": 1580,
+    "budget": 3000,
+    "bounds_min": [
+      -1.6249999403953552,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.6249999403953552,
+      1.2300000190734863,
+      2.669999837875366
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Ivory",
+      "Lemon",
+      "Mint",
+      "Paint",
+      "Peach",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "kart_6",
+    "triangles": 1804,
+    "budget": 3000,
+    "bounds_min": [
+      -1.5574999451637268,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.5574999451637268,
+      1.2300000190734863,
+      2.559999942779541
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Coral",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "kart_7",
+    "triangles": 1436,
+    "budget": 3000,
+    "bounds_min": [
+      -1.8491955995559692,
+      -0.9100000262260437,
+      0.0
+    ],
+    "bounds_max": [
+      1.8491955995559692,
+      0.9100000262260437,
+      2.2499999925494194
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Chrome",
+      "Coral",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "kart_egg",
+    "triangles": 420,
+    "budget": 800,
+    "bounds_min": [
+      -0.9749999940395355,
+      -0.8500000238418579,
+      0.0
+    ],
+    "bounds_max": [
+      0.9749999940395355,
+      0.8500000238418579,
+      2.5999999046325684
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Ivory",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "bullet_bill",
+    "triangles": 636,
+    "budget": 1200,
+    "bounds_min": [
+      -1.3999999165534973,
+      -1.0799999237060547,
+      0.0
+    ],
+    "bounds_max": [
+      1.3999999165534973,
+      1.0799999237060547,
+      1.440000057220459
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Chrome",
+      "Ivory",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "item_box",
+    "triangles": 84,
+    "budget": 300,
+    "bounds_min": [
+      -0.7599999904632568,
+      -0.7599999904632568,
+      0.0
+    ],
+    "bounds_max": [
+      0.7599999904632568,
+      0.7599999904632568,
+      1.5199999902397394
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Hologram",
+      "Question glow"
+    ]
+  },
+  {
+    "name": "fake_box",
+    "triangles": 84,
+    "budget": 300,
+    "bounds_min": [
+      -0.7599999904632568,
+      -0.7599999904632568,
+      0.0
+    ],
+    "bounds_max": [
+      0.7599999904632568,
+      0.7599999904632568,
+      1.5199999902397394
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Hologram",
+      "Question glow"
+    ]
+  },
+  {
+    "name": "shell_green",
+    "triangles": 224,
+    "budget": 500,
+    "bounds_min": [
+      -0.8574999868869781,
+      -0.8399999737739563,
+      0.0
+    ],
+    "bounds_max": [
+      0.8574999868869781,
+      0.8399999737739563,
+      1.2000000774860382
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Ivory",
+      "Mint"
+    ]
+  },
+  {
+    "name": "shell_red",
+    "triangles": 248,
+    "budget": 500,
+    "bounds_min": [
+      -0.8574999868869781,
+      -0.8399999737739563,
+      0.0
+    ],
+    "bounds_max": [
+      0.8574999868869781,
+      0.8399999737739563,
+      1.3300000727176666
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Coral",
+      "Ivory",
+      "Lemon"
+    ]
+  },
+  {
+    "name": "shell_blue",
+    "triangles": 528,
+    "budget": 800,
+    "bounds_min": [
+      -0.8574999868869781,
+      -1.3218798637390137,
+      0.0
+    ],
+    "bounds_max": [
+      0.8574999868869781,
+      1.3218798637390137,
+      1.4099999964237213
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Electric blue",
+      "Ivory"
+    ]
+  },
+  {
+    "name": "banana",
+    "triangles": 104,
+    "budget": 400,
+    "bounds_min": [
+      -0.8328302800655365,
+      -0.9478074312210083,
+      0.0
+    ],
+    "bounds_max": [
+      0.8328302800655365,
+      0.9478074312210083,
+      0.8950000256299973
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Lemon",
+      "Mint"
+    ]
+  },
+  {
+    "name": "bobomb",
+    "triangles": 552,
+    "budget": 700,
+    "bounds_min": [
+      -0.7975000143051147,
+      -0.6200000047683716,
+      0.0
+    ],
+    "bounds_max": [
+      0.7975000143051147,
+      0.6200000047683716,
+      1.8899999856948853
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Chrome",
+      "Coral",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "tnt",
+    "triangles": 96,
+    "budget": 300,
+    "bounds_min": [
+      -0.6000000238418579,
+      -0.6457499861717224,
+      0.0
+    ],
+    "bounds_max": [
+      0.6000000238418579,
+      0.6457499861717224,
+      1.2000000476837158
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Coral",
+      "Ivory",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "egg",
+    "triangles": 100,
+    "budget": 200,
+    "bounds_min": [
+      -0.40895436704158783,
+      -0.43000006675720215,
+      0.0
+    ],
+    "bounds_max": [
+      0.40895436704158783,
+      0.43000006675720215,
+      1.2000000476837158
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Ivory"
+    ]
+  },
+  {
+    "name": "fireball",
+    "triangles": 128,
+    "budget": 200,
+    "bounds_min": [
+      -0.6157757341861725,
+      -0.5390686392784119,
+      0.0
+    ],
+    "bounds_max": [
+      0.6157757341861725,
+      0.5390686392784119,
+      1.1650000214576721
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Fire glow",
+      "Gold core"
+    ]
+  },
+  {
+    "name": "launch_pad",
+    "triangles": 308,
+    "budget": 400,
+    "bounds_min": [
+      -1.25,
+      -1.25,
+      0.0
+    ],
+    "bounds_max": [
+      1.25,
+      1.25,
+      0.3850000202655792
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Electric blue",
+      "Ivory",
+      "Pad emission",
+      "Rubber"
+    ]
+  },
+  {
+    "name": "obstacle",
+    "triangles": 184,
+    "budget": 600,
+    "bounds_min": [
+      -4.5,
+      -1.8224999904632568,
+      0.0
+    ],
+    "bounds_max": [
+      4.5,
+      1.8224999904632568,
+      3.3000001907348633
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Lemon",
+      "Orange",
+      "Paint"
+    ]
+  },
+  {
+    "name": "tree",
+    "triangles": 76,
+    "budget": 300,
+    "bounds_min": [
+      -1.3787307739257812,
+      -1.3577848076820374,
+      0.0
+    ],
+    "bounds_max": [
+      1.3787307739257812,
+      1.3577848076820374,
+      4.099999904632568
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Bark",
+      "Mint"
+    ]
+  }
+]

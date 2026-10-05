@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meme Karts + Toy Box Blasters — browser battles with friends</title>
+<meta name="description" content="Two free browser games to play with friends: Meme Karts, a kart battle with ridiculous weapons, and Toy Box Blasters, a first-person foam-dart arena.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- TEST MODE (bottom right): play alone against bots -->
+<div id="testBox">
+  <button id="testBtn" title="Create a practice lobby with three bots">Practice lobby</button>
+  <div id="botCtl" class="hidden">
+    <span class="hint">Test mode</span>
+    <button id="botAdd" class="small">+ bot</button>
+    <button id="botClear" class="small">remove bots</button>
+  </div>
+</div>
+
+<!-- HOME -->
+<section id="home" class="screen">
+  <nav class="home-nav"><a class="wordmark" href="#">MK<span>✦</span></a><span>BROWSER BATTLES / NO DOWNLOADS</span><a id="exploreLink" href="#arenas">Explore arenas ↗</a></nav>
+  <div id="gamePick" class="game-pick" role="tablist" aria-label="Choose a game">
+    <button data-game="memekarts" role="tab"><small>KART BATTLE</small><b>Meme Karts</b><span>Drive, grab items, wreck your friends.</span></button>
+    <button data-game="blasters" role="tab"><small>FIRST-PERSON SHOOTER</small><b>Toy Box Blasters</b><span>Foam darts, pickups, ramps and a toy train.</span></button>
+  </div>
+  <div class="hero">
+    <div class="hero-copy"><p class="eyebrow" id="heroEyebrow">YOUR FRIENDS. YOUR RIVALS.</p><h1 id="heroTitle">MEME<br><span>KARTS</span><i>✦</i></h1><p class="hero-description" id="heroDesc">Small karts. Big chaos.<br>Grab a ridiculous weapon. Ruin a friend's lap.</p>
+      <div class="play-card"><label for="name" id="nameLabel">YOUR DRIVER NAME</label><input id="name" maxlength="14" placeholder="Pick a name" autocomplete="nickname"><div class="row"><button id="soloBtn" class="primary">Play now <span>↗</span></button><button id="createBtn">Play with friends</button></div><div class="join-row"><input id="code" maxlength="4" placeholder="ROOM CODE" aria-label="Room code" autocomplete="off"><button id="joinBtn">Join room →</button></div></div>
+      <p class="hero-meta" id="heroMeta">2–8 drivers <span>•</span> 3 arenas <span>•</span> Absolutely no brakes*</p>
+    </div>
+    <div class="hero-art"><div class="hero-orbit"></div><canvas id="kartShowcase" aria-label="A rotating 3D Meme Karts racer"></canvas><div class="ride-badge" id="heroBadge"><span>MEET YOUR NEW BAD IDEA</span><b>The rocket sled.</b><small>One of eight ridiculous rides.</small></div><div class="hero-sticker" id="heroSticker">READY.<br>SET.<br>CHAOS.</div></div>
+  </div>
+  <section id="arenas" class="arena-section"><div class="section-heading"><div><p class="eyebrow">PICK YOUR PLAYGROUND</p><h2>Three ways to cause trouble.</h2></div><span>Different routes. Same bad intentions.</span></div><div id="homeMaps" class="map-grid"></div></section>
+  <section id="toybox" class="arena-section hidden"><div class="section-heading"><div><p class="eyebrow">WHAT IS IN THE TOY BOX</p><h2>Grab it before they do.</h2></div><span>Everyone starts with a sidearm. The good stuff is on the map.</span></div>
+    <div class="toy-grid">
+      <div class="toy-card"><b>Blasters to find</b><p>Scatter, Rapid, Burst, Long Shot, Boom Tube and more. Tagged players drop theirs.</p></div>
+      <div class="toy-card"><b>Power-ups</b><p>Every 40 seconds one lands on the tower roof. Everyone knows. Everyone goes.</p></div>
+      <div class="toy-card"><b>A map that fights back</b><p>Ramps, launch ramps, jump pads, teleporters, and a toy train on a schedule.</p></div>
+      <div class="toy-card"><b>Figures and skins</b><p>Eight toy figures and nine finishes, from Pastel to Gold to Rainbow. Level up to unlock.</p></div>
+    </div></section>
+  <section class="how-to" id="howTo"><b>THE RULES ARE SIMPLE.</b><span><kbd>W A S D</kbd> Drive</span><span><kbd>?</kbd> Grab an item</span><span><kbd>SPACE</kbd> Make it personal</span><small>* Okay, S reverses.</small></section>
+  <footer><b id="footName" style="font-weight:inherit">MEME KARTS</b> <span>Made for the group chat.</span></footer>
+</section>
+
+<!-- LOBBY -->
+<section id="lobby" class="screen hidden">
+  <header>
+    <div><span class="wordmark">MK✦</span> <span class="hint">PIT LANE / ROOM</span> <b id="roomCode"></b> <button id="copyBtn" class="small">Invite friends ↗</button></div>
+    <div class="right"><button id="leaveBtn" class="small">leave</button></div>
+  </header>
+  <div class="lobbyBody">
+    <aside>
+      <h3>Players</h3>
+      <ul id="playerList"></ul>
+      <p class="hint" id="hostHint"></p>
+    </aside>
+    <main>
+      <div id="gameSwitch" class="game-pick in-lobby"><button data-game="memekarts"><small>KART BATTLE</small><b>Meme Karts</b></button><button data-game="blasters"><small>FIRST-PERSON SHOOTER</small><b>Toy Box Blasters</b></button></div>
+      <div class="lobby-heading"><p class="eyebrow">GET THE CREW TOGETHER</p><h2>Choose your arena.</h2><p class="sub">The host picks the map. Everyone brings the chaos.</p></div>
+      <div id="mapPicker" class="map-grid"></div>
+      <button id="returnKarts" class="hidden">← Back to Meme Karts</button>
+      <details id="arcade"><summary>More games (13 party games)</summary><div id="gameGrid"></div></details>
+      <div id="gameInfo" class="info"></div>
+      <button id="startBtn" class="primary big">Start</button>
+    </main>
+  </div>
+</section>
+
+<!-- GAME -->
+<section id="game" class="screen hidden">
+  <header>
+    <div><b id="gameTitle"></b> <span id="gameHint" class="hint"></span></div>
+    <div class="right"><button id="fullscreenBtn" class="small" title="Fullscreen (F)">⛶ Fullscreen</button><button id="endBtn" class="small" title="Host only: ends the game for everyone">End game</button><button id="quitBtn" class="small" title="Leave this room">Leave</button></div>
+  </header>
+  <div id="stage">
+    <canvas id="canvas" width="900" height="600"></canvas>
+    <div id="ui"></div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results" class="screen hidden">
+  <div class="card wide">
+    <h2 id="resTitle"></h2>
+    <p id="resSummary" class="sub"></p>
+    <table id="resTable"></table>
+    <div class="row">
+      <button id="againBtn" class="primary">Play again</button>
+      <button id="lobbyBtn">Back to lobby</button>
+    </div>
+    <p class="hint" id="resHint"></p>
+  </div>
+</section>
+
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js","three/addons/":"/vendor/addons/"}}</script>
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+  import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+  window.THREE = THREE; window.GLTFLoader = GLTFLoader; window.THREE_PP = { EffectComposer, RenderPass, UnrealBloomPass, OutputPass };
+  window.RoomEnvironment = RoomEnvironment;
+  window.dispatchEvent(new Event('three-ready'));
+</script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="memekarts-maps.js"></script>
+<script src="home.js"></script>
+<script src="app.js"></script>
+<script src="kart-home.js"></script>
+<script src="games/mimic.js"></script>
+<script src="games/threelines.js"></script>
+<script src="games/eggboss.js"></script>
+<script src="games/sumo.js"></script>
+<script src="games/liarsmap.js"></script>
+<script src="games/hotpotato.js"></script>
+<script src="games/shadowtag.js"></script>
+<script src="games/buildbreak.js"></script>
+<script src="games/memekarts.js"></script>
+<script src="games/memekarts.extras.js"></script>
+<script src="games/blasters.shared.js"></script>
+<script src="games/blasters.js"></script>
+<script src="games/brawl.js"></script>
+<script src="games/prophunt.js"></script>
+<script src="games/powertag.js"></script>
+<script src="games/dodgeboss.js"></script>
+<script src="games/rocketsoccer.js"></script>
+</body>
+</html>
