@@ -3,7 +3,10 @@
 (function () {
   const $ = (s) => document.querySelector(s);
   // WebSocket only: hosts like Vercel do not support Socket.IO's long-polling fallback
-  const socket = io({ transports: ['websocket'] });
+  // Two transports with the same interface. Normal: a Socket.IO server (WebSocket only, some hosts lack long-polling).
+  // Peer-to-peer (public/p2p.js): for static hosts with no game server; the build sets window.FG_P2P there. ?p2p=1 / ?p2p=0 overrides it.
+  const P2P = (() => { const q = new URLSearchParams(location.search).get('p2p'); return q === '1' ? true : q === '0' ? false : !!window.FG_P2P; })();
+  const socket = P2P ? window.createP2PSocket() : io({ transports: ['websocket'] });
   const GAMES = {};
   let gameDefs = [];
   let room = null;
@@ -129,7 +132,7 @@
     $('#mapPicker').innerHTML = window.MEMEKARTS_MAPS.map(m => window.kartMapCard(m, m.id === room.mapId, !isHost)).join('');
     for (const el of $('#mapPicker').querySelectorAll('[data-map]')) el.onclick = () => socket.emit('pickMap', { mapId: el.dataset.map });
     $('#playerList').innerHTML = room.players.map((p) => `<li><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.bot ? '<span class="botTag">BOT</span>' : ''}${p.id === room.hostId ? ' <span class="hint">(host)</span>' : ''}<span style="margin-left:auto" class="hint">${p.score}</span></li>`).join('');
-    $('#hostHint').textContent = isHost ? 'You are the host: pick a game and press Start.' : 'Waiting for the host to start a game.';
+    $('#hostHint').textContent = (isHost ? 'You are the host: pick a game and press Start.' : 'Waiting for the host to start a game.') + (socket.hosting ? ' The room runs in this tab, so keep it open: closing or refreshing it ends the room for everyone.' : '');
     $('#gameGrid').innerHTML = gameDefs.map((g) => `<div class="gcard ${g.id === room.gameId ? 'sel' : ''}" data-id="${g.id}"><b>${esc(g.name)}</b><small>${esc(g.tagline)}</small><br><small>${g.min}–${g.max} players</small></div>`).join('');
     for (const el of document.querySelectorAll('.gcard')) el.onclick = () => isHost && socket.emit('pick', { gameId: el.dataset.id });
     const def = gameDefs.find((g) => g.id === room.gameId);

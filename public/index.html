@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Meme Karts + Toy Box Blasters — browser battles with friends</title>
 <meta name="description" content="Two free browser games to play with friends: Meme Karts, a kart battle with ridiculous weapons, and Toy Box Blasters, a first-person foam-dart arena.">
@@ -109,7 +110,9 @@
   window.RoomEnvironment = RoomEnvironment;
   window.dispatchEvent(new Event('three-ready'));
 </script>
-<script src="/socket.io/socket.io.js"></script>
+<script src="config.js"></script>
+<script src="vendor/socket.io.min.js"></script>
+<script src="p2p.js"></script>
 <script src="memekarts-maps.js"></script>
 <script src="home.js"></script>
 <script src="app.js"></script>

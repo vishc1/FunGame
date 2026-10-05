@@ -5,3 +5,5 @@ node_modules/
 *.blend
 *.md
 .DS_Store
+# the site is served as static files on Vercel; rooms run peer-to-peer (see public/p2p.js)
+/server.js

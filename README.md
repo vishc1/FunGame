@@ -35,7 +35,7 @@ Refreshing the page or a short connection drop does not lose your seat: it is he
 | Hot Potato Trivia | pass the potato, whoever holds it when it pops answers | click a player, click an answer |
 | Shadow Tag | dark map, flashlight cones, you only see lit players | WASD, mouse aim, F toggles light |
 | Build & Break | 60 s to stack blocks, then one wrecking-ball shot each | A/D, Q/E rotate, Space drop, drag to fire |
-| Meme Karts | **3D** kart battle (Smash Karts shape) with 18 items on three large maps (speedway + fort, neon city with portals and drones, canyon with boulders and quicksand), all with jump ramps: shells, Boo ghost, lightning, star, Bullet Bill, bob-ombs… | WASD drive, Space fire |
+| Meme Karts | **3D** kart battle (Smash Karts shape) with 18 items on three large maps (speedway + fort, neon city with portals and drones, canyon with boulders and quicksand), all with raised decks you reach by ramp: shells, Boo ghost, lightning, star, Bullet Bill, bob-ombs… | WASD drive, Space fire |
 | Character Brawl | one-screen platform brawler, parody characters | A/D, W jump, J attack, K special |
 | Prop Hunt Arena | hiders are props, seekers shoot what looks wrong | WASD, click shoot, 1-8 pick prop |
 | Tag with Powers | tag where everyone has a random power | WASD, Space power |
@@ -45,13 +45,19 @@ Refreshing the page or a short connection drop does not lose your seat: it is he
 
 ## Toy Box Blasters
 
-A first-person arena shooter in the shape of Shell Shockers, with toy action figures instead of eggs. Everyone spawns with a Dart Blaster; the Scatter, Rapid, Long Shot and Boom Tube blasters, health, armour and a rotating power-up are picked up off the map. Tagged players drop their best blaster. Eight blasters (including a three-dart Burst Blaster, a Splash Lobber that arcs water balloons, and a Zap Ray), a foam sword on E, aiming on right-click, crouch on C and a slide when you tap it while running. Double jump, dash, jump pads, walk-up ramps, launch ramps, teleporter pairs, and a toy train that crosses the map every 30 seconds. Headshots, streak callouts, and XP levels that unlock figures and skins (kept in your browser). Press **L** for the locker; rooms with bots unlock everything so you can try it all. Press **H** in game for what everything does. The map, physics and weapon numbers are in `public/games/blasters.shared.js`; `fps3d.md` is the graphics brief for an artist or agent.
+A first-person arena shooter in the shape of Shell Shockers, with toy action figures instead of eggs. Everyone spawns with a Dart Blaster; the Scatter, Rapid, Long Shot and Boom Tube blasters, health, armour and a rotating power-up are picked up off the map. Tagged players drop their best blaster. Nine blasters (including a three-dart Burst Blaster, a Splash Lobber that arcs water balloons, a Zap Ray and a Toy Cannon whose recoil can launch you), a foam sword on E, G to drop your blaster for someone else, a starter-blaster loadout in the locker, aiming on right-click, crouch on C and a slide when you tap it while running. Double jump, dash, jump pads, walk-up ramps, launch ramps, teleporter pairs, and a toy train that crosses the map every 30 seconds. Headshots, streak callouts, and XP levels that unlock figures and skins (kept in your browser). Press **L** for the locker; rooms with bots unlock everything so you can try it all. Press **H** in game for what everything does. The map, physics and weapon numbers are in `public/games/blasters.shared.js`; `fps3d.md` is the graphics brief for an artist or agent.
 
 ## 3D models (Blender)
 
 Meme Karts renders 23 original Blender assets with Three.js. Any `.glb` dropped into `public/models/` with the right file name replaces its fallback automatically. Editable sources and rebuild instructions are in `art/memekarts/`; the asset specification is `3d.md`. An optional `arena.glb` overrides only Sunset Stadium, whose layout it must match.
 
 Animation includes front-wheel steering, wheel spin, body lean and pitch, interpolated jumps, landing suspension, pickup particles, skids, and camera easing. Decorative motion follows the system's reduced-motion preference.
+
+## Hosting
+
+Run it anywhere Node runs with `npm start`: that is the normal mode, with a game server and Socket.IO.
+
+The Vercel deployment (https://friendgame.vercel.app) is different, because Vercel cannot keep a game server running. There the site is static files and rooms are **peer-to-peer**: the room creator's browser runs the game and friends' browsers connect straight to it. Nothing to pay for and no time limit, with two things to know: the room ends if its creator closes or refreshes their tab, and a few very strict networks (some schools and offices) block direct connections. Deploy with `npx vercel@latest deploy --prod --yes`.
 
 ## Checks
 

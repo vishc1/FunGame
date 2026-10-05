@@ -19,7 +19,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const page = await (await browser.newContext({ viewport: { width: 1100, height: 760 } })).newPage();
     page.on('pageerror', (e) => errors.push(`[p${i}] pageerror: ${e.message}`));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(`[p${i}] console: ${m.text().slice(0, 300)}`); });
-    await page.goto(`http://localhost:${PORT}/`); pages.push(page);
+    await page.goto(`http://localhost:${PORT}/${process.env.QS || ''}`); pages.push(page); // QS='?p2p=1' runs the peer-to-peer transport
   }
   await pages[0].fill('#name', 'Host'); await pages[0].evaluate(() => document.querySelector('#createBtn').click());
   await pages[0].waitForSelector('#lobby:not(.hidden)');

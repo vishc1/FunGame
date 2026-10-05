@@ -2,6 +2,7 @@
 // each browser sees the other player move, and (shooter) that a shot fired in one browser lowers health seen in both.
 // Usage: node tools/mp.js            (starts its own local server)
 //        BASE_URL=https://friendgame.vercel.app node tools/mp.js   (tests a deployed site instead)
+//        P2P=1 node tools/mp.js      (forces the peer-to-peer transport with ?p2p=1)
 const { chromium } = require('playwright-core'); const { spawn } = require('child_process');
 const path = require('path'), fs = require('fs'), os = require('os');
 const PORT = 7600 + Math.floor(Math.random() * 300);
@@ -12,12 +13,12 @@ let pass = 0, fail = 0; const check = (n, ok, x = '') => { ok ? pass++ : fail++;
 (async () => {
   const BASE = process.env.BASE_URL || `http://localhost:${PORT}`; let log = '';
   const srv = process.env.BASE_URL ? { kill() {} } : spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT }, stdio: ['ignore', 'pipe', 'pipe'] }); if (srv.stderr) srv.stderr.on('data', (d) => (log += d));
-  await sleep(800); console.log('testing ' + BASE);
+  await sleep(800); console.log('testing ' + BASE + (process.env.P2P ? ' in peer-to-peer mode' : ''));
   const errors = [];
   for (const game of ['memekarts', 'blasters']) {
     // two completely separate browser processes, like two people on two computers
     const browsers = [], pages = [];
-    for (let i = 0; i < 2; i++) { const b = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] }); browsers.push(b); const page = await (await b.newContext({ viewport: { width: 1000, height: 700 } })).newPage(); page.on('pageerror', (e) => errors.push(`[${game} p${i}] ${e.message}`)); await page.goto(`${BASE}/?bltest=1&game=${game}`); pages.push(page); }
+    for (let i = 0; i < 2; i++) { const b = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] }); browsers.push(b); const page = await (await b.newContext({ viewport: { width: 1000, height: 700 } })).newPage(); page.on('pageerror', (e) => errors.push(`[${game} p${i}] ${e.message}`)); await page.goto(`${BASE}/?bltest=1&game=${game}${process.env.P2P ? '&p2p=1' : ''}`); pages.push(page); }
     const [A, Bp] = pages;
     await A.fill('#name', 'Alice'); await A.click('#createBtn'); await A.waitForSelector('#lobby:not(.hidden)'); const code = (await A.textContent('#roomCode')).trim();
     await Bp.fill('#name', 'Bob'); await Bp.fill('#code', code); await Bp.click('#joinBtn'); await Bp.waitForSelector('#lobby:not(.hidden)');

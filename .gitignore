@@ -5,3 +5,4 @@ tools/shots/
 .vercel
 __pycache__/
 *.pyc
+public/host-worker.js

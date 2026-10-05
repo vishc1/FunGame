@@ -299,7 +299,9 @@ registerGame('memekarts', (G) => {
         const topTex = tex(256, 256, (c, cw, ch) => { c.fillStyle = night ? '#2a3760' : desert ? '#d9a066' : '#8fb0b4'; c.fillRect(0, 0, cw, ch); c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 3; for (let i = 0; i <= cw; i += 32) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, ch); c.moveTo(0, i); c.lineTo(cw, i); c.stroke(); } for (let i = 0; i < 500; i++) { c.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; c.fillRect(Math.random() * cw, Math.random() * ch, 4, 4); } });
         topTex.wrapS = topTex.wrapT = THREE.RepeatWrapping; topTex.repeat.set(d.w / 80, d.h / 80);
         const blockM = [side, side, new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.8 }), side, side, side];
-        const blk = mesh(new THREE.BoxGeometry(d.w, RAMP_H, d.h), blockM, cx, RAMP_H / 2, cz); blk.name = 'deck'; scene.add(blk);
+        const model = asset(night ? 'deck_neon' : desert ? 'deck_canyon' : 'deck', 100) || asset('deck', 100); /* optional Blender deck, stretched to this footprint */
+        if (model) { const bb = new THREE.Box3().setFromObject(model), sz = bb.getSize(new THREE.Vector3()); model.scale.set(d.w / sz.x, RAMP_H / sz.y, d.h / sz.z); model.position.set(cx, 0, cz); model.name = 'deck'; scene.add(model); }
+        else { const blk = mesh(new THREE.BoxGeometry(d.w, RAMP_H, d.h), blockM, cx, RAMP_H / 2, cz); blk.name = 'deck'; scene.add(blk); }
         /* glowing rim, with gaps where a ramp meets the deck */
         const edges = [[d.x, d.y, d.x + d.w, d.y], [d.x, d.y + d.h, d.x + d.w, d.y + d.h], [d.x, d.y, d.x, d.y + d.h], [d.x + d.w, d.y, d.x + d.w, d.y + d.h]];
         for (const [x0, y0, x1, y1] of edges) {
@@ -313,7 +315,7 @@ registerGame('memekarts', (G) => {
     function buildRamps() {
       for (const rp of map.ramps || []) {
         const horiz = rp.dir === 'E' || rp.dir === 'W', len = horiz ? rp.w : rp.h, wid = horiz ? rp.h : rp.w, g = new THREE.Group();
-        const custom = asset('ramp', 60); /* optional model: rises toward +X in Blender; stretched to the footprint */
+        const custom = asset(map.theme === 'neon' ? 'ramp_neon' : map.theme === 'canyon' ? 'ramp_canyon' : 'ramp', 60) || asset('ramp', 60); /* optional model: rises toward +X in Blender; stretched to the footprint */
         if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RAMP_H / sz.y, wid / sz.z);
           custom.traverse((m) => { if (m.isMesh && /ink|dark|runway/i.test((m.material.name || '') + m.name)) m.material.color.set(map.theme === 'neon' ? '#ff3fd0' : '#ff8a1f'); }); /* the runway is painted a loud colour: a dark ramp reads as a floor marking */
           g.add(custom); }
