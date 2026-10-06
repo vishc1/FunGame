@@ -53,6 +53,10 @@ Meme Karts renders 23 original Blender assets with Three.js. Any `.glb` dropped 
 
 Animation includes front-wheel steering, wheel spin, body lean and pitch, interpolated jumps, landing suspension, pickup particles, skids, and camera easing. Decorative motion follows the system's reduced-motion preference.
 
+## On a phone
+
+Both main games play on a phone or tablet in landscape. Meme Karts has an on-screen d-pad and a FIRE button (hold it to aim the pie). Toy Box Blasters has a joystick on the left, drag anywhere on the right to look, and buttons for fire, jump, aim, crouch, sword, dash, reload, switching and dropping blasters. The other 13 games are keyboard games and are not adapted.
+
 ## Hosting
 
 Run it anywhere Node runs with `npm start`: that is the normal mode, with a game server and Socket.IO.

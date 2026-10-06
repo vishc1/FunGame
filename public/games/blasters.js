@@ -43,6 +43,41 @@ registerGame('blasters', (G) => {
   // current spread of the next dart: aiming and crouching tighten it, moving, jumping and holding the trigger widen it
   function curSpread() { const def = WEAPONS[me.w], aim = me.zoom > 0.7; let sp = def.zoom && !aim ? def.hipSpread : def.spread; if (!def.zoom || !aim) sp += Math.min(1, Math.hypot(body.vx, body.vz) / 7) * 0.008 + (body.ground ? 0 : 0.012) + me.spreadAdd; return sp * (aim ? 0.45 : 1) * (body.crouched && body.ground ? 0.7 : 1); }
   let locked = false, firing = false, zooming = false, jumpQ = false, dashQ = false, showScores = false, showGuide = false, sendT = 0, over = null;
+  // ---- touch controls (phones and tablets): a joystick on the left, drag anywhere on the right to look, buttons for the rest.
+  // There is no pointer lock on a phone, so the game runs "soft locked" from the start.
+  const TOUCH = window.matchMedia('(pointer:coarse)').matches && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  const touch = { f: 0, s: 0, crouch: false }; let touchUI = null, myShots = 0;
+  function buildTouch() {
+    touchUI = document.createElement('div'); touchUI.className = 'bl-touch';
+    touchUI.innerHTML = '<div class="bl-look"></div><div class="bl-stick"><div class="bl-knob"></div></div>'
+      + '<button class="bl-fire" aria-label="Fire">FIRE</button><button class="bl-jump" aria-label="Jump">JUMP</button><button class="bl-aim" aria-label="Aim">AIM</button>'
+      + '<button class="bl-crouch" aria-label="Crouch">CROUCH</button><button class="bl-sword" aria-label="Sword">SWORD</button><button class="bl-dash" aria-label="Dash">DASH</button>'
+      + '<button class="bl-reload" aria-label="Reload">RELOAD</button><button class="bl-next" aria-label="Next blaster">NEXT</button><button class="bl-drop" aria-label="Drop blaster">DROP</button>'
+      + '<button class="bl-menu" aria-label="Locker">LOCKER</button><button class="bl-scores" aria-label="Scores">SCORES</button>';
+    G.ui.appendChild(touchUI);
+    const $ = (c) => touchUI.querySelector(c), hold = (el, on, off) => { el.onpointerdown = (e) => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (err) { /* synthetic events have no pointer */ } el.classList.add('pressed'); audio(); on(e); }; const up = (e) => { el.classList.remove('pressed'); off && off(e); }; el.onpointerup = up; el.onpointercancel = up; el.onlostpointercapture = up; };
+    // joystick: the knob follows the finger inside a 52 px radius; forward is up
+    const stick = $('.bl-stick'), knob = $('.bl-knob'); let sid = null, sx = 0, sy = 0;
+    stick.onpointerdown = (e) => { e.preventDefault(); sid = e.pointerId; try { stick.setPointerCapture(sid); } catch (err) { /* synthetic */ } const r = stick.getBoundingClientRect(); sx = r.left + r.width / 2; sy = r.top + r.height / 2; audio(); };
+    stick.onpointermove = (e) => { if (e.pointerId !== sid) return; let dx = e.clientX - sx, dy = e.clientY - sy; const d = Math.hypot(dx, dy), R = 52; if (d > R) { dx *= R / d; dy *= R / d; } knob.style.transform = `translate(${dx}px,${dy}px)`; touch.s = dx / R; touch.f = -dy / R; if (Math.hypot(touch.s, touch.f) < 0.18) { touch.s = 0; touch.f = 0; } };
+    const sup = (e) => { if (e.pointerId !== sid) return; sid = null; touch.s = 0; touch.f = 0; knob.style.transform = ''; }; stick.onpointerup = sup; stick.onpointercancel = sup; stick.onlostpointercapture = sup;
+    // look: drag anywhere on the right half
+    const look = $('.bl-look'); let lid = null, lx = 0, ly = 0;
+    look.onpointerdown = (e) => { e.preventDefault(); lid = e.pointerId; try { look.setPointerCapture(lid); } catch (err) { /* synthetic */ } lx = e.clientX; ly = e.clientY; audio(); };
+    look.onpointermove = (e) => { if (e.pointerId !== lid || !me.alive || locker) return; const sens = (0.0052 * sensMul) / (1 + (adsOf(me.w) - 1) * me.zoom); me.yaw -= (e.clientX - lx) * sens; me.pitch = Math.max(-1.5, Math.min(1.5, me.pitch - (e.clientY - ly) * sens)); lx = e.clientX; ly = e.clientY; };
+    const lup = (e) => { if (e.pointerId === lid) lid = null; }; look.onpointerup = lup; look.onpointercancel = lup; look.onlostpointercapture = lup;
+    hold($('.bl-fire'), () => { if (!locker && !over) { firing = true; fire(); } }, () => { firing = false; });
+    hold($('.bl-jump'), () => { if (!locker) jumpQ = true; });
+    hold($('.bl-aim'), () => { if (!locker) { zooming = !zooming; $('.bl-aim').classList.toggle('on', zooming); } });
+    hold($('.bl-crouch'), () => { touch.crouch = !touch.crouch; $('.bl-crouch').classList.toggle('on', touch.crouch); });
+    hold($('.bl-sword'), () => { if (!locker) melee(); });
+    hold($('.bl-dash'), () => { if (!locker) dashQ = true; });
+    hold($('.bl-reload'), () => { if (!locker) reload(); });
+    hold($('.bl-next'), () => { if (locker) return; const owned = WEAPONS.map((w, i) => i).filter((i) => me.own & (1 << i)); const at = owned.indexOf(me.w); switchTo(owned[(at + 1) % owned.length]); });
+    hold($('.bl-drop'), () => { if (!locker) dropWeapon(); });
+    hold($('.bl-menu'), () => { setLocker(!locker); });
+    hold($('.bl-scores'), () => { showScores = true; }, () => { showScores = false; });
+  }
   let hurtFlash = 0, hitMark = 0, hitKill = 0, shake = 0, card = null, muted = ls('mk_mute', '0') === '1';
   const feed = [], banners = [], dmgNums = [], hurtDirs = [];
   const banner = (text, color = '#ffd84d', t = 2) => { banners.unshift({ text, color, t, d: t }); if (banners.length > 3) banners.length = 3; };
@@ -527,13 +562,14 @@ registerGame('blasters', (G) => {
   }
   function setLocker(on) {
     if (on === locker || (on && over)) return; locker = on;
-    if (on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); softLock = false; locked = false; firing = false; zooming = false; drawLocker(); if (T && T.ready) T.preview(charIdx, skinIdx); }
+    if (on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); softLock = TOUCH; locked = TOUCH; firing = false; zooming = false; drawLocker(); if (T && T.ready) T.preview(charIdx, skinIdx); }
     else { G.clearUI(); if (T) T.preview(null); }
   }
 
   // ============================ input ============================
   let softLock = false; // fallback when the browser refuses pointer lock: play with the free mouse instead of being stuck
   const onLock = () => { locked = document.pointerLockElement === canvas || softLock; if (!locked) { firing = false; zooming = false; } };
+  if (TOUCH) { softLock = true; locked = true; buildTouch(); }
   const onWheel = (e) => { if (!me.alive) return; e.preventDefault(); cycle(e.deltaY > 0 ? 1 : -1); };
   const onTab = (e) => { if (e.key === 'Tab') { e.preventDefault(); showScores = e.type === 'keydown'; } };
   document.addEventListener('pointerlockchange', onLock); canvas.addEventListener('wheel', onWheel, { passive: false }); window.addEventListener('keydown', onTab); window.addEventListener('keyup', onTab);
@@ -683,6 +719,7 @@ registerGame('blasters', (G) => {
     window.__bl = () => { if (!s) return null; const n = nearest(false); if (!n) return { err: null }; const want = Math.atan2(-(n.v.x - body.x), -(n.v.z - body.z)), wantPitch = Math.atan2(n.v.y + 1.0 - (body.y + P.EYE), Math.max(0.5, n.d)); return { err: (((want - me.yaw) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI, perr: wantPitch - me.pitch, dist: n.d, alive: me.alive }; };
     window.__blGo = (x, y, z, yaw, pitch = 0) => { Object.assign(body, B.newBody(x, y, z)); body.teleCd = 5; me.yaw = yaw; me.pitch = pitch; return true; }; // put the player somewhere for a screenshot
     window.__blY = () => body.y;
+    window.__blBody = () => ({ x: body.x, y: body.y, z: body.z, yaw: me.yaw }); window.__blShots = () => myShots;
     window.__blAim = () => { if (!s || !me.alive) return false; const n = nearest(true); if (!n) return false; me.yaw = Math.atan2(-(n.v.x - body.x), -(n.v.z - body.z)); me.pitch = Math.atan2(n.v.y + 1.0 - (body.y + P.EYE), Math.max(0.5, n.d)); return n.d; };
   }
 
@@ -701,6 +738,7 @@ registerGame('blasters', (G) => {
     event(e) {
       const mine = e.id === G.me;
       if (e.type === 'spawn' && mine) { Object.assign(body, B.newBody(e.x, e.y, e.z)); if (!e.keep) { me.yaw = e.yaw; me.pitch = 0; me.w = 0; me.mag = WEAPONS[0].mag; me.reloadEnd = 0; me.nextFire = 0; me.burstLeft = 0; me.eye = P.EYE; } }
+      else if (e.type === 'shot' && mine) myShots++;
       else if (e.type === 'shot' && !mine) { const v = T && T.ready && T.view(e.id); if (v) { v.recoil = 1; const d = Math.hypot(v.x - body.x, v.z - body.z), vol = Math.max(0.08, 1 - d / 50); play(WEAPONS[e.w].id, vol); if (e.o && e.e) T.tracer([e.o[0], e.o[1] - 0.25, e.o[2]], e.e, 0xfff0c0); } }
       else if (e.type === 'dmg') { hitMark = 0.16; if (e.kill) hitKill = 0.4; play(e.head ? 'head' : 'hit'); dmgNums.push({ x: e.x, y: e.y, z: e.z, n: e.n, head: e.head, kill: e.kill, t: 0.9, ox: (Math.random() - 0.5) * 30 }); if (dmgNums.length > 14) dmgNums.shift(); }
       else if (e.type === 'hurt') { hurtFlash = Math.min(0.7, 0.25 + e.n / 120); hurtDirs.push({ x: e.x, z: e.z, t: 1 }); if (hurtDirs.length > 4) hurtDirs.shift(); play('hurt'); if (!reducedMotion) shake = Math.max(shake, 0.25); }
@@ -728,7 +766,7 @@ registerGame('blasters', (G) => {
     },
     key(k, down) {
       if (!down) return; audio();
-      if (k === 'Escape') { softLock = false; onLock(); if (locker) setLocker(false); return; }
+      if (k === 'Escape') { softLock = TOUCH; onLock(); if (locker) setLocker(false); return; }
       if (k === 'l') { setLocker(!locker); return; }
       if (locker) return;
       if (k === ' ') jumpQ = true; else if (k === 'Shift') dashQ = true; else if (k === 'r') reload(); else if (k === 'q') switchTo(me.lastW); else if (k === 'h') showGuide = !showGuide;
@@ -751,9 +789,9 @@ registerGame('blasters', (G) => {
       // look with the arrow keys too (trackpads, and for automated tests)
       if (me.alive) { const lr = (K.has('ArrowLeft') ? 1 : 0) - (K.has('ArrowRight') ? 1 : 0), ud = (K.has('ArrowUp') ? 1 : 0) - (K.has('ArrowDown') ? 1 : 0); me.yaw += lr * dt * 2.4; me.pitch = Math.max(-1.5, Math.min(1.5, me.pitch + ud * dt * 1.6)); }
       // move
-      const can = me.alive && !over && !locker, f = can ? (K.has('w') ? 1 : 0) - (K.has('s') ? 1 : 0) : 0, sd = can ? (K.has('d') ? 1 : 0) - (K.has('a') ? 1 : 0) : 0;
+      const can = me.alive && !over && !locker, f = can ? Math.max(-1, Math.min(1, (K.has('w') ? 1 : 0) - (K.has('s') ? 1 : 0) + touch.f)) : 0, sd = can ? Math.max(-1, Math.min(1, (K.has('d') ? 1 : 0) - (K.has('a') ? 1 : 0) + touch.s)) : 0;
       body.grav = st && st.pw === 'moon' ? 0.33 : 1; // Moon Boots
-      let rem = Math.min(dt, 0.1), firstStep = true; const crouching = can && K.has('c'), mul = (st && st.pw === 'speed' ? 1.45 : 1) * (zooming && me.alive ? P.ADS_SPEED : 1);
+      let rem = Math.min(dt, 0.1), firstStep = true; const crouching = can && (K.has('c') || touch.crouch), mul = (st && st.pw === 'speed' ? 1.45 : 1) * (zooming && me.alive ? P.ADS_SPEED : 1);
       while (rem > 1e-5) { const h = Math.min(rem, 1 / 90); body.launched = false; body.jumped = 0; body.dashed = false; body.landed = 0; body.kicked = false; body.teleported = false; body.slid = false; B.stepPlayer(body, { f, s: sd, yaw: me.yaw, jump: can && firstStep && jumpQ, dash: can && firstStep && dashQ, crouch: crouching }, h, mul, MAP); if (body.slid) play('slide'); rem -= h; firstStep = false;
         if (body.kicked) play('kick'); if (body.teleported) { play('tele'); teleFlash = 0.35; if (T && T.ready) T.burst(body.x, body.y + 1, body.z, 30, 5, ['#35e6ff', '#c77dff', '#ffffff'], 0.5); }
         if (body.launched) play('pad'); if (body.jumped) play('jump'); if (body.dashed) play('dash'); if (body.landed) landDip = Math.min(0.22, body.landed * 0.012); }
@@ -768,7 +806,7 @@ registerGame('blasters', (G) => {
     },
     destroy() {
       document.removeEventListener('pointerlockchange', onLock); canvas.removeEventListener('wheel', onWheel); window.removeEventListener('keydown', onTab); window.removeEventListener('keyup', onTab);
-      if (document.pointerLockElement === canvas) document.exitPointerLock(); G.clearUI();
+      if (document.pointerLockElement === canvas) document.exitPointerLock(); if (touchUI) { touchUI.remove(); touchUI = null; } G.clearUI();
       delete window.__bl; delete window.__blAim; delete window.__blGo; delete window.__blY;
       if (T) T.dispose(); T = null; if (ac) { try { ac.close(); } catch (e) { /* ignore */ } }
     },
