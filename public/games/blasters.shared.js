@@ -24,7 +24,7 @@
 
   // "Fort Cardboard": a hollow central tower (tunnel through the middle, power-up on the roof), two raised galleries joined to the
   // tower by bridges, four corner forts (two with stairs, two reachable only by jump pad), cover on the ground and a train down the middle.
-  const FORT = build('fort', 'Fort Cardboard', 'Tower, galleries, corner forts and a train through the middle', 32, { floor: '#7fb77e', line: '#f4f1e4', sky: ['#5aa7ff', '#bfe3ff', '#fff3da'] }, ({ box, stairs, rot2, rot4 }) => {
+  const FORT = build('fort', 'Fort Cardboard', 'Tower, galleries, corner forts and a train through the middle', 32, { floor: '#7fb77e', floor2: '#74ad73', line: '#f4f1e4', sky: ['#5aa7ff', '#bfe3ff', '#fff3da'], sun: '#ffe8c4', sunPos: [-36, 48, 28], hemi: ['#dcecff', '#807058'], clouds: '#ffffff' }, ({ box, stairs, rot2, rot4 }) => {
     // central tower: two solid halves and a roof slab leave an east-west tunnel through the middle
     box(0, -3.25, 10, 3.5, 0, 3.2, 'tower'); box(0, 3.25, 10, 3.5, 0, 3.2, 'tower'); box(0, 0, 10, 3, 2.5, 3.2, 'tower');
     stairs(0, -12, [0, 1], 3, 3.2, 8, 7); stairs(0, 12, [0, -1], 3, 3.2, 8, 7);
@@ -95,7 +95,7 @@
   // "Block Towers": two stepped pyramids of building blocks in opposite corners (stairs straight up one face, or double-jump the
   // ledges), a raised cross of beams over the centre that you reach by launch ramp or jump pad, block mazes in the other corners,
   // teleporters between the two summits, and a faster train. Height is everything here.
-  const TOWERS = build('towers', 'Block Towers', 'Two climbable pyramids, a catwalk over the middle, launch ramps everywhere', 30, { floor: '#d9b27a', line: '#fff3dc', sky: ['#ff9f6e', '#ffd9b8', '#fff6ea'] }, ({ box, stairs, rot2, rot4 }) => {
+  const TOWERS = build('towers', 'Block Towers', 'Two climbable pyramids, a catwalk over the middle, launch ramps everywhere', 30, { floor: '#dcb47c', floor2: '#cfa66e', line: '#fff3dc', sky: ['#ff8f5e', '#ffc9a0', '#fff1dc'], sun: '#ffc48a', sunPos: [40, 26, -44], hemi: ['#ffd3b0', '#8a5a3a'], clouds: '#fff0e0', sunDisc: [40, 26, -44] }, ({ box, stairs, rot2, rot4 }) => {
     const BLK = ['#ff5d5d', '#4da6ff', '#ffd84d', '#5ee07a', '#c77dff', '#ff9f43'];
     // the two pyramids: 14 m base (2.4 high), 10 m middle (4.8), 6 m summit (7.2). One straight staircase up the face that looks at the centre.
     for (const [sx] of rot2(-1, 0)) {

@@ -43,7 +43,9 @@ module.exports = {
     function spawn(p) {
       let best = MAP.spawns[0], bd = -1;
       const side = TEAMS ? MAP.spawns.filter((s) => (p.team === 0 ? s.z < 0 : s.z > 0)) : []; // Red spawns north, Blue south
-      for (const s of side.length ? side : MAP.spawns) { let d = 1e9; for (const o of players.values()) if (o !== p && !o.dead) d = Math.min(d, Math.hypot(o.x - s.x, o.z - s.z)); d += Math.random() * 6; if (d > bd) { bd = d; best = s; } }
+      // a random one of the three spawns farthest from everyone else: never the same corner every match, never on top of someone
+      const ranked = (side.length ? side : MAP.spawns).map((s) => { let d = 1e9; for (const o of players.values()) if (o !== p && !o.dead) d = Math.min(d, Math.hypot(o.x - s.x, o.z - s.z)); return { s, d }; }).sort((a, b) => b.d - a.d);
+      const pool = ranked.filter((r, i) => (i < 3 && (r.d > 8 || i === 0)) || r.d === ranked[0].d); best = pool[Math.floor(Math.random() * pool.length)].s; bd = 0; // all tie when nobody else is in yet: any spot then
       Object.assign(p, { x: best.x, y: 0, z: best.z, yaw: best.yaw, pitch: 0, hp: 100, armor: 0, w: 0, own: NONE(), mag: WEAPONS.map((w) => w.mag), res: WEAPONS.map((w) => w.reserve), dead: 0, prot: 2.5, power: null, powerT: 0, reloadT: 0, nextFire: 0, streak: 0 });
       p.hurtBy.clear(); p.bornT = t; starter(p);
       api.emit('g:event', { type: 'spawn', id: p.id, x: p.x, y: p.y, z: p.z, yaw: r2(p.yaw) });

@@ -99,6 +99,8 @@ const WEAPONS = [
     for (const o of g.karts.values()) { if (o === k || o.dead || o.star > 0 || o.ghost > 0) continue; o.small = 6; o.spin = Math.max(o.spin, 0.6); if (o.weapon && Math.random() < 0.7) o.weapon = null; }
   } },
   { id: 'bill', name: 'Bullet Bill', color: '#333', w: 3, fire(g, k) { k.bill = 3; k.inv = Math.max(k.inv, 3); g.api.emit('g:event', { type: 'bill', id: k.id }); } },
+  // the one item you aim: hold SPACE to charge the throw (the client shows the arc), release to lob it. charge 0..1 sets the distance.
+  { id: 'pie', name: 'Cream pie', color: '#fff1d6', w: 7, hold: true, fire(g, k, charge = 1) { const c = clamp(charge, 0, 1), dist = 140 + 460 * c, t = 0.55 + 0.5 * c; shoot(g, k, 'pie', dist / t, { life: t + 1, fly: t, flyT: t, peak: 40 + 45 * c, r: 10, name: 'Cream pie' }); } },
   { id: 'ink', name: 'Blooper', color: '#2b2b6b', w: 5, fire(g, k) { for (const o of g.karts.values()) if (o !== k && !o.dead && o.star <= 0) o.ink = 5; g.api.emit('g:event', { type: 'ink', id: k.id }); } },
 ];
 const WEIGHT_SUM = WEAPONS.reduce((a, w) => a + (w.w || 5), 0);
@@ -192,6 +194,20 @@ const KINDS = {
     },
     expire(e, g) { if (e.fly <= 0) explode(g, e.x, e.y, 100, 2, e.owner, 'Bob-omb', e.el); },
   },
+  pie: { // a lobbed pie: splats on the first kart it meets low in its arc, or where it lands; cream over their screen and a wobble
+    update(e, g, dt) {
+      const splat = (k) => { if (k.dead || k.star > 0 || k.ghost > 0 || k.bill > 0) return; k.pie = 4; k.spin = Math.max(k.spin, 0.5); g.api.emit('g:event', { type: 'pied', id: k.id, by: e.owner }); };
+      if (e.fly > 0) {
+        e.fly -= dt; e.x += e.vx * dt; e.y += e.vy * dt; e.z = Math.sin(Math.min(1, 1 - e.fly / e.flyT) * Math.PI) * e.peak;
+        if (g.wallHit(e, e.r, 0.3)) e.fly = 0;
+        if (e.fly > 0 && e.z < 26) for (const k of g.karts.values()) { if (k.id === e.owner && e.age < 0.5) continue; if (!k.dead && !k.air && Math.hypot(k.x - e.x, k.y - e.y) < 24 && Math.abs(k.el - (e.el || 0)) < 24) { splat(k); g.api.emit('g:event', { type: 'splat', x: Math.round(e.x), y: Math.round(e.y) }); return false; } }
+        if (e.fly > 0) return true;
+      }
+      g.api.emit('g:event', { type: 'splat', x: Math.round(e.x), y: Math.round(e.y) }); e.el = g.surf(e.x, e.y);
+      for (const k of [...g.karts.values()]) if (!k.dead && !k.air && Math.abs(k.el - e.el) < 24 && Math.hypot(k.x - e.x, k.y - e.y) < 55 + R) splat(k);
+      return false;
+    },
+  },
   fake: { // looks like an item box; touching it spins you out and eats your weapon
     update(e, g) {
       for (const k of g.karts.values()) {
@@ -278,14 +294,15 @@ module.exports = {
     let mapT = 0;
     const fast = api.memory.__fast; let t = fast ? (typeof fast === "number" ? fast : 8) : MATCH, over = false, vi = 0;
 
+    // a random one of the three spawn points farthest from everyone else, so nobody starts in the same corner every match
     function spawnPoint() {
-      let best = SPAWNS[0], bd = -1;
-      for (const s of SPAWNS) { let d = 1e9; for (const k of karts.values()) if (!k.dead) d = Math.min(d, Math.hypot(k.x - s[0], k.y - s[1])); if (d > bd) { bd = d; best = s; } }
-      return best;
+      const ranked = SPAWNS.map((s) => { let d = 1e9; for (const k of karts.values()) if (!k.dead) d = Math.min(d, Math.hypot(k.x - s[0], k.y - s[1])); return { s, d }; }).sort((a, b) => b.d - a.d);
+      const pool = ranked.filter((r, i) => (i < 3 && (r.d > 120 || i === 0)) || r.d === ranked[0].d); // all tie when nobody else is in yet: any spot then
+      return pool[Math.floor(Math.random() * pool.length)].s;
     }
     function addKart(id) {
       const s = spawnPoint();
-      karts.set(id, { id, x: s[0], y: s[1], a: Math.atan2(CY - s[1], CX - s[0]), vx: 0, vy: 0, hp: 3, weapon: null, egg: 0, air: 0, spin: 0, mush: 0, dead: 0, inv: 1.5, padCd: 0, ramCd: 0, kills: 0, deaths: 0, v: vi++ % 8, ctl: {}, el: 0, star: 0, ghost: 0, small: 0, bill: 0, ink: 0, stolen: null, boost: 0, streak: 0, hitCd: 0, tpCd: 0, hazCd: 0 });
+      karts.set(id, { id, x: s[0], y: s[1], a: Math.atan2(CY - s[1], CX - s[0]), vx: 0, vy: 0, hp: 3, weapon: null, egg: 0, air: 0, spin: 0, mush: 0, dead: 0, inv: 1.5, padCd: 0, ramCd: 0, kills: 0, deaths: 0, v: vi++ % 8, ctl: {}, el: 0, star: 0, ghost: 0, small: 0, bill: 0, ink: 0, pie: 0, stolen: null, boost: 0, streak: 0, hitCd: 0, tpCd: 0, hazCd: 0 });
     }
     for (const p of api.players()) addKart(p.id);
 
@@ -298,7 +315,7 @@ module.exports = {
         if (k.egg > 0) { amt = Math.max(2, amt * 2); k.egg = 0; }
         k.hp -= amt;
         if (k.hp <= 0.001) {
-          k.hp = 0; k.dead = 3; k.deaths++; k.weapon = null; k.mush = 0; k.spin = 0; k.small = 0; k.ink = 0; k.egg = 0; k.boost = 0; k.streak = 0;
+          k.hp = 0; k.dead = 3; k.deaths++; k.weapon = null; k.mush = 0; k.spin = 0; k.small = 0; k.ink = 0; k.pie = 0; k.egg = 0; k.boost = 0; k.streak = 0;
           const killer = by && by !== k.id ? karts.get(by) : null;
           if (killer) { killer.kills++; killer.streak++; }
           api.emit('g:event', { type: 'kill', killer: killer ? by : null, victim: k.id, weapon, x: Math.round(k.x), y: Math.round(k.y), streak: killer ? killer.streak : 0 });
@@ -332,7 +349,7 @@ module.exports = {
         else if (msg.type === 'fire') {
           if (k.dead || k.air || k.spin > 0 || k.egg > 0 || k.bill > 0 || !k.weapon) return;
           const w = WEAPONS.find((w) => w.id === k.weapon); if (!w) { k.weapon = null; return; }
-          k.weapon = null; w.fire(g, k);
+          k.weapon = null; w.fire(g, k, Number.isFinite(msg.charge) ? msg.charge : 1);
           api.emit('g:event', { type: 'fire', id: pid, weapon: w.id });
         }
       },
@@ -340,7 +357,7 @@ module.exports = {
         if (over) return;
         t -= dt; elapsed += dt; if (t <= 0) { t = 0; finish(); }
         for (const k of karts.values()) {
-          for (const f of ['egg', 'spin', 'mush', 'inv', 'padCd', 'ramCd', 'star', 'small', 'ink', 'boost', 'hitCd', 'tpCd', 'hazCd']) if (k[f] > 0) k[f] = Math.max(0, k[f] - dt);
+          for (const f of ['egg', 'spin', 'mush', 'inv', 'padCd', 'ramCd', 'star', 'small', 'ink', 'pie', 'boost', 'hitCd', 'tpCd', 'hazCd']) if (k[f] > 0) k[f] = Math.max(0, k[f] - dt);
           if (k.ghost > 0) { k.ghost = Math.max(0, k.ghost - dt); if (k.ghost <= 0 && k.stolen) { if (!k.weapon) k.weapon = k.stolen; k.stolen = null; } }
           if (k.dead > 0) { k.dead -= dt; if (k.dead <= 0) { const s = spawnPoint(); Object.assign(k, { dead: 0, x: s[0], y: s[1], el: 0, falling: false, vx: 0, vy: 0, hp: 3, egg: 0, air: 0, spin: 0, inv: 2, a: Math.atan2(CY - s[1], CX - s[0]) }); } continue; }
           if (k.air > 0) {
@@ -428,7 +445,7 @@ module.exports = {
         t: Math.ceil(t),
         mapId: map.id,
         haz: movers.length ? movers.map((m) => [Math.round(m.x), Math.round(m.y)]) : undefined, // live positions of the map's moving hazards
-        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1) })),
+        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1) })),
         ents: ents.filter((e) => e.kind !== 'burst' && e.kind !== 'gunfire').map((e) => ({ id: e.id, k: e.kind, x: Math.round(e.x), y: Math.round(e.y), el: Math.round(e.el || 0), z: Math.round(e.z || 0), a: +(e.a || 0).toFixed(2), o: e.owner, f: +e.life.toFixed(1) })),
         boxes: boxes.map((b) => (b.t > 0 ? 0 : 1)),
       };

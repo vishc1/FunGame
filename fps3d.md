@@ -139,6 +139,10 @@ Toy Box Blasters now has two maps; the host picks one in the lobby. **Block Towe
 
 Everything is drawn by the game already (coloured blocks with studs on top). The optional replacement is **`fps_arena_towers.glb`**, built exactly like `fps_arena.glb` but from `node tools/blasters-map.js towers`, which writes `art/blasters/map-towers.json` in Blender coordinates. Same rules as the first arena: 1 unit = 1 m, origin at the centre on the floor, visible geometry matches the collision boxes (box type `block` carries a `color`), keep ramps, teleporters, pads and the track clear, max 60 000 triangles. The box types here: `block` (building blocks, use the given colour, studs on top are welcome), `beam` (the catwalk), `pillar`, `step`, `rail`, `lowwall`, `wall`.
 
+## Walking animation (optional, for the figures)
+
+The game now animates figures: they lean into their run, bob, tuck in the air, squash when they land, flinch when hit, kick when they fire and topple when they are out. All of that works on your figures as they are. Leg and arm swinging only works when limbs are separate meshes: if you want it, re-export each figure with meshes named `leg_l`, `leg_r`, `arm_l` (the free arm) with their origins at the hip and shoulder joints, keeping `head_core` and `right_hand`. The game will find them by name; a figure without them simply does not swing its limbs.
+
 ## How to check your work
 
 ```bash

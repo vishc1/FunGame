@@ -19,7 +19,7 @@ const since = (n) => events.slice(n);
 // a fresh scene: everyone healthy and stationary, no entities, spawn protection over. Shooter at (500,200) facing east, target 180 ahead, bystander far away.
 function reset(targetDx = 180, targetDy = 0) {
   for (const id of IDS) { place(id, 1500, 1100, 0); } tick(0.2);
-  const g = game.__state(); for (const k of g.karts.values()) Object.assign(k, { hp: 3, inv: 0, star: 0, ghost: 0, bill: 0, small: 0, ink: 0, egg: 0, spin: 0, mush: 0, weapon: null, air: 0, dead: 0, kills: 0 }); g.ents.length = 0;
+  const g = game.__state(); for (const k of g.karts.values()) Object.assign(k, { hp: 3, inv: 0, star: 0, ghost: 0, bill: 0, small: 0, ink: 0, pie: 0, egg: 0, spin: 0, mush: 0, weapon: null, air: 0, dead: 0, kills: 0 }); g.ents.length = 0;
   place('a', 500, 380, 0); place('b', 500 + targetDx, 380 + targetDy, 0); place('c', 1500, 1100, 0); tick(1 / 30); events = [];
 }
 tick(3); // spawn protection
@@ -78,6 +78,15 @@ reset(); fire('a', 'ink'); tick(0.1); ok('Blooper: the others are inked', K('b')
 // bullet bill: autopilot that flattens what it hits, and you cannot be hurt meanwhile
 reset(120, 0); fire('a', 'bill'); tick(0.1); ok('Bullet Bill: the shooter becomes a bullet', K('a').bill === 1); tick(2.5);
 ok('Bullet Bill: the kart in the way is flattened', K('b').hp < 3, 'hp=' + K('b').hp); tick(1.5); ok('Bullet Bill: ends after a few seconds', K('a').bill === 0);
+// cream pie: an aimed lob. charge sets the distance; a direct hit low in the arc or the landing splat creams the kart
+reset(600, 0); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire', charge: 1 }); n = events.length; tick(1.4);
+ok('Cream pie: a full-power throw lands about 600 ahead and creams the kart there', K('b').pie > 0 && since(n).some((e) => e.type === 'pied' && e.id === 'b' && e.by === 'a'), 'pie=' + K('b').pie);
+ok('Cream pie: the shooter is clean', K('a').pie === 0);
+reset(600, 0); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire', charge: 0 }); tick(1.4); ok('Cream pie: a no-charge throw falls well short of 600', K('b').pie === 0);
+reset(150, 0); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire', charge: 0 }); tick(1.2); ok('Cream pie: a no-charge throw splats a kart about 150 ahead', K('b').pie > 0, 'pie=' + K('b').pie);
+reset(600, 0); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire' }); tick(1.4); ok('Cream pie: a throw without a charge value counts as full power (bots)', K('b').pie > 0);
+reset(600, 0); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire', charge: 1 }); tick(1.4); ok('Cream pie: the splat passes in a little over a second', K('b').pie > 2); tick(4); ok('Cream pie: ...and clears', K('b').pie === 0);
+reset(600, 0); fire('b', 'star'); tick(0.1); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire', charge: 1 }); tick(1.4); ok('Cream pie: a Star kart cannot be pied', K('b').pie === 0);
 // a dead kart cannot fire, and items vanish on death
 reset(); { const g = game.__state(); g.damage(g.karts.get('b'), 3, 'a', 'test'); } tick(1 / 30); ok('A kart that is out drops its item and cannot fire', K('b').dead === 1 && K('b').weapon === null);
 fire('b', 'green'); tick(0.5); ok('...firing while out does nothing', K('a').hp === 3);

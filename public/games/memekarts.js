@@ -20,7 +20,7 @@ registerGame('memekarts', (G) => {
     const release=()=>{touchKeys.delete(b.dataset.drive);b.classList.remove('pressed');};b.onpointerup=release;b.onpointercancel=release;b.onlostpointercapture=release;
   }
   touchControls.querySelector('.touch-fire').onpointerdown=e=>{e.preventDefault();G.send({type:'fire'});};
-  const WEAPON_NAMES = { green: 'Green shell', triple: 'Triple shells', red: 'Red shell', blue: 'Blue shell', tnt: 'TNT', bomb: 'Bob-omb', pad: 'Launch pad', egg: 'Egg gun', banana: 'Banana', fake: 'Fake item box', fire: 'Fire flower', gun: 'Minigun', mush: 'Boost mushroom', star: 'Star', boo: 'Boo ghost', bolt: 'Lightning', bill: 'Bullet Bill', ink: 'Blooper' };
+  const WEAPON_NAMES = { green: 'Green shell', triple: 'Triple shells', red: 'Red shell', blue: 'Blue shell', tnt: 'TNT', bomb: 'Bob-omb', pie: 'Cream pie', pad: 'Launch pad', egg: 'Egg gun', banana: 'Banana', fake: 'Fake item box', fire: 'Fire flower', gun: 'Minigun', mush: 'Boost mushroom', star: 'Star', boo: 'Boo ghost', bolt: 'Lightning', bill: 'Bullet Bill', ink: 'Blooper' };
   /* One line each, shown at the top of the screen while you hold the item and in the H guide. Keep them short and literal. */
   const WEAPON_INFO = {
     green: 'Fires straight ahead and bounces off walls.', triple: 'Three shells in a spread. They bounce off walls.', red: 'Homing shell. Chases the nearest kart.',
@@ -29,9 +29,18 @@ registerGame('memekarts', (G) => {
     fake: 'Drops a fake item box. Whoever grabs it spins out.', fire: 'A quick burst of five bouncing fireballs.', gun: 'Sprays bullets ahead for two seconds.',
     mush: 'Speed boost. Ram other karts to hurt them.', star: 'Six seconds invincible and fast. Ramming wrecks karts.', boo: 'Untouchable for five seconds, and steals someone\'s item.',
     bolt: 'Shrinks and slows everyone else. May zap their items.', bill: 'Three seconds of autopilot rocket. Flattens karts in your path.', ink: 'Splats ink over everyone else\'s screen.',
+    pie: 'Hold SPACE to aim the throw, let go to lob it. Cream over whoever it splats.',
   };
-  const ITEM_ORDER = ['green', 'triple', 'red', 'blue', 'fire', 'gun', 'bomb', 'tnt', 'banana', 'fake', 'egg', 'pad', 'mush', 'star', 'bill', 'boo', 'bolt', 'ink'];
+  const ITEM_ORDER = ['green', 'triple', 'red', 'blue', 'fire', 'gun', 'bomb', 'pie', 'tnt', 'banana', 'fake', 'egg', 'pad', 'mush', 'star', 'bill', 'boo', 'bolt', 'ink'];
+  // the Cream pie is aimed: hold SPACE (or the mouse button) to charge, release to throw. chargeAt = when the hold began, or null
+  let chargeAt = null; const chargeNow = () => chargeAt == null ? 0 : Math.min(1, (time - chargeAt) / 1.1);
   let showGuide = false, cardW = null, cardT = -9;
+  // SPACE / click: most items fire on press. A held item (the pie) starts charging on press and is thrown on release.
+  function trigger(down) {
+    const k = s && s.karts.find((q) => q.id === G.me), held = k && k.weapon === 'pie';
+    if (down) { if (held) { if (chargeAt == null) chargeAt = time; } else G.send({ type: 'fire' }); }
+    else if (chargeAt != null) { G.send({ type: 'fire', charge: chargeNow() }); chargeAt = null; }
+  }
   /* Arena size comes from the map (map.w x map.h, default 900 x 600). OX / OZ are the world offsets: world X = x - OX, Z = y - OZ. */
   let MW = 900, MH = 600, OX = 450, OZ = 300;
   const VEHICLE_NAMES = ['Plumber kart', 'Pickup truck', 'Shopping cart', 'Battle bus', 'Octane', 'Tractor', 'Ice cream van', 'Rocket sled'];
@@ -52,6 +61,7 @@ registerGame('memekarts', (G) => {
     green: shellIcon('#3ddc5a', '#1a6'), red: shellIcon('#ff4040', '#900'), blue: shellIcon('#3b6cff', '#fff'),
     triple: (x, y, z) => { for (const d of [-0.7, 0.7, 0]) shellIcon('#3ddc5a', '#1a6')(x + d * z, y + (d ? z * 0.3 : -z * 0.4), z * 0.6); },
     tnt: (x, y, z) => { rr(x - z, y - z, z * 2, z * 2, 2, '#e0442a', '#000'); ctx.fillStyle = '#fff'; ctx.font = `700 ${z * 0.9}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TNT', x, y); },
+    pie: (x, y, z) => { G.circle(x, y + z * 0.25, z * 0.95, '#d8a861', '#8a6a3a'); G.circle(x, y - z * 0.05, z * 0.8, '#fff6e6', '#e8d4b8'); G.circle(x - z * 0.25, y - z * 0.2, z * 0.22, '#fff'); G.circle(x + z * 0.1, y - z * 0.5, z * 0.17, '#e0312f'); },
     bomb: (x, y, z) => { G.circle(x, y + 1, z, '#16181d', '#555'); G.circle(x + z * 0.6, y - z * 0.9, z * 0.3, '#ffd84d'); G.circle(x - z * 0.3, y - z * 0.2, z * 0.18, '#fff'); G.circle(x + z * 0.3, y - z * 0.2, z * 0.18, '#fff'); },
     pad: (x, y, z) => { rr(x - z, y - z * 0.6, z * 2, z * 1.2, 3, '#2f7bff', '#fff'); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x, y - z * 0.4); ctx.lineTo(x - z * 0.5, y + z * 0.3); ctx.lineTo(x + z * 0.5, y + z * 0.3); ctx.fill(); },
     egg: (x, y, z) => { ctx.beginPath(); ctx.ellipse(x, y, z * 0.75, z, 0, 0, 7); ctx.fillStyle = '#fff3c4'; ctx.fill(); ctx.strokeStyle = '#a88'; ctx.lineWidth = 1.5; ctx.stroke(); },
@@ -604,9 +614,10 @@ registerGame('memekarts', (G) => {
       pad: () => asset('launch_pad', 46) || (() => { const g = new THREE.Group(); g.add(cyl(22, 24, 3, M3('#2f7bff', { emissive: '#2f7bff', emissiveIntensity: 0.7 }), 0, 1.5, 0, 24)); for (const x of [-5, 5]) { for (const z of [1, -1]) { const b = box(3, 0.6, 13, glow('#ffffff', 1.5), x, 3.3, z * 4.5); b.rotation.y = z * 0.7; g.add(b); } } return g; })(),
       banana: () => asset('banana', 16) || (() => { const g = new THREE.Group(); for (let i = 0; i < 3; i++) { const p = new THREE.Group(); const t = mesh(new THREE.TorusGeometry(6, 2.2, 6, 10, Math.PI * 0.8), M3('#ffe135', { roughness: 0.4 }), 0, 0, 0); t.rotation.z = Math.PI * 0.1; p.add(t); p.rotation.y = (i / 3) * Math.PI * 2; p.position.y = 2.5; g.add(p); } g.add(cyl(1.4, 1.8, 3, M3('#7a5230'), 0, 9.5, 0, 6)); return g; })(),
       bomb: () => asset('bobomb', 20) || (() => { const g = new THREE.Group(); g.add(sph(9, M3('#16181d', { roughness: 0.25, metalness: 0.5 }), 0, 10, 0, 14), box(5, 2.5, 4, M3('#ffb300'), 2, 1.2, 4), box(5, 2.5, 4, M3('#ffb300'), 2, 1.2, -4), sph(2, M3('#fff'), 7.5, 12, 3, 8), sph(2, M3('#fff'), 7.5, 12, -3, 8), cyl(0.8, 0.8, 5, M3('#c9ccd4'), 0, 20.5, 0, 6)); const sp = sph(2, glow('#ffd84d', 3), 0, 24, 0, 6); g.add(sp); g.userData.blink = sp; return g; })(),
+      pie: () => asset('pie', 18) || (() => { const g = new THREE.Group(); g.add(cyl(8, 6.5, 3.5, M3('#d8a861', { roughness: 0.6 }), 0, 1.75, 0, 16)); const cream = sph(7.5, M3('#fff6e6', { roughness: 0.35 }), 0, 4, 0, 14); cream.scale.y = 0.55; g.add(cream, sph(1.6, M3('#e0312f', { roughness: 0.3 }), 1.5, 8.2, -1, 8)); return g; })(),
       fake: () => asset('fake_box', 24) || (() => { const g = itemBox('#ffb833', '¿'); g.userData.box = true; return g; })(),
     };
-    const ents = new Map();
+    const ents = new Map(); let aimLine = null, aimRing = null;
     function updateEnts(dt) {
       const seen = new Set();
       for (const e of s.ents) {
@@ -667,6 +678,16 @@ registerGame('memekarts', (G) => {
     return {
       get ready() { return worldBuilt; },
       boom, ringFx, burst,
+      // the aim arc while charging a throw: dots along the flight path and a ring where it lands
+      aim(k, charge) {
+        if (!aimLine) { aimLine = new THREE.InstancedMesh(new THREE.SphereGeometry(3.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff1d6, transparent: true, opacity: 0.95 }), 13); aimLine.frustumCulled = false; aimLine.castShadow = false; aimRing = mesh(new THREE.RingGeometry(40, 55, 32), new THREE.MeshBasicMaterial({ color: 0xfff1d6, transparent: true, opacity: 0.55, side: THREE.DoubleSide })); aimRing.rotation.x = -Math.PI / 2; aimRing.castShadow = false; scene.add(aimLine, aimRing); }
+        if (!k) { aimLine.visible = aimRing.visible = false; return; }
+        const v = views.get(k.id) || { x: k.x, y: k.y, el: k.el || 0 }, a = v.a != null ? v.a : k.a, el = v.el != null ? v.el : (k.el || 0), dist = 140 + 460 * charge, peak = 40 + 45 * charge, pts = [];
+        for (let i = 0; i <= 24; i++) { const u = i / 24; pts.push(new THREE.Vector3(v.x - OX + Math.cos(a) * (26 + dist * u), el + 10 + Math.sin(u * Math.PI) * peak, v.y - OZ + Math.sin(a) * (26 + dist * u))); }
+        { const o = new THREE.Object3D(); for (let i = 0; i < 13; i++) { o.position.copy(pts[i * 2]); o.scale.setScalar(0.7 + i * 0.05); o.updateMatrix(); aimLine.setMatrixAt(i, o.matrix); } aimLine.instanceMatrix.needsUpdate = true; aimLine.visible = true; }
+        aimRing.position.set(pts[24].x, el + 1.5, pts[24].z); aimRing.visible = true; aimRing.scale.setScalar(1 + Math.sin(time * 8) * 0.05);
+      },
+      splat(gx, gy) { burst(gx - OX, 10, gy - OZ, 26, 90, ['#fff6e6', '#ffffff', '#e0312f'], 0.8); ringFx(gx, gy, 60); },
       kartPos(id) { const v = views.get(id); return v ? { x: v.x - OX, z: v.y - OZ } : null; },
       update(dt) {
         fit();
@@ -723,6 +744,8 @@ registerGame('memekarts', (G) => {
     // screen effects
     if (me && (me.mush || me.star || me.bill || me.bst)) { ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, r1 = 300 + Math.random() * 120, r2 = r1 + 60 + Math.random() * 120; ctx.beginPath(); ctx.moveTo(W / 2 + Math.cos(a) * r1 * 1.4, H / 2 + Math.sin(a) * r1); ctx.lineTo(W / 2 + Math.cos(a) * r2 * 1.4, H / 2 + Math.sin(a) * r2); ctx.stroke(); } }
     if (me && me.ink > 0) { const al = Math.min(1, me.ink / 1.2) * 0.93; ctx.fillStyle = `rgba(8,8,20,${al})`; const blobs = [[300, 220, 120], [520, 260, 150], [640, 180, 90], [400, 360, 110], [200, 330, 80], [700, 380, 100], [460, 130, 80]]; for (const [x, y, r] of blobs) { ctx.beginPath(); ctx.arc(x, y + (5 - me.ink) * 6, r, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(x + r * 0.3, y + r + (5 - me.ink) * 14, r * 0.18, r * 0.6, 0, 0, 7); ctx.fill(); } }
+    if (me && me.pie > 0) { const al = Math.min(1, me.pie / 1.0) * 0.9, drip = (4 - me.pie) * 8; ctx.fillStyle = `rgba(255,246,230,${al})`; for (const [x, y, r] of [[250, 200, 130], [560, 240, 160], [720, 160, 95], [420, 380, 120], [160, 360, 90], [760, 400, 105], [470, 110, 85]]) { ctx.beginPath(); ctx.arc(x, y + drip * 0.6, r, 0, 7); ctx.fill(); ctx.beginPath(); ctx.ellipse(x - r * 0.25, y + r + drip * 1.6, r * 0.16, r * 0.5, 0, 0, 7); ctx.fill(); } ctx.fillStyle = `rgba(224,49,47,${al})`; ctx.beginPath(); ctx.arc(590, 215, 14, 0, 7); ctx.fill(); }
+    if (me && me.weapon === 'pie' && !me.dead) { const c = chargeNow(); if (chargeAt != null) { const bw = 220; rr(W / 2 - bw / 2, H - 150, bw, 14, 7, 'rgba(8,12,20,.7)', '#fff1d6'); rr(W / 2 - bw / 2 + 2, H - 148, (bw - 4) * c, 10, 5, '#fff1d6'); G.text(c >= 1 ? 'Full power. Let go to throw!' : 'Aiming... let go to throw', W / 2, H - 164, { size: 13, color: '#fff1d6', weight: 700 }); } else G.text('Hold SPACE to aim the pie', W / 2, H - 164, { size: 13, color: '#fff1d6' }); }
     if (hurt > 0) { hurt -= dt; const g = ctx.createRadialGradient(W / 2, H / 2, 200, W / 2, H / 2, 560); g.addColorStop(0, 'rgba(255,0,0,0)'); g.addColorStop(1, `rgba(255,0,0,${Math.max(0, hurt) * 0.9})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     if (flash > 0) { flash -= dt; ctx.fillStyle = `rgba(255,255,220,${Math.max(0, flash) * 1.4})`; ctx.fillRect(0, 0, W, H); }
     if (me && me.dead) { ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, W, H); G.text('WRECKED', W / 2, H / 2 - 20, { size: 54, color: '#ff5d5d' }); G.text('Respawning…', W / 2, H / 2 + 26, { size: 18, color: '#ddd' }); }
@@ -809,6 +832,8 @@ registerGame('memekarts', (G) => {
       if (e.type === 'hit' && mine(e.id)) hurt = 0.6;
       if (e.type === 'egged') { feed.unshift({ text: `${nm(e.by)} egged ${nm(e.id)}`, t: 4 }); if (mine(e.id)) banner('You got egged!', '#fff3c4'); }
       if (e.type === 'slip') feed.unshift({ text: `${nm(e.id)} slipped on a banana`, t: 4 });
+      if (e.type === 'pied') { feed.unshift({ text: `${nm(e.by)} pied ${nm(e.id)}`, t: 4 }); if (mine(e.id)) banner('Pie in the face!', '#fff1d6'); if (mine(e.by) && !mine(e.id)) banner(`Splat! ${nm(e.id)} got pied`, '#fff1d6', 1.6); }
+      if (e.type === 'splat') T && T.ready && T.splat(e.x, e.y);
       if (e.type === 'steal') { feed.unshift({ text: `${nm(e.id)}'s ghost stole from ${nm(e.from)}`, t: 4 }); if (mine(e.from)) banner('A ghost stole your item!', '#e8e8ff'); if (mine(e.id)) banner(`Stole: ${WEAPON_NAMES[e.weapon] || e.weapon}`, '#e8e8ff'); }
       if (e.type === 'bolt') { flash = 0.6; banner(mine(e.id) ? 'LIGHTNING!' : `${nm(e.id)} used LIGHTNING`, '#fff27a'); }
       if (e.type === 'bill') feed.unshift({ text: `${nm(e.id)} became a Bullet Bill`, t: 4 });
@@ -817,12 +842,12 @@ registerGame('memekarts', (G) => {
       if (e.type === 'over') banner(e.winner ? `${nm(e.winner)} wins!` : 'Time!', '#ffd84d', 5);
       if (feed.length > 6) feed.length = 6;
     },
-    key(k, down) { if (down && k === ' ') G.send({ type: 'fire' }); if (down && k === 'h') showGuide = !showGuide; sendCtl(); },
-    mouse(kind) { if (kind === 'down') G.send({ type: 'fire' }); },
+    key(k, down) { if (k === ' ') trigger(down); if (down && k === 'h') showGuide = !showGuide; sendCtl(); },
+    mouse(kind) { if (kind === 'down') trigger(true); else if (kind === 'up') trigger(false); },
     render(dt) {
       time += dt; sendCtl();
       if (!T && !failed && window.THREE) { try { T = create3D(); } catch (e) { failed = e.message; console.error(e); } }
-      if (T) { try { T.update(dt); } catch (e) { failed = e.message; console.error(e); T.dispose(); T = null; } }
+      if (T) { try { T.update(dt); if (T.ready) { const mk = s && s.karts.find((q) => q.id === G.me); T.aim(chargeAt != null && mk && mk.weapon === 'pie' && !mk.dead ? mk : null, chargeNow()); if (chargeAt != null && !(mk && mk.weapon === 'pie')) chargeAt = null; } } catch (e) { failed = e.message; console.error(e); T.dispose(); T = null; } }
       hud(dt);
     },
     destroy() { if (T) T.dispose(); T = null;touchControls.remove();touchKeys.clear(); },

@@ -145,20 +145,21 @@ registerGame('blasters', (G) => {
 
     // ---- world ----
     const COLORS = { wall: '#c9a06a', tower: '#e2685a', bridge: '#9a7650', plat: '#9a7650', pillar: '#6f84b0', step: '#dcb98a', fort: '#5b8fd9', rail: '#f2d16b', crate: '#b98b54', lowwall: '#78c088', block: '#ff5d5d', beam: '#f2d16b' };
-    const pickViews = [], padViews = [], teleViews = [], trainLamps = [], TELE_COLORS = ['#35e6ff', '#c77dff', '#ffd84d']; let trainView = null;
+    const pickViews = [], padViews = [], teleViews = [], trainLamps = [], TELE_COLORS = ['#35e6ff', '#c77dff', '#ffd84d']; let trainView = null, cloudGroup = null;
     function buildWorld() {
       built = true;
-      const TH = MAP.theme || { floor: '#7fb77e', line: '#f4f1e4', sky: ['#5aa7ff', '#bfe3ff', '#fff3da'] };
+      const TH = Object.assign({ floor: '#7fb77e', floor2: '#74ad73', line: '#f4f1e4', sky: ['#5aa7ff', '#bfe3ff', '#fff3da'], sun: '#ffe8c4', sunPos: [-36, 48, 28], hemi: ['#dcecff', '#807058'], clouds: '#ffffff' }, MAP.theme || {});
       scene.background = tex(16, 256, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, TH.sky[0]); g.addColorStop(0.6, TH.sky[1]); g.addColorStop(1, TH.sky[2]); c.fillStyle = g; c.fillRect(0, 0, w, h); });
       scene.fog = new THREE.Fog(0xdfeeff, 65, 240);
-      { const hemi = new THREE.HemisphereLight(0xdcecff, 0x807058, .85); hemi.layers.enableAll(); scene.add(hemi); }
-      const sun = new THREE.DirectionalLight(0xffe8c4, 3.0); sun.position.set(-36, 48, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+      { const hemi = new THREE.HemisphereLight(TH.hemi[0], TH.hemi[1], .85); hemi.layers.enableAll(); scene.add(hemi); }
+      const sun = new THREE.DirectionalLight(TH.sun, 3.0); sun.position.set(TH.sunPos[0], TH.sunPos[1], TH.sunPos[2]); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
       Object.assign(sun.shadow.camera, { left: -48, right: 48, top: 48, bottom: -48, near: 5, far: 160 }); sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.025; sun.layers.enableAll(); scene.add(sun);
       const rim=new THREE.DirectionalLight(0xb4d8ff,.55);rim.position.set(30,22,-40);rim.layers.enableAll();scene.add(rim);
       // play-mat floor
       const S = MAP.size, mat = tex(1024, 1024, (c, w, h) => {
         c.fillStyle = TH.floor; c.fillRect(0, 0, w, h);
-        for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) { c.fillStyle = (i + j) % 2 ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)'; c.fillRect(i * 64, j * 64, 64, 64); }
+        for (let i = 0; i < 32; i++) for (let j = 0; j < 32; j++) { c.fillStyle = (i + j) % 2 ? TH.floor2 : TH.floor; c.fillRect(i * 32, j * 32, 32, 32); }
+        for (let i = 0; i < 1400; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${0.03 + Math.random() * 0.05})`; c.fillRect(Math.random() * w, Math.random() * h, 3 + Math.random() * 14, 2); } /* fabric grain */
         c.strokeStyle = TH.line; c.lineWidth = 10; c.setLineDash([40, 28]); c.strokeRect(70, 70, w - 140, h - 140); c.setLineDash([]); c.beginPath(); c.arc(w / 2, h / 2, 190, 0, 7); c.stroke();
         c.strokeStyle = 'rgba(40,40,60,.25)'; c.lineWidth = 34; c.beginPath(); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke();
         c.strokeStyle = '#ffd84d'; c.lineWidth = 4; c.setLineDash([24, 24]); c.beginPath(); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke(); c.setLineDash([]);
@@ -168,6 +169,11 @@ registerGame('blasters', (G) => {
       if (arena) { arena.traverse(finishArenaSurface); scene.add(arena); }
       const floor = mesh(new THREE.PlaneGeometry(S * 2, S * 2), new THREE.MeshStandardMaterial({ map: mat, roughness: 0.95 })); floor.rotation.x = -Math.PI / 2; floor.castShadow = false; if (!arena) scene.add(floor);
       const out = mesh(new THREE.PlaneGeometry(600, 600), M3('#b08a5e', { roughness: 1 }), 0, -0.05, 0); out.rotation.x = -Math.PI / 2; out.castShadow = false; scene.add(out);
+      // sky dressing: puffy clouds drifting above the walls, and a low sun on the sunset maps
+      { const cm = M3(TH.clouds, { roughness: 1 }), cl = new THREE.Group(); for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 + Math.random(), r = 70 + Math.random() * 60, y = 34 + Math.random() * 18, sz = 4 + Math.random() * 5, puff = new THREE.Group(); for (let k = 0; k < 4; k++) { const b = sph(sz * (0.55 + Math.random() * 0.5), cm, (k - 1.5) * sz * 0.9, Math.random() * sz * 0.4, (Math.random() - 0.5) * sz * 0.6, 10); b.castShadow = false; puff.add(b); } puff.position.set(Math.cos(a) * r, y, Math.sin(a) * r); puff.userData.drift = 0.3 + Math.random() * 0.5; cl.add(puff); } scene.add(cl); cloudGroup = cl; }
+      if (TH.sunDisc) { const d = sph(9, new THREE.MeshBasicMaterial({ color: 0xfff1c0 }), TH.sunDisc[0] * 5, TH.sunDisc[1] * 5 - 20, TH.sunDisc[2] * 5, 20); d.castShadow = false; scene.add(d); const halo = sph(16, new THREE.MeshBasicMaterial({ color: 0xffb070, transparent: true, opacity: 0.25 }), TH.sunDisc[0] * 5, TH.sunDisc[1] * 5 - 20, TH.sunDisc[2] * 5, 20); halo.castShadow = false; scene.add(halo); }
+      const aoTex = tex(128, 128, (c, w, h) => { const g = c.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.5); g.addColorStop(0, 'rgba(0,0,0,.42)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); });
+      const aoMat = new THREE.MeshBasicMaterial({ map: aoTex, transparent: true, depthWrite: false });
       // map boxes
       const mats = {}, matOf = (t, c) => (mats[c || t] = mats[c || t] || M3(c || COLORS[t] || '#aaaaaa', c ? { roughness: 0.55 } : {}));
       const tape = tex(256, 256, (c, w, h) => { c.fillStyle = '#c9a06a'; c.fillRect(0, 0, w, h); for (let i = 0; i < 400; i++) { c.fillStyle = `rgba(90,60,30,${Math.random() * 0.12})`; c.fillRect(Math.random() * w, Math.random() * h, 30, 2); } c.fillStyle = 'rgba(230,200,150,.8)'; c.fillRect(0, 108, w, 40); });
@@ -180,6 +186,8 @@ registerGame('blasters', (G) => {
         const m = bx(w, h, d, b.t === 'wall' ? new THREE.MeshStandardMaterial({ map: tape, roughness: 0.9 }) : matOf(b.t, b.c), cx, cy, cz); scene.add(m);
         if (b.t === 'block') for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const stud = cyl(Math.min(w, d) * 0.12, Math.min(w, d) * 0.12, 0.12, matOf(b.t, b.c), cx + (i - 0.5) * w * 0.5, b.y1 + 0.06, cz + (j - 0.5) * d * 0.5, 14); stud.castShadow = false; scene.add(stud); } /* building-block studs on top */
         if (b.t !== 'wall' && b.t !== 'step') { const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), edge); e.position.copy(m.position); scene.add(e); }
+        if (b.y0 === 0 && b.t !== 'wall' && b.t !== 'step' && !arena) { const ao = mesh(new THREE.PlaneGeometry(w * 1.5, d * 1.5), aoMat, cx, 0.012, cz); ao.rotation.x = -Math.PI / 2; ao.castShadow = false; ao.receiveShadow = false; ao.renderOrder = 1; scene.add(ao); } /* soft contact shadow so blocks sit on the mat */
+        if (b.t === 'block' || b.t === 'beam' || b.t === 'crate') { const cap = mesh(new THREE.PlaneGeometry(w - 0.06, d - 0.06), new THREE.MeshStandardMaterial({ color: new THREE.Color(b.c || COLORS[b.t] || '#aaaaaa').lerp(new THREE.Color('#ffffff'), 0.22), roughness: 0.5 }), cx, b.y1 + 0.006, cz); cap.rotation.x = -Math.PI / 2; cap.castShadow = false; scene.add(cap); } /* lighter top face reads as a bevel */
       }
       // jump pads
       for (const pad of MAP.pads) {
@@ -276,7 +284,8 @@ registerGame('blasters', (G) => {
       const g = new THREE.Group(), parts = {};
       const custom = asset('fps_char_' + (ch % 8), 1.8, 'h', color) || asset('fps_char', 1.8, 'h', color);
       let hand = null;
-      if (custom) { custom.rotation.y = Math.PI; g.add(custom); parts.custom = custom; g.updateMatrixWorld(true); const h = custom.getObjectByName('right_hand'); if (h) hand = new THREE.Box3().setFromObject(h).getCenter(new THREE.Vector3()); }
+      if (custom) { custom.rotation.y = Math.PI; g.add(custom); parts.custom = custom; g.updateMatrixWorld(true); const h = custom.getObjectByName('right_hand'); if (h) hand = new THREE.Box3().setFromObject(h).getCenter(new THREE.Vector3());
+        const ll = custom.getObjectByName('leg_l'), lr = custom.getObjectByName('leg_r'); if (ll && lr) { parts.legL = ll; parts.legR = lr; parts.armL = custom.getObjectByName('arm_l') || null; } /* limbs swing only when the model names them (fps3d.md) */ }
       else {
         const C = M3(color, { roughness: 0.45 }); C.name = 'Paint'; const Dk = M3('#2b303b'), Sk = M3('#f2c79b'), Wt = M3('#f4f4f4'), Gd = M3('#ffd84d', { metalness: 0.5, roughness: 0.3 }), Gy = M3('#9aa3b5', { metalness: 0.6, roughness: 0.35 });
         parts.legL = bx(0.24, 0.72, 0.28, Dk, -0.15, 0.36, 0); parts.legR = bx(0.24, 0.72, 0.28, Dk, 0.15, 0.36, 0);
@@ -341,17 +350,34 @@ registerGame('blasters', (G) => {
         if (p.id === G.me) continue; seen.add(p.id); const pl = G.player(p.id);
         let v = views.get(p.id);
         const fc = colOf(p), mate = s.tm && mySt() && p.tm === mySt().tm;
-        if (!v || v.ch !== p.ch || v.sk !== (p.sk || 0) || v.col !== fc) { const old = v; if (v) scene.remove(v.g); v = { g: buildFigure(fc, p.ch, p.sk || 0), col: fc, x: old ? old.x : p.x, y: old ? old.y : p.y, z: old ? old.z : p.z, yaw: p.yw, pitch: p.pt, ch: p.ch, sk: p.sk || 0, walk: 0 }; views.set(p.id, v); scene.add(v.g); }
+        if (!v || v.ch !== p.ch || v.sk !== (p.sk || 0) || v.col !== fc) { const old = v; if (v) scene.remove(v.g); v = { g: buildFigure(fc, p.ch, p.sk || 0), col: fc, x: old ? old.x : p.x, y: old ? old.y : p.y, z: old ? old.z : p.z, yaw: p.yw, pitch: p.pt, ch: p.ch, sk: p.sk || 0, walk: 0, hp: p.hp, squash: 0, flinch: 0, recoil: 0, swing: 0, deathT: 0, lean: 0, leanS: 0, vy: 0 }; v.g.rotation.order = 'YXZ'; views.set(p.id, v); scene.add(v.g); }
         if (Math.hypot(p.x - v.x, p.z - v.z) > 8) { v.x = p.x; v.y = p.y; v.z = p.z; }
         const f = 1 - Math.exp(-16 * dt), px = v.x, pz = v.z; v.x += (p.x - v.x) * f; v.y += (p.y - v.y) * f; v.z += (p.z - v.z) * f; v.yaw = lerpAngle(v.yaw, p.yw, f); v.pitch += (p.pt - v.pitch) * f;
         const spd = Math.hypot(v.x - px, v.z - pz) / Math.max(dt, 0.001); v.walk += spd * dt * 2.2;
-        const u = v.g.userData, pr = u.parts; v.g.visible = !p.dead; v.g.position.set(v.x, v.y, v.z); v.g.rotation.y = v.yaw;
-        v.crs = (v.crs || 0) + ((p.cr ? 1 : 0) - (v.crs || 0)) * Math.min(1, dt * 14); v.cr = p.cr; { const sy = 1 - 0.38 * v.crs; v.g.scale.y = sy; u.label.scale.y = 0.42 / sy; } /* crouching squashes the toy */
+        const u = v.g.userData, pr = u.parts;
+        // ---- animation: a toy that leans into its run, bobs, tucks in the air, squashes on landing, flinches when hit, kicks when it fires and topples when it is out
+        const vyNow = (v.y - (v.py == null ? v.y : v.py)) / Math.max(dt, 0.001); v.py = v.y;
+        const fwd = ((v.x - px) * -Math.sin(v.yaw) + (v.z - pz) * -Math.cos(v.yaw)) / Math.max(dt, 0.001), side = ((v.x - px) * Math.cos(v.yaw) + (v.z - pz) * -Math.sin(v.yaw)) / Math.max(dt, 0.001);
+        const down0 = B.rayMap(v.x, v.y + 0.12, v.z, 0, -1, 0, 6, MAP), airborne = !Number.isFinite(down0) || down0 - 0.12 > 0.35;
+        if (v.wasAir && !airborne && !reducedMotion) v.squash = Math.min(1, 0.45 + Math.max(0, -v.vy) * 0.06); v.wasAir = airborne; v.vy = vyNow;
+        if (p.hp < v.hp && !p.dead) v.flinch = 1; v.hp = p.hp;
+        if (p.dead && !v.dead) v.deathT = 0.75; v.dead = !!p.dead;
+        for (const k of ['squash', 'flinch', 'recoil', 'swing']) if (v[k] > 0) v[k] = Math.max(0, v[k] - dt * (k === 'squash' ? 4 : k === 'swing' ? 3 : 6));
+        if (v.deathT > 0) v.deathT -= dt;
+        v.lean += ((reducedMotion ? 0 : Math.max(-1, Math.min(1, fwd / 8)) * 0.16) - v.lean) * Math.min(1, dt * 8); v.leanS += ((reducedMotion ? 0 : Math.max(-1, Math.min(1, side / 8)) * 0.14) - v.leanS) * Math.min(1, dt * 8);
+        const dying = v.deathT > 0 ? 1 - v.deathT / 0.75 : 0;
+        v.g.visible = !p.dead || v.deathT > 0;
+        const bob = !airborne && !reducedMotion ? Math.abs(Math.sin(v.walk)) * Math.min(0.06, spd * 0.01) : 0, idle = spd < 0.4 && !airborne && !reducedMotion ? Math.sin(time * 2.2 + v.x) * 0.012 : 0;
+        v.g.position.set(v.x, v.y + bob - dying * 0.25, v.z); v.g.rotation.y = v.yaw;
+        v.g.rotation.x = v.lean + (airborne ? -0.12 : 0) + v.flinch * 0.18 - dying * 1.35; v.g.rotation.z = -v.leanS + (dying ? 0.3 : 0);
+        v.crs = (v.crs || 0) + ((p.cr ? 1 : 0) - (v.crs || 0)) * Math.min(1, dt * 14); v.cr = p.cr;
+        { const sy = (1 - 0.38 * v.crs) * (1 - 0.22 * v.squash + idle) * (airborne && vyNow > 1 ? 1.05 : 1), sxz = 1 + 0.14 * v.squash - idle * 0.5; v.g.scale.set(sxz, sy, sxz); u.label.scale.y = 0.42 / sy; } /* crouching squashes the toy; so does landing hard */
         const down=B.rayMap(v.x,v.y+.12,v.z,0,-1,0,40,MAP),height=Number.isFinite(down)?Math.max(0,down-.12):40;
         u.contact.visible=Number.isFinite(down)&&height<5&&p.pw!=='ghost'&&B.rampAt(v.x,v.z,MAP)<0;
         u.contact.position.y=(.018-height)/v.g.scale.y;u.contact.material.opacity=.28/(1+height);u.contact.scale.setScalar(1+Math.min(height,5)*.12);
-        if (pr.head) pr.head.rotation.x = v.pitch * 0.8; if (pr.legL) { const sw = Math.sin(v.walk) * Math.min(0.7, spd / 8); pr.legL.rotation.x = sw; pr.legR.rotation.x = -sw; pr.legL.position.z = -Math.sin(sw) * 0.3; pr.legR.position.z = Math.sin(sw) * 0.3; }
-        pr.gun.rotation.x = v.pitch; if (pr.gunW !== p.w) { pr.gunW = p.w; pr.gun.clear(); pr.gun.add(weaponModel(p.w)); u.look = ''; }
+        if (pr.head) pr.head.rotation.x = v.pitch * 0.8 + v.flinch * 0.35;
+        if (pr.legL) { const sw = airborne ? 0 : Math.sin(v.walk) * Math.min(0.7, spd / 8), tuck = airborne && !reducedMotion ? 0.55 : 0; pr.legL.rotation.x = sw + tuck; pr.legR.rotation.x = -sw + tuck * 0.6; pr.legL.position.z = -Math.sin(sw) * 0.3; pr.legR.position.z = Math.sin(sw) * 0.3; if (pr.armL) { pr.armL.rotation.x = -sw * 0.8 - (airborne ? 0.5 : 0); pr.armL.rotation.z = airborne ? 0.6 : 0; } }
+        pr.gun.rotation.x = v.pitch - v.recoil * 0.35 - (v.swing > 0 ? Math.sin(v.swing * Math.PI) * 1.3 : 0); if (pr.gunW !== p.w) { pr.gunW = p.w; pr.gun.clear(); pr.gun.add(weaponModel(p.w)); u.look = ''; }
         if (v.sk >= 7) paintSkin(u.paint, fc, v.sk, time + v.x);
         { const want = mySt() && mySt().pw === 'bighead' ? 2.3 : 1; if (u.parts.head && Math.abs(u.parts.head.scale.x - want) > 0.01) { const k = u.parts.head.scale.x + (want - u.parts.head.scale.x) * Math.min(1, dt * 6); u.parts.head.scale.setScalar(k); } } // Big Head Mode: in the holder's eyes everyone's head balloons
         setOpacity(v.g, p.pw === 'ghost' && !mate ? 0.1 : 1); u.label.visible = p.pw !== 'ghost' || mate; u.label.material.depthTest = !mate; u.label.renderOrder = mate ? 999 : 0; u.bubble.visible = !!p.prot; drawTag(u, pl.name, fc, p.hp, p.lvl); /* teammates: tag shows through walls */
@@ -426,6 +452,7 @@ registerGame('blasters', (G) => {
       project(x, y, z) { proj.set(x, y, z).project(camera); if (proj.z > 1) return null; return [(proj.x * 0.5 + 0.5) * W, (-proj.y * 0.5 + 0.5) * H]; },
       update(dt) {
         fit(); if (!assetsReady || !s) return; if (!built) buildWorld();
+        if (cloudGroup && !reducedMotion) for (const c of cloudGroup.children) { c.position.x += c.userData.drift * dt; if (c.position.x > 140) c.position.x = -140; }
         updatePlayers(dt);
         // pickups, drops, rockets
         for (const pv of pickViews) {
@@ -674,7 +701,7 @@ registerGame('blasters', (G) => {
     event(e) {
       const mine = e.id === G.me;
       if (e.type === 'spawn' && mine) { Object.assign(body, B.newBody(e.x, e.y, e.z)); if (!e.keep) { me.yaw = e.yaw; me.pitch = 0; me.w = 0; me.mag = WEAPONS[0].mag; me.reloadEnd = 0; me.nextFire = 0; me.burstLeft = 0; me.eye = P.EYE; } }
-      else if (e.type === 'shot' && !mine) { const v = T && T.ready && T.view(e.id); if (v) { const d = Math.hypot(v.x - body.x, v.z - body.z), vol = Math.max(0.08, 1 - d / 50); play(WEAPONS[e.w].id, vol); if (e.o && e.e) T.tracer([e.o[0], e.o[1] - 0.25, e.o[2]], e.e, 0xfff0c0); } }
+      else if (e.type === 'shot' && !mine) { const v = T && T.ready && T.view(e.id); if (v) { v.recoil = 1; const d = Math.hypot(v.x - body.x, v.z - body.z), vol = Math.max(0.08, 1 - d / 50); play(WEAPONS[e.w].id, vol); if (e.o && e.e) T.tracer([e.o[0], e.o[1] - 0.25, e.o[2]], e.e, 0xfff0c0); } }
       else if (e.type === 'dmg') { hitMark = 0.16; if (e.kill) hitKill = 0.4; play(e.head ? 'head' : 'hit'); dmgNums.push({ x: e.x, y: e.y, z: e.z, n: e.n, head: e.head, kill: e.kill, t: 0.9, ox: (Math.random() - 0.5) * 30 }); if (dmgNums.length > 14) dmgNums.shift(); }
       else if (e.type === 'hurt') { hurtFlash = Math.min(0.7, 0.25 + e.n / 120); hurtDirs.push({ x: e.x, z: e.z, t: 1 }); if (hurtDirs.length > 4) hurtDirs.shift(); play('hurt'); if (!reducedMotion) shake = Math.max(shake, 0.25); }
       else if (e.type === 'kill') {
@@ -687,7 +714,7 @@ registerGame('blasters', (G) => {
       }
       else if (e.type === 'assist') banner(`Assist  +50`, '#9fc8ff', 1.5);
       else if (e.type === 'dropped' && mine) showCard(`Dropped the ${WEAPONS[e.w].name}`, 'It stays on the floor for a while with the darts it had left. Anyone can take it.', '#9fc8ff');
-      else if (e.type === 'swing' && !mine) { const v = T && T.ready && T.view(e.id); if (v) { play('swing', Math.max(0.1, 1 - Math.hypot(v.x - body.x, v.z - body.z) / 20)); T.burst(v.x - Math.sin(v.yaw) * 0.9, v.y + 1.2, v.z - Math.cos(v.yaw) * 0.9, 8, 3, ['#ffb347', '#ffffff'], 0.25); } }
+      else if (e.type === 'swing' && !mine) { const v = T && T.ready && T.view(e.id); if (v) { v.swing = 1; play('swing', Math.max(0.1, 1 - Math.hypot(v.x - body.x, v.z - body.z) / 20)); T.burst(v.x - Math.sin(v.yaw) * 0.9, v.y + 1.2, v.z - Math.cos(v.yaw) * 0.9, 8, 3, ['#ffb347', '#ffffff'], 0.25); } }
       else if (e.type === 'trainsoon') { trainWarn = MAP.train.warn + 0.5; play('bell'); banner(`TRAIN coming from the ${e.dir > 0 ? 'west' : 'east'}. Get off the track!`, '#ff5d5d', 3); }
       else if (e.type === 'trainhit') { body.vx = e.dir * 17; body.vy = 9; body.vz += (body.z >= MAP.train.z ? 1 : -1) * 6; body.ground = false; shake = Math.max(shake, 1); }
       else if (e.type === 'explode') { if (T && T.ready) T.explode(e.x, e.y, e.z, e.r, e.w); }

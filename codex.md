@@ -16,7 +16,9 @@ Read `fps3d.md` in `~/friendgame`, section "Second map: Block Towers", then buil
 
 ## Models to make
 
-Meme Karts: nothing new this round.
+Meme Karts: `pie.glb`, the new Cream pie item (see `3d.md`, "pie.glb"). Optional.
+
+Toy Box Blasters figures: optional re-export with named limb meshes so they swing when walking (see the new "Walking animation" section in `fps3d.md`).
 
 Toy Box Blasters:
 4. Optional: `fps_arena_towers.glb`, a decorated arena for the new second map **Block Towers** (see the new section at the end of `fps3d.md`; `node tools/blasters-map.js towers` exports its boxes). Only if you have budget left; the game draws coloured building blocks for it already.
