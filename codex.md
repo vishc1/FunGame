@@ -4,27 +4,22 @@ Paste everything below the line into Codex.
 
 ---
 
-Read these two briefs in `~/friendgame`, then build the new models they describe in Blender and export them as `.glb` into `~/friendgame/public/models/` with the exact file names given:
-
-- `3d.md`, section "Added later: height (decks and ramps)"
-- `fps3d.md`, section "Added after the first delivery", the "Toy Cannon" bullet
+Read `fps3d.md` in `~/friendgame`, section "Second map: Block Towers", then build the optional model it describes in Blender and export it as `.glb` into `~/friendgame/public/models/` with the exact file name given.
 
 ## What changed since your last delivery
 
+**Everything from the previous round is in and verified: thanks.** Decks, themed ramps, cannon and cannonball all load.
+
 **Meme Karts now has real height.** Every map has raised decks that karts drive on top of, reached by ramps. The old launch-ramp kickers are gone. The game currently draws decks as plain blocks. Ramp height went from 1.5 m to 3.2 m.
 
-**Toy Box Blasters has a ninth blaster, the Toy Cannon,** plus loadouts and weapon dropping (no art needed for those).
+**Toy Box Blasters has a second map (Block Towers), a team mode and a ninth blaster.** Team mode recolours each figure's `Paint` material red or blue, so keep using `Paint` for the parts that should carry the colour.
 
 ## Models to make
 
-Meme Karts:
-1. `deck.glb` (Sunset Stadium), `deck_neon.glb` (Neon Overdrive rooftop), `deck_canyon.glb` (Canyon Rush plateau)
-2. `ramp_neon.glb`, `ramp_canyon.glb`: themed versions of the existing `ramp.glb`
-3. Rework `ramp.glb` if needed so it still looks right at 10 m long, 8.4 m wide and 3.2 m tall. The game recolours any material or mesh whose name contains "ink", "dark" or "runway" to bright orange, so a dark runway material is fine.
+Meme Karts: nothing new this round.
 
 Toy Box Blasters:
-4. `fps_w_cannon.glb`: the Toy Cannon
-5. `fps_cannonball.glb`: its projectile
+4. Optional: `fps_arena_towers.glb`, a decorated arena for the new second map **Block Towers** (see the new section at the end of `fps3d.md`; `node tools/blasters-map.js towers` exports its boxes). Only if you have budget left; the game draws coloured building blocks for it already.
 
 ## Rules
 

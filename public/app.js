@@ -120,16 +120,28 @@
   $('#lobbyBtn').onclick = () => socket.emit('lobby');
   $('#endBtn').onclick = () => { if (room && room.hostId === myId && confirm('End this game for everyone?')) socket.emit('lobby'); };
 
+  // a Toy Box Blasters map card: a top-down plan of the arena (taller things drawn darker), ramps orange, pads cyan
+  function blMapCard(m, selected = false, disabled = false) {
+    const S = m.size, sc = 450 / S, X = (x) => 450 + x * sc, Z = (z) => 300 + z * sc, TH = m.theme || { floor: '#7fb77e' };
+    const shade = (b) => { const h = Math.min(1, b.y1 / 7.2); return b.c || `rgba(40,30,20,${0.25 + h * 0.6})`; };
+    const boxes = m.boxes.filter((b) => b.t !== 'wall' && b.t !== 'step').map((b) => `<rect x="${X(b.x0)}" y="${Z(b.z0)}" width="${(b.x1 - b.x0) * sc}" height="${(b.z1 - b.z0) * sc}" rx="3" fill="${shade(b)}"/>`).join('');
+    const ramps = m.ramps.map((r) => `<rect x="${X(r.x0)}" y="${Z(r.z0)}" width="${(r.x1 - r.x0) * sc}" height="${(r.z1 - r.z0) * sc}" rx="3" fill="#ff8a1f"/>`).join('');
+    const pads = m.pads.map((p) => `<circle cx="${X(p.x)}" cy="${Z(p.z)}" r="${p.r * sc * 1.4}" fill="#35e6ff"/>`).join('');
+    const train = m.train ? `<line x1="20" y1="${Z(m.train.z)}" x2="880" y2="${Z(m.train.z)}" stroke="#3a3f4a" stroke-width="6" stroke-dasharray="14 10"/>` : '';
+    return `<button class="map-card ${m.id} ${selected ? 'selected' : ''}" data-map="${m.id}" ${disabled ? 'disabled' : ''} aria-pressed="${selected}"><div class="map-art"><svg viewBox="0 0 900 600" aria-hidden="true"><rect x="20" y="20" width="860" height="560" rx="30" fill="${TH.floor}" stroke="#c9a06a" stroke-width="12"/>${train}${boxes}${ramps}${pads}</svg><span>${selected ? '✓ SELECTED' : 'BATTLE ARENA'}</span></div><div class="map-copy"><b>${esc(m.name)}</b><small>${esc(m.tag)}</small></div></button>`;
+  }
   function renderLobby() {
     $('#roomCode').textContent = room.code;
     const isHost = room.hostId === myId;
-    const kartGame = room.gameId === 'memekarts';
-    $('#mapPicker').classList.toggle('hidden', !kartGame);
-    $('.lobby-heading').classList.toggle('hidden', !kartGame);
+    const kartGame = room.gameId === 'memekarts', blGame = room.gameId === 'blasters';
+    $('#mapPicker').classList.toggle('hidden', !kartGame && !blGame);
+    $('.lobby-heading').classList.toggle('hidden', !kartGame && !blGame);
     $('#returnKarts').classList.add('hidden'); // replaced by the two-game switch above the lobby heading
     for (const b of document.querySelectorAll('#gameSwitch [data-game]')) { b.classList.toggle('sel', b.dataset.game === room.gameId); b.disabled = !isHost; b.onclick = () => socket.emit('pick', { gameId: b.dataset.game }); }
     $('#arcade').classList.toggle('other', !kartGame && room.gameId !== 'blasters');
-    $('#mapPicker').innerHTML = window.MEMEKARTS_MAPS.map(m => window.kartMapCard(m, m.id === room.mapId, !isHost)).join('');
+    $('#modePick').classList.toggle('hidden', !blGame);
+    for (const b of document.querySelectorAll('#modePick [data-mode]')) { b.classList.toggle('sel', b.dataset.mode === (room.blastersMode || 'ffa')); b.disabled = !isHost; b.onclick = () => socket.emit('pickMode', { mode: b.dataset.mode }); }
+    $('#mapPicker').innerHTML = blGame ? window.BLASTERS.MAPS.map(m => blMapCard(m, m.id === room.blastersMap, !isHost)).join('') : window.MEMEKARTS_MAPS.map(m => window.kartMapCard(m, m.id === room.mapId, !isHost)).join('');
     for (const el of $('#mapPicker').querySelectorAll('[data-map]')) el.onclick = () => socket.emit('pickMap', { mapId: el.dataset.map });
     $('#playerList').innerHTML = room.players.map((p) => `<li><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.bot ? '<span class="botTag">BOT</span>' : ''}${p.id === room.hostId ? ' <span class="hint">(host)</span>' : ''}<span style="margin-left:auto" class="hint">${p.score}</span></li>`).join('');
     $('#hostHint').textContent = (isHost ? 'You are the host: pick a game and press Start.' : 'Waiting for the host to start a game.') + (socket.hosting ? ' The room runs in this tab, so keep it open: closing or refreshing it ends the room for everyone.' : '');

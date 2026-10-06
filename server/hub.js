@@ -5,6 +5,7 @@
 //                            static hosts such as Vercel, where a server process cannot be kept alive)
 const bots = require('./bots');
 const KART_MAPS = require('../public/memekarts-maps');
+const BL_MAPS = require('../public/games/blasters.shared').MAPS;
 
 // opts: games (array of game modules), randomHex(nBytes), graceMs (seat hold after a disconnect), trustClientCode
 module.exports = function attachHub(io, opts) {
@@ -55,6 +56,8 @@ module.exports = function attachHub(io, opts) {
         phase: this.phase,
         gameId: this.gameId,
         mapId: this.memory.memekartsMap || 'stadium',
+        blastersMap: this.memory.blastersMap || BL_MAPS[0].id,
+        blastersMode: this.memory.blastersMode || 'ffa',
         results: this.results,
         players: [...this.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color, score: p.score, connected: p.connected, bot: !!p.bot })),
       };
@@ -122,7 +125,7 @@ module.exports = function attachHub(io, opts) {
       return {
         room,
         memory: this.memory,
-        players: () => [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color })),
+        players: () => [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color, bot: !!p.bot })),
         player: (id) => { const p = room.players.get(id); return p ? { id: p.id, name: p.name, color: p.color } : null; },
         emit: (ev, data) => { if (ev === 'g:state') room.lastState = data; io.to(room.code).emit(ev, data); },
         to: (pid, ev, data) => { if (room.bots.has(pid)) { if (ev === 'g:state') room.botState[pid] = data; return; } io.to(pid).emit(ev, data); },
@@ -261,8 +264,17 @@ module.exports = function attachHub(io, opts) {
     on('pickMap', ({ mapId } = {}) => {
       const room = roomOf();
       if (!room || room.hostId !== socket.data.pid || room.phase === 'playing') return;
-      if (!KART_MAPS.some(m => m.id === mapId)) return;
-      room.memory.memekartsMap = mapId;
+      if (BL_MAPS.some(m => m.id === mapId)) room.memory.blastersMap = mapId; // map ids are distinct across the two games
+      else if (KART_MAPS.some(m => m.id === mapId)) room.memory.memekartsMap = mapId;
+      else return;
+      room.broadcast();
+    });
+
+    // Toy Box Blasters: free-for-all or teams (host only, in the lobby)
+    on('pickMode', ({ mode } = {}) => {
+      const room = roomOf();
+      if (!room || room.hostId !== socket.data.pid || room.phase === 'playing' || !['ffa', 'teams'].includes(mode)) return;
+      room.memory.blastersMode = mode;
       room.broadcast();
     });
 

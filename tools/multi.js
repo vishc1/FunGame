@@ -27,6 +27,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (let i = 1; i < N; i++) { await pages[i].fill('#name', 'P' + i); await pages[i].fill('#code', code); await pages[i].evaluate(() => document.querySelector('#joinBtn').click()); await pages[i].waitForSelector('#lobby:not(.hidden)'); }
   await pages[0].waitForFunction((n) => document.querySelectorAll('#playerList li').length >= n, N);
   await pages[0].evaluate((g) => { const el = document.querySelector(`.gcard[data-id="${g}"]`); if (el) el.click(); }, GAME); await sleep(300);
+  if (process.env.MODE) { await pages[0].evaluate((m) => { const el = document.querySelector(`#modePick [data-mode="${m}"]`); if (el) el.click(); }, process.env.MODE); await sleep(300); }
   if (MAP) { await pages[0].evaluate((m) => { const el = document.querySelector(`#mapPicker [data-map="${m}"]`); if (el) el.click(); }, MAP); await sleep(300); }
   await pages[0].evaluate(() => document.querySelector('#startBtn').click());
   await Promise.all(pages.map((p) => p.waitForSelector('#game:not(.hidden)', { timeout: 8000 })));

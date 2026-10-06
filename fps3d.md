@@ -133,6 +133,12 @@ The map gained features that the game draws itself. `node tools/blasters-map.js`
 - **Crouching.** Crouched figures are squashed to 62% height by the game. Nothing to model, but check that each figure still reads when squashed.
 - **Skins.** Players can pick a finish (Classic, Pastel, Midnight, Chrome, Neon, Ice, Gold, Lava, Rainbow). Skins only restyle the material named `Paint`, so keep using `Paint` for the parts that should change and nothing else.
 
+## Second map: Block Towers (added 2026-10-05)
+
+Toy Box Blasters now has two maps; the host picks one in the lobby. **Block Towers** is a 60 × 60 m arena of giant building blocks at sunset: two stepped pyramids in opposite corners (14 m base 2.4 m high, 10 m middle at 4.8 m, 6 m summit at 7.2 m, a straight staircase up the face that looks at the centre), a raised cross of yellow beams over the middle at 3.2 m with a 6 m pad where they meet, four orange launch ramps at the beam ends, block mazes in the other two corners, teleporters between the summits, and a faster train under the cross.
+
+Everything is drawn by the game already (coloured blocks with studs on top). The optional replacement is **`fps_arena_towers.glb`**, built exactly like `fps_arena.glb` but from `node tools/blasters-map.js towers`, which writes `art/blasters/map-towers.json` in Blender coordinates. Same rules as the first arena: 1 unit = 1 m, origin at the centre on the floor, visible geometry matches the collision boxes (box type `block` carries a `color`), keep ramps, teleporters, pads and the track clear, max 60 000 triangles. The box types here: `block` (building blocks, use the given colour, studs on top are welcome), `beam` (the catwalk), `pillar`, `step`, `rail`, `lowwall`, `wall`.
+
 ## How to check your work
 
 ```bash

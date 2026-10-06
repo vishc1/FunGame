@@ -50,4 +50,4 @@ let pass = 0, fail = 0; const check = (n, ok, x = '') => { ok ? pass++ : fail++;
   const uniq = [...new Set(errors)]; check('no browser errors', uniq.length === 0, uniq.slice(0, 3).join(' | '));
   if (log) console.log('SERVER: ' + log.slice(0, 600));
   console.log(`\n${pass} passed, ${fail} failed`); srv.kill(); process.exit(fail ? 1 : 0);
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch((e) => { console.error('TEST CRASHED (a timeout here is usually the public PeerJS introduction service being slow, not the game):', e.message.split('\n')[0]); process.exit(1); });

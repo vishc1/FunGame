@@ -1513,7 +1513,7 @@
   },
   {
    "kind": "weapon",
-   "weapon": "long",
+   "weapon": "cannon",
    "blender_pos": [
     -26,
     -26,
@@ -1547,7 +1547,7 @@
   },
   {
    "kind": "weapon",
-   "weapon": "scatter",
+   "weapon": "burst",
    "blender_pos": [
     -22,
     0,
@@ -1565,7 +1565,7 @@
   },
   {
    "kind": "weapon",
-   "weapon": "rapid",
+   "weapon": "zap",
    "blender_pos": [
     -9,
     21,
@@ -1574,7 +1574,7 @@
   },
   {
    "kind": "weapon",
-   "weapon": "rapid",
+   "weapon": "lob",
    "blender_pos": [
     22,
     -6,

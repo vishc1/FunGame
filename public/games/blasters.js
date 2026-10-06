@@ -4,7 +4,11 @@
 //
 // BLENDER MODELS: .glb files in public/models/ named fps_* replace the placeholders built below. See fps3d.md.
 registerGame('blasters', (G) => {
-  const B = window.BLASTERS, { MAP, WEAPONS, MELEE, LOADOUT, POWERS, PICKUP_INFO, P } = B;
+  const B = window.BLASTERS, { WEAPONS, MELEE, LOADOUT, POWERS, PICKUP_INFO, P } = B;
+  let MAP = B.MAP; // the room's map; every snapshot names it (s.map) and the world is built for it
+  // team mode: s.tm = 1, every player has tm (0 Red, 1 Blue), s.tk = team tags. Figures, tags and the feed use team colours.
+  const TEAM = [{ name: 'Red', color: '#ff5d5d' }, { name: 'Blue', color: '#4da6ff' }];
+  const teamOf = (p) => (s && s.tm && p && p.tm != null ? TEAM[p.tm] : null), colOf = (p) => { const tmc = teamOf(p); return tmc ? tmc.color : (G.player(p.id) || {}).color || '#ffffff'; }, myTeam = () => { const st = mySt(); return st ? teamOf(st) : null; };
   const { ctx, canvas } = G;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W = 900, H = 600, s = null, T = null, failed = null, time = 0;
@@ -42,7 +46,7 @@ registerGame('blasters', (G) => {
   let hurtFlash = 0, hitMark = 0, hitKill = 0, shake = 0, card = null, muted = ls('mk_mute', '0') === '1';
   const feed = [], banners = [], dmgNums = [], hurtDirs = [];
   const banner = (text, color = '#ffd84d', t = 2) => { banners.unshift({ text, color, t, d: t }); if (banners.length > 3) banners.length = 3; };
-  const showCard = (name, tip, color = '#ffd84d') => { card = { name, tip, color, t: 4.5 }; };
+  const showCard = (name, tip, color = '#ffd84d') => { card = { name, tip, color, t: 6 }; }; // the big pickup card: what you just got and what it does
   const mySt = () => s && s.ps.find((p) => p.id === G.me);
 
   // ============================ sound (synthesised) ============================
@@ -140,11 +144,12 @@ registerGame('blasters', (G) => {
     }
 
     // ---- world ----
-    const COLORS = { wall: '#c9a06a', tower: '#e2685a', bridge: '#9a7650', plat: '#9a7650', pillar: '#6f84b0', step: '#dcb98a', fort: '#5b8fd9', rail: '#f2d16b', crate: '#b98b54', lowwall: '#78c088' };
+    const COLORS = { wall: '#c9a06a', tower: '#e2685a', bridge: '#9a7650', plat: '#9a7650', pillar: '#6f84b0', step: '#dcb98a', fort: '#5b8fd9', rail: '#f2d16b', crate: '#b98b54', lowwall: '#78c088', block: '#ff5d5d', beam: '#f2d16b' };
     const pickViews = [], padViews = [], teleViews = [], trainLamps = [], TELE_COLORS = ['#35e6ff', '#c77dff', '#ffd84d']; let trainView = null;
     function buildWorld() {
       built = true;
-      scene.background = tex(16, 256, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#5aa7ff'); g.addColorStop(0.6, '#bfe3ff'); g.addColorStop(1, '#fff3da'); c.fillStyle = g; c.fillRect(0, 0, w, h); });
+      const TH = MAP.theme || { floor: '#7fb77e', line: '#f4f1e4', sky: ['#5aa7ff', '#bfe3ff', '#fff3da'] };
+      scene.background = tex(16, 256, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, TH.sky[0]); g.addColorStop(0.6, TH.sky[1]); g.addColorStop(1, TH.sky[2]); c.fillStyle = g; c.fillRect(0, 0, w, h); });
       scene.fog = new THREE.Fog(0xdfeeff, 65, 240);
       { const hemi = new THREE.HemisphereLight(0xdcecff, 0x807058, .85); hemi.layers.enableAll(); scene.add(hemi); }
       const sun = new THREE.DirectionalLight(0xffe8c4, 3.0); sun.position.set(-36, 48, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
@@ -152,18 +157,19 @@ registerGame('blasters', (G) => {
       const rim=new THREE.DirectionalLight(0xb4d8ff,.55);rim.position.set(30,22,-40);rim.layers.enableAll();scene.add(rim);
       // play-mat floor
       const S = MAP.size, mat = tex(1024, 1024, (c, w, h) => {
-        c.fillStyle = '#7fb77e'; c.fillRect(0, 0, w, h);
+        c.fillStyle = TH.floor; c.fillRect(0, 0, w, h);
         for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) { c.fillStyle = (i + j) % 2 ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)'; c.fillRect(i * 64, j * 64, 64, 64); }
-        c.strokeStyle = '#f4f1e4'; c.lineWidth = 10; c.setLineDash([40, 28]); c.strokeRect(70, 70, w - 140, h - 140); c.setLineDash([]); c.beginPath(); c.arc(w / 2, h / 2, 190, 0, 7); c.stroke();
+        c.strokeStyle = TH.line; c.lineWidth = 10; c.setLineDash([40, 28]); c.strokeRect(70, 70, w - 140, h - 140); c.setLineDash([]); c.beginPath(); c.arc(w / 2, h / 2, 190, 0, 7); c.stroke();
         c.strokeStyle = 'rgba(40,40,60,.25)'; c.lineWidth = 34; c.beginPath(); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke();
         c.strokeStyle = '#ffd84d'; c.lineWidth = 4; c.setLineDash([24, 24]); c.beginPath(); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke(); c.setLineDash([]);
       });
-      const arena = MODELS.fps_arena ? MODELS.fps_arena.clone(true) : null; /* fps_arena.glb: 1 unit = 1 m, origin at the arena centre, replaces floor + boxes */
+      const arenaModel = MODELS['fps_arena_' + MAP.id] || (MAP.id === 'fort' ? MODELS.fps_arena : null); /* fps_arena.glb (Fort Cardboard) or fps_arena_<map>.glb: 1 unit = 1 m, origin at the arena centre, replaces floor + boxes */
+      const arena = arenaModel ? arenaModel.clone(true) : null;
       if (arena) { arena.traverse(finishArenaSurface); scene.add(arena); }
       const floor = mesh(new THREE.PlaneGeometry(S * 2, S * 2), new THREE.MeshStandardMaterial({ map: mat, roughness: 0.95 })); floor.rotation.x = -Math.PI / 2; floor.castShadow = false; if (!arena) scene.add(floor);
       const out = mesh(new THREE.PlaneGeometry(600, 600), M3('#b08a5e', { roughness: 1 }), 0, -0.05, 0); out.rotation.x = -Math.PI / 2; out.castShadow = false; scene.add(out);
       // map boxes
-      const mats = {}, matOf = (t) => (mats[t] = mats[t] || M3(COLORS[t] || '#aaaaaa'));
+      const mats = {}, matOf = (t, c) => (mats[c || t] = mats[c || t] || M3(c || COLORS[t] || '#aaaaaa', c ? { roughness: 0.55 } : {}));
       const tape = tex(256, 256, (c, w, h) => { c.fillStyle = '#c9a06a'; c.fillRect(0, 0, w, h); for (let i = 0; i < 400; i++) { c.fillStyle = `rgba(90,60,30,${Math.random() * 0.12})`; c.fillRect(Math.random() * w, Math.random() * h, 30, 2); } c.fillStyle = 'rgba(230,200,150,.8)'; c.fillRect(0, 108, w, 40); });
       tape.wrapS = tape.wrapT = THREE.RepeatWrapping; tape.repeat.set(8, 1);
       const edge = new THREE.LineBasicMaterial({ color: 0x3a2d22, transparent: true, opacity: 0.45 });
@@ -171,7 +177,8 @@ registerGame('blasters', (G) => {
         const w = b.x1 - b.x0, h = b.y1 - b.y0, d = b.z1 - b.z0, cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, cz = (b.z0 + b.z1) / 2;
         const custom = b.t === 'crate' ? asset('fps_crate', 1) : null;
         if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(w / sz.x, h / sz.y, d / sz.z); custom.position.set(cx, b.y0, cz); scene.add(custom); continue; }
-        const m = bx(w, h, d, b.t === 'wall' ? new THREE.MeshStandardMaterial({ map: tape, roughness: 0.9 }) : matOf(b.t), cx, cy, cz); scene.add(m);
+        const m = bx(w, h, d, b.t === 'wall' ? new THREE.MeshStandardMaterial({ map: tape, roughness: 0.9 }) : matOf(b.t, b.c), cx, cy, cz); scene.add(m);
+        if (b.t === 'block') for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { const stud = cyl(Math.min(w, d) * 0.12, Math.min(w, d) * 0.12, 0.12, matOf(b.t, b.c), cx + (i - 0.5) * w * 0.5, b.y1 + 0.06, cz + (j - 0.5) * d * 0.5, 14); stud.castShadow = false; scene.add(stud); } /* building-block studs on top */
         if (b.t !== 'wall' && b.t !== 'step') { const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), edge); e.position.copy(m.position); scene.add(e); }
       }
       // jump pads
@@ -333,19 +340,20 @@ registerGame('blasters', (G) => {
       for (const p of s.ps) {
         if (p.id === G.me) continue; seen.add(p.id); const pl = G.player(p.id);
         let v = views.get(p.id);
-        if (!v || v.ch !== p.ch || v.sk !== (p.sk || 0)) { const old = v; if (v) scene.remove(v.g); v = { g: buildFigure(pl.color, p.ch, p.sk || 0), x: old ? old.x : p.x, y: old ? old.y : p.y, z: old ? old.z : p.z, yaw: p.yw, pitch: p.pt, ch: p.ch, sk: p.sk || 0, walk: 0 }; views.set(p.id, v); scene.add(v.g); }
+        const fc = colOf(p), mate = s.tm && mySt() && p.tm === mySt().tm;
+        if (!v || v.ch !== p.ch || v.sk !== (p.sk || 0) || v.col !== fc) { const old = v; if (v) scene.remove(v.g); v = { g: buildFigure(fc, p.ch, p.sk || 0), col: fc, x: old ? old.x : p.x, y: old ? old.y : p.y, z: old ? old.z : p.z, yaw: p.yw, pitch: p.pt, ch: p.ch, sk: p.sk || 0, walk: 0 }; views.set(p.id, v); scene.add(v.g); }
         if (Math.hypot(p.x - v.x, p.z - v.z) > 8) { v.x = p.x; v.y = p.y; v.z = p.z; }
         const f = 1 - Math.exp(-16 * dt), px = v.x, pz = v.z; v.x += (p.x - v.x) * f; v.y += (p.y - v.y) * f; v.z += (p.z - v.z) * f; v.yaw = lerpAngle(v.yaw, p.yw, f); v.pitch += (p.pt - v.pitch) * f;
         const spd = Math.hypot(v.x - px, v.z - pz) / Math.max(dt, 0.001); v.walk += spd * dt * 2.2;
         const u = v.g.userData, pr = u.parts; v.g.visible = !p.dead; v.g.position.set(v.x, v.y, v.z); v.g.rotation.y = v.yaw;
         v.crs = (v.crs || 0) + ((p.cr ? 1 : 0) - (v.crs || 0)) * Math.min(1, dt * 14); v.cr = p.cr; { const sy = 1 - 0.38 * v.crs; v.g.scale.y = sy; u.label.scale.y = 0.42 / sy; } /* crouching squashes the toy */
-        const down=B.rayMap(v.x,v.y+.12,v.z,0,-1,0,40),height=Number.isFinite(down)?Math.max(0,down-.12):40;
-        u.contact.visible=Number.isFinite(down)&&height<5&&p.pw!=='ghost'&&B.rampAt(v.x,v.z)<0;
+        const down=B.rayMap(v.x,v.y+.12,v.z,0,-1,0,40,MAP),height=Number.isFinite(down)?Math.max(0,down-.12):40;
+        u.contact.visible=Number.isFinite(down)&&height<5&&p.pw!=='ghost'&&B.rampAt(v.x,v.z,MAP)<0;
         u.contact.position.y=(.018-height)/v.g.scale.y;u.contact.material.opacity=.28/(1+height);u.contact.scale.setScalar(1+Math.min(height,5)*.12);
         if (pr.head) pr.head.rotation.x = v.pitch * 0.8; if (pr.legL) { const sw = Math.sin(v.walk) * Math.min(0.7, spd / 8); pr.legL.rotation.x = sw; pr.legR.rotation.x = -sw; pr.legL.position.z = -Math.sin(sw) * 0.3; pr.legR.position.z = Math.sin(sw) * 0.3; }
         pr.gun.rotation.x = v.pitch; if (pr.gunW !== p.w) { pr.gunW = p.w; pr.gun.clear(); pr.gun.add(weaponModel(p.w)); u.look = ''; }
-        if (v.sk >= 7) paintSkin(u.paint, pl.color, v.sk, time + v.x);
-        setOpacity(v.g, p.pw === 'ghost' ? 0.1 : 1); u.label.visible = p.pw !== 'ghost'; u.bubble.visible = !!p.prot; drawTag(u, pl.name, pl.color, p.hp, p.lvl);
+        if (v.sk >= 7) paintSkin(u.paint, fc, v.sk, time + v.x);
+        setOpacity(v.g, p.pw === 'ghost' && !mate ? 0.1 : 1); u.label.visible = p.pw !== 'ghost' || mate; u.label.material.depthTest = !mate; u.label.renderOrder = mate ? 999 : 0; u.bubble.visible = !!p.prot; drawTag(u, pl.name, fc, p.hp, p.lvl); /* teammates: tag shows through walls */
         if (p.pw === 'mega' && Math.random() < 0.5) spark(v.x + (Math.random() - 0.5) * 0.6, v.y + Math.random() * 1.8, v.z + (Math.random() - 0.5) * 0.6, 0, 1.2, 0, '#ff4dd8', 0.5, 0);
         if (p.pw === 'speed' && spd > 3 && Math.random() < 0.6) spark(v.x, v.y + 0.3, v.z, 0, 0.6, 0, '#ffd84d', 0.45, 0);
       }
@@ -524,7 +532,7 @@ registerGame('blasters', (G) => {
     if (!me.alive || over || locker || time < me.nextMelee || !s) return;
     me.nextMelee = time + MELEE.cd; me.meleeT = 0.32; me.burstLeft = 0; zooming = false; play('swing');
     const fwd = B.dirFrom(me.yaw, 0), hits = [], ex = body.x, ey = body.y + me.eye, ez = body.z;
-    for (const p of s.ps) { if (p.id === G.me || p.dead) continue; const v = (T && T.view(p.id)) || p, dx = v.x - body.x, dz = v.z - body.z, d = Math.hypot(dx, dz); if (d > MELEE.range || Math.abs(v.y - body.y) > 1.6) continue; if (d > 0.5 && (dx * fwd[0] + dz * fwd[2]) / d < 0.5) continue; if (!B.los(ex, ey, ez, v.x, v.y + 1, v.z)) continue; hits.push(p.id); if (T) T.burst(v.x, v.y + 1.1, v.z, 14, 4, ['#ffb347', '#ffffff'], 0.35); }
+    for (const p of s.ps) { if (p.id === G.me || p.dead) continue; const v = (T && T.view(p.id)) || p, dx = v.x - body.x, dz = v.z - body.z, d = Math.hypot(dx, dz); if (d > MELEE.range || Math.abs(v.y - body.y) > 1.6) continue; if (d > 0.5 && (dx * fwd[0] + dz * fwd[2]) / d < 0.5) continue; if (!B.los(ex, ey, ez, v.x, v.y + 1, v.z, MAP)) continue; hits.push(p.id); if (T) T.burst(v.x, v.y + 1.1, v.z, 14, 4, ['#ffb347', '#ffffff'], 0.35); }
     if (body.ground && !(body.slideT > 0)) { body.vx += fwd[0] * MELEE.lunge; body.vz += fwd[2] * MELEE.lunge; }
     G.send({ type: 'melee', hits }); if (hits.length) { hitMark = 0.14; play('bonk'); }
   }
@@ -540,7 +548,7 @@ registerGame('blasters', (G) => {
     else {
       for (let i = 0; i < def.pellets; i++) {
         let d = [fwd[0] + (Math.random() - 0.5) * 2 * base, fwd[1] + (Math.random() - 0.5) * 2 * base, fwd[2] + (Math.random() - 0.5) * 2 * base]; const l = Math.hypot(d[0], d[1], d[2]); d = [d[0] / l, d[1] / l, d[2] / l];
-        let tHit = B.rayMap(o[0], o[1], o[2], d[0], d[1], d[2], def.range), who = null, head = false; if (tHit === Infinity) tHit = def.range;
+        let tHit = B.rayMap(o[0], o[1], o[2], d[0], d[1], d[2], def.range, MAP), who = null, head = false; if (tHit === Infinity) tHit = def.range;
         for (const p of s.ps) { if (p.id === G.me || p.dead) continue; const v = T && T.view(p.id); if (!v) continue; const h = B.rayPlayer(o[0], o[1], o[2], d[0], d[1], d[2], v.x, v.y, v.z, tHit, p.cr); if (h) { tHit = h.t; who = p.id; head = h.head; } }
         const e = [o[0] + d[0] * tHit, o[1] + d[1] * tHit, o[2] + d[2] * tHit]; if (!firstEnd) firstEnd = e;
         if (who) { const h = hits.get(who) || { id: who, n: 0, h: 0 }; h.n++; if (head) h.h++; hits.set(who, h); if (T) T.burst(e[0], e[1], e[2], 5, 3, ['#ffffff', '#ffd84d'], 0.25); }
@@ -581,10 +589,17 @@ registerGame('blasters', (G) => {
     // top: timer, goal, leader, power-up
     const lead = s.ps.slice().sort((a, b) => b.k - a.k)[0];
     rr(cx - 150, 10, 300, 40, 12, 'rgba(8,12,20,.72)'); txt(`${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')}`, cx, 30, { size: 20, color: s.t <= 20 ? '#ff6b6b' : '#fff', stroke: false });
-    if (st) txt(`You ${st.k}`, cx - 96, 30, { size: 14, color: G.player(G.me).color, stroke: false }); if (lead) txt(`${lead.id === G.me ? 'Leading' : nm(lead.id)} ${lead.k}/${s.goal}`, cx + 92, 30, { size: 12, color: '#ffd84d', stroke: false });
-    if (s.pw.up) { const pc = POWERS[s.pw.kind] || POWERS.mega; txt(`★ ${pc.name} is on the tower roof`, cx, 64, { size: 13, color: pc.color }); } else if (s.pw.in <= 15) txt(`★ Power-up in ${s.pw.in}s`, cx, 64, { size: 13, color: '#ffffff' });
+    if (s.tm) { txt(`RED ${s.tk[0]}`, cx - 96, 30, { size: 16, weight: 900, color: TEAM[0].color, stroke: false }); txt(`BLUE ${s.tk[1]}`, cx + 96, 30, { size: 16, weight: 900, color: TEAM[1].color, stroke: false }); txt(`first to ${s.goal}`, cx, 46, { size: 9.5, color: '#9aa3b8', stroke: false }); }
+    else { if (st) txt(`You ${st.k}`, cx - 96, 30, { size: 14, color: G.player(G.me).color, stroke: false }); if (lead) txt(`${lead.id === G.me ? 'Leading' : nm(lead.id)} ${lead.k}/${s.goal}`, cx + 92, 30, { size: 12, color: '#ffd84d', stroke: false }); }
+    if (s.pw.up) { const pc = POWERS[s.pw.kind] || POWERS.mega; txt(`★ ${pc.name} is on ${MAP.powerSpot || 'the tower roof'}`, cx, 64, { size: 13, color: pc.color }); } else if (s.pw.in <= 15) txt(`★ Power-up in ${s.pw.in}s`, cx, 64, { size: 13, color: '#ffffff' });
     // item card (what did I just pick up)
-    if (card) { card.t -= dt; if (card.t <= 0) card = null; else { const cw = Math.min(W - 24, 520), a = Math.min(1, card.t * 2); ctx.globalAlpha = a; rr(cx - cw / 2, 82, cw, 48, 14, 'rgba(8,12,20,.85)', card.color); txt(card.name, cx - cw / 2 + 18, 97, { size: 15, weight: 800, align: 'left', color: card.color, stroke: false }); txt(card.tip, cx - cw / 2 + 18, 117, { size: 12.5, align: 'left', color: '#fff', stroke: false }); ctx.globalAlpha = 1; } }
+    if (card) { card.t -= dt; if (card.t <= 0) card = null; else { // big, high-contrast, wrapped onto two lines if needed, and it stays up for six seconds
+      const cw = Math.min(W - 24, 760), a = Math.min(1, card.t * 2), x0 = cx - cw / 2 + 26; ctx.font = '600 19px system-ui, sans-serif';
+      const words = card.tip.split(' '), lines = ['']; for (const w of words) { const tryLine = (lines[lines.length - 1] + ' ' + w).trim(); if (ctx.measureText(tryLine).width > cw - 52 && lines[lines.length - 1]) lines.push(w); else lines[lines.length - 1] = tryLine; }
+      const ch = 66 + lines.length * 26; ctx.globalAlpha = a; rr(cx - cw / 2, 82, cw, ch, 18, 'rgba(8,12,20,.9)', card.color); rr(cx - cw / 2, 82, 10, ch, 5, card.color);
+      txt(card.name, x0, 110, { size: 26, weight: 900, align: 'left', color: card.color, stroke: false });
+      lines.forEach((l, i) => txt(l, x0, 146 + i * 26, { size: 19, weight: 600, align: 'left', color: '#fff', stroke: false }));
+      ctx.globalAlpha = 1; } }
     for (let i = banners.length - 1; i >= 0; i--) { banners[i].t -= dt; if (banners[i].t <= 0) banners.splice(i, 1); }
     banners.forEach((b, i) => { const age = b.d - b.t, sc = reducedMotion ? 1 : 1 + Math.max(0, 0.25 - age) * 2; ctx.save(); ctx.globalAlpha = Math.min(1, b.t * 3); ctx.translate(cx, 168 + i * 36); ctx.scale(sc, sc); txt(b.text, 0, 0, { size: 28 - i * 5, color: b.color, weight: 900 }); ctx.restore(); });
     // kill feed
@@ -616,11 +631,12 @@ registerGame('blasters', (G) => {
   }
   let deathBy = '';
   function scoreboard() {
-    const rows = s.ps.slice().sort((a, b) => b.k - a.k || b.sc - a.sc), pw = Math.min(W - 24, 520), ph = 96 + rows.length * 28 + (over ? 110 : 0), px = (W - pw) / 2, py = Math.max(10, (H - ph) / 2);
+    const rows = s.ps.slice().sort((a, b) => (s.tm ? a.tm - b.tm : 0) || b.k - a.k || b.sc - a.sc), pw = Math.min(W - 24, 520), ph = 96 + rows.length * 28 + (over ? 110 : 0), px = (W - pw) / 2, py = Math.max(10, (H - ph) / 2);
     rr(px, py, pw, ph, 16, 'rgba(8,12,20,.93)', 'rgba(255,216,77,.6)');
-    txt(over ? `${nm(over.winner)} wins!` : 'Scores', W / 2, py + 28, { size: 22, weight: 900, color: '#ffd84d', stroke: false });
+    const title = over ? (s.tm ? (over.team < 0 ? `Draw, ${s.tk[0]} each` : `${TEAM[over.team].name} team wins ${s.tk[over.team]} to ${s.tk[1 - over.team]}!`) : `${nm(over.winner)} wins!`) : s.tm ? `Red ${s.tk[0]}   Blue ${s.tk[1]}` : 'Scores';
+    txt(title, W / 2, py + 28, { size: 22, weight: 900, color: over && s.tm && over.team >= 0 ? TEAM[over.team].color : '#ffd84d', stroke: false });
     ['Player', 'Tags', 'Outs', 'Score'].forEach((h, i) => txt(h, px + [26, pw - 190, pw - 120, pw - 40][i], py + 58, { size: 11, align: i ? 'right' : 'left', color: '#8b91a5', stroke: false }));
-    rows.forEach((p, i) => { const y = py + 82 + i * 28, pl = G.player(p.id); if (p.id === G.me) rr(px + 10, y - 13, pw - 20, 26, 8, 'rgba(255,216,77,.12)'); G.circle(px + 30, y, 6, pl.color); txt(`${pl.name}`, px + 46, y, { size: 14, align: 'left', stroke: false }); txt(`Lv ${p.lvl}`, px + 190, y, { size: 11, align: 'left', color: '#8b91a5', stroke: false }); txt(String(p.k), px + pw - 190, y, { size: 14, align: 'right', stroke: false }); txt(String(p.d), px + pw - 120, y, { size: 14, align: 'right', color: '#aab', stroke: false }); txt(String(p.sc), px + pw - 40, y, { size: 14, align: 'right', color: '#ffd84d', stroke: false }); });
+    rows.forEach((p, i) => { const y = py + 82 + i * 28, pl = G.player(p.id); if (p.id === G.me) rr(px + 10, y - 13, pw - 20, 26, 8, 'rgba(255,216,77,.12)'); if (s.tm) rr(px + 10, y - 13, 5, 26, 2, TEAM[p.tm].color); G.circle(px + 30, y, 6, colOf(p)); txt(`${pl.name}`, px + 46, y, { size: 14, align: 'left', stroke: false }); txt(`Lv ${p.lvl}`, px + 190, y, { size: 11, align: 'left', color: '#8b91a5', stroke: false }); txt(String(p.k), px + pw - 190, y, { size: 14, align: 'right', stroke: false }); txt(String(p.d), px + pw - 120, y, { size: 14, align: 'right', color: '#aab', stroke: false }); txt(String(p.sc), px + pw - 40, y, { size: 14, align: 'right', color: '#ffd84d', stroke: false }); });
     if (over) { const y0 = py + 92 + rows.length * 28; over.awards.forEach(([n, id, d], i) => txt(`${n}: ${nm(id)} (${d})`, W / 2, y0 + i * 20, { size: 13, color: '#cfd6e4', stroke: false }));
       const l = levelOf(xp), a = xpFor(l), b = xpFor(l + 1), f = (xp - a) / (b - a), y = y0 + 74; txt(`+${over.gain} XP   Level ${l}${over.up ? '  LEVEL UP!' : ''}`, W / 2, y - 14, { size: 13, color: over.up ? '#5ee07a' : '#ffd84d', stroke: false }); rr(px + 60, y, pw - 120, 10, 5, 'rgba(255,255,255,.12)'); rr(px + 60, y, (pw - 120) * Math.max(0.02, Math.min(1, f)), 10, 5, '#ffd84d'); }
   }
@@ -635,7 +651,7 @@ registerGame('blasters', (G) => {
   //   __bl()    -> how far the nearest living enemy is from the crosshair (yaw / pitch error) and its distance
   //   __blAim() -> snaps the view onto the chest of the nearest enemy that is actually visible; returns false if none is
   if (/[?&]bltest=1/.test(location.search)) {
-    const nearest = (needSight) => { let best = null, bd = 1e9; for (const p of s ? s.ps : []) { if (p.id === G.me || p.dead || (needSight && p.prot)) continue; const v = (T && T.view(p.id)) || p, d = Math.hypot(v.x - body.x, v.z - body.z); if (d >= bd) continue; if (needSight && !B.los(body.x, body.y + P.EYE, body.z, v.x, v.y + 1.0, v.z)) continue; bd = d; best = v; } return best ? { v: best, d: bd } : null; };
+    const nearest = (needSight) => { let best = null, bd = 1e9; for (const p of s ? s.ps : []) { if (p.id === G.me || p.dead || (needSight && p.prot) || (s.tm && mySt() && p.tm === mySt().tm)) continue; /* teammates are not targets */ const v = (T && T.view(p.id)) || p, d = Math.hypot(v.x - body.x, v.z - body.z); if (d >= bd) continue; if (needSight && !B.los(body.x, body.y + P.EYE, body.z, v.x, v.y + 1.0, v.z, MAP)) continue; bd = d; best = v; } return best ? { v: best, d: bd } : null; };
     window.__bl = () => { if (!s) return null; const n = nearest(false); if (!n) return { err: null }; const want = Math.atan2(-(n.v.x - body.x), -(n.v.z - body.z)), wantPitch = Math.atan2(n.v.y + 1.0 - (body.y + P.EYE), Math.max(0.5, n.d)); return { err: (((want - me.yaw) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI, perr: wantPitch - me.pitch, dist: n.d, alive: me.alive }; };
     window.__blGo = (x, y, z, yaw, pitch = 0) => { Object.assign(body, B.newBody(x, y, z)); body.teleCd = 5; me.yaw = yaw; me.pitch = pitch; return true; }; // put the player somewhere for a screenshot
     window.__blY = () => body.y;
@@ -647,6 +663,7 @@ registerGame('blasters', (G) => {
   const STREAKS = { 3: 'ON FIRE', 5: 'UNSTOPPABLE', 8: 'LEGENDARY', 12: 'TOY BOX TYRANT' };
   return {
     state(ns) {
+      if (ns.map && ns.map !== MAP.id) MAP = B.mapById(ns.map) || MAP; // before anything is built or simulated for this snapshot
       const first = !s; s = ns; const st = mySt(); if (!st) return;
       const alive = !st.dead; if (alive && !me.alive) { killCam = null; deathBy = ''; }
       me.alive = alive;
@@ -662,7 +679,7 @@ registerGame('blasters', (G) => {
       else if (e.type === 'kill') {
         const iK = e.k === G.me, iV = e.v === G.me;
         feed.unshift({ text: e.k ? `${nm(e.k)}  ▸  ${nm(e.v)}  (${e.w}${e.head ? ', headshot' : ''})` : e.w === 'Toy Train' ? `${nm(e.v)} was flattened by the toy train` : `${nm(e.v)} tagged themselves`, t: 6, mine: iK || iV }); if (feed.length > 6) feed.length = 6;
-        if (T && T.ready) T.burst(e.x, e.y + 1, e.z, 40, 6, [G.player(e.v).color, '#ffffff', '#ffd84d'], 0.8);
+        if (T && T.ready) T.burst(e.x, e.y + 1, e.z, 40, 6, [colOf(s.ps.find((q) => q.id === e.v) || { id: e.v }), '#ffffff', '#ffd84d'], 0.8);
         if (iK) { play('kill'); banner(`Tagged ${nm(e.v)}  +100`, '#5ee07a', 1.8); for (const t of e.tags) { if (TAGS[t]) { banner(TAGS[t][0], TAGS[t][1], 2.2); play('medal'); } else if (t === 'streak' && STREAKS[e.streak]) { banner(`${STREAKS[e.streak]}  (${e.streak} in a row)`, '#ff9f43', 2.6); play('medal'); } } }
         else if (e.tags.includes('streak') && STREAKS[e.streak]) feed.unshift({ text: `${nm(e.k)} is ${STREAKS[e.streak]}`, t: 5 });
         if (iV) { play('dead'); killCam = e.k; deathBy = e.k ? `Tagged by ${nm(e.k)}  (${e.w})` : e.w === 'Toy Train' ? 'Flattened by the toy train' : 'You tagged yourself'; firing = false; zooming = false; }
@@ -678,8 +695,8 @@ registerGame('blasters', (G) => {
         if (mine) { play('pickup'); if (e.kind === 'weapon') { const w = WEAPONS[e.w]; showCard(`${w.name}   (press ${e.w + 1})`, w.tip, '#ffb347'); if (e.w > me.w && !firing) switchTo(e.w, true); } else if (PICKUP_INFO[e.kind]) showCard(PICKUP_INFO[e.kind].name, PICKUP_INFO[e.kind].tip, '#5ee07a'); }
       }
       else if (e.type === 'power') { const p = POWERS[e.kind]; if (mine) { play('power'); showCard('★ ' + p.name, p.tip, p.color); banner(p.name.toUpperCase() + '!', p.color, 2.2); } else feed.unshift({ text: `${nm(e.id)} grabbed ${p.name}`, t: 5 }); }
-      else if (e.type === 'powersoon') { play('soon'); banner(`${POWERS[e.kind].name} appears on the tower in 6`, POWERS[e.kind].color, 3); }
-      else if (e.type === 'over') { setLocker(false); const st = mySt(), gain = 40 + Math.round((st ? st.sc : 0) / 5), before = levelOf(xp); xp += gain; lset('tbb_xp', xp); over = { winner: e.winner, awards: e.awards || [], gain, up: levelOf(xp) > before }; if (document.pointerLockElement === canvas) document.exitPointerLock(); play(e.winner === G.me ? 'power' : 'medal'); }
+      else if (e.type === 'powersoon') { play('soon'); banner(`${POWERS[e.kind].name} appears on ${MAP.powerSpot || 'the tower'} in 6`, POWERS[e.kind].color, 3); }
+      else if (e.type === 'over') { setLocker(false); const st = mySt(), gain = 40 + Math.round((st ? st.sc : 0) / 5), before = levelOf(xp); xp += gain; lset('tbb_xp', xp); over = { winner: e.winner, team: e.team, awards: e.awards || [], gain, up: levelOf(xp) > before }; if (document.pointerLockElement === canvas) document.exitPointerLock(); const mt = myTeam(); play((e.team != null ? mt && TEAM[e.team] === mt : e.winner === G.me) ? 'power' : 'medal'); }
     },
     key(k, down) {
       if (!down) return; audio();
@@ -708,7 +725,7 @@ registerGame('blasters', (G) => {
       // move
       const can = me.alive && !over && !locker, f = can ? (K.has('w') ? 1 : 0) - (K.has('s') ? 1 : 0) : 0, sd = can ? (K.has('d') ? 1 : 0) - (K.has('a') ? 1 : 0) : 0;
       let rem = Math.min(dt, 0.1), firstStep = true; const crouching = can && K.has('c'), mul = (st && st.pw === 'speed' ? 1.45 : 1) * (zooming && me.alive ? P.ADS_SPEED : 1);
-      while (rem > 1e-5) { const h = Math.min(rem, 1 / 90); body.launched = false; body.jumped = 0; body.dashed = false; body.landed = 0; body.kicked = false; body.teleported = false; body.slid = false; B.stepPlayer(body, { f, s: sd, yaw: me.yaw, jump: can && firstStep && jumpQ, dash: can && firstStep && dashQ, crouch: crouching }, h, mul); if (body.slid) play('slide'); rem -= h; firstStep = false;
+      while (rem > 1e-5) { const h = Math.min(rem, 1 / 90); body.launched = false; body.jumped = 0; body.dashed = false; body.landed = 0; body.kicked = false; body.teleported = false; body.slid = false; B.stepPlayer(body, { f, s: sd, yaw: me.yaw, jump: can && firstStep && jumpQ, dash: can && firstStep && dashQ, crouch: crouching }, h, mul, MAP); if (body.slid) play('slide'); rem -= h; firstStep = false;
         if (body.kicked) play('kick'); if (body.teleported) { play('tele'); teleFlash = 0.35; if (T && T.ready) T.burst(body.x, body.y + 1, body.z, 30, 5, ['#35e6ff', '#c77dff', '#ffffff'], 0.5); }
         if (body.launched) play('pad'); if (body.jumped) play('jump'); if (body.dashed) play('dash'); if (body.landed) landDip = Math.min(0.22, body.landed * 0.012); }
       jumpQ = false; dashQ = false; landDip *= Math.pow(0.001, dt); if (trainWarn > 0) trainWarn -= dt;

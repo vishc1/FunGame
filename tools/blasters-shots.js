@@ -19,6 +19,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   if (CALM) { const code = (await page.textContent('#roomCode')).trim(); const p2 = await (await browser.newContext({ viewport: { width: 640, height: 400 } })).newPage(); await p2.goto(`http://localhost:${PORT}/`); await p2.fill('#name', 'Dummy'); await p2.fill('#code', code); await p2.evaluate(() => document.querySelector('#joinBtn').click()); await page.waitForFunction(() => document.querySelectorAll('#playerList li').length >= 2); }
   else await page.waitForFunction(() => document.querySelectorAll('#playerList li').length >= 4);
   await page.evaluate(() => document.querySelector('.gcard[data-id="blasters"]').click()); await sleep(300);
+  if (process.env.MODE) { await page.evaluate((m) => { const el = document.querySelector(`#modePick [data-mode="${m}"]`); if (el) el.click(); }, process.env.MODE); await sleep(300); } // MODE=teams
+  if (process.env.MAP) { await page.evaluate((m) => { const el = document.querySelector(`#mapPicker [data-map="${m}"]`); if (el) el.click(); }, process.env.MAP); await sleep(300); }
   await page.evaluate(() => document.querySelector('#startBtn').click()); await page.waitForSelector('#game:not(.hidden)'); await sleep(2500);
   await page.screenshot({ path: path.join(OUT, 'bl_click_to_play.png') });
   const box = await page.locator('#canvas').boundingBox(); await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2); await sleep(700);

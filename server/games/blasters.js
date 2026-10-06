@@ -9,7 +9,7 @@
 // The map, physics and weapon table live in public/games/blasters.shared.js so the server, bots and browser agree.
 // Testing: api.memory.__fast = seconds shortens the match.
 const B = require('../../public/games/blasters.shared.js');
-const { MAP, WEAPONS, MELEE, LOADOUT, POWERS, P } = B;
+const { WEAPONS, MELEE, LOADOUT, POWERS, P } = B;
 const NONE = () => WEAPONS.map((w, i) => i === 0); // which blasters a fresh player owns: only the sidearm
 const MATCH = 300, KILL_GOAL = 20, RESPAWN = 2.5, POWER_EVERY = 40, POWER_WARN = 6, DROP_LIFE = 14;
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -19,9 +19,13 @@ module.exports = {
   id: 'blasters',
   name: 'Toy Box Blasters',
   tagline: 'First-person foam-dart arena. Nine blasters including a cannon, a foam sword, loadouts, crouch, slide and aim.',
-  min: 2, max: 8,
+  min: 2, max: 12, // 12 so a party can split into two teams of six
   controls: 'Click the game to capture the mouse. WASD move, Space jump (twice), Shift dash, C crouch (tap while running to slide), click fire, right-click aim, E sword, G drop blaster, R reload, 1-9 or wheel switch, Tab scores, H guide, L locker and settings.',
   create(api) {
+    const MAP = B.mapById(api.memory.blastersMap) || B.MAP; // picked in the lobby; everything below is per-map
+    // Team mode (lobby switch): two teams, no friendly fire, each team spawns on its own side, first team to the goal wins.
+    const TEAMS = api.memory.blastersMode === 'teams', TEAM_NAMES = ['Red', 'Blue'], tk = [0, 0];
+    const TEAM_GOAL = Math.max(20, 8 * Math.ceil(api.players().length / 2));
     const players = new Map();
     const pick = MAP.pickups.map((p) => ({ def: p, t: p.kind === 'power' ? POWER_EVERY * 0.5 : 0, kind: null }));
     const drops = [], rockets = [];
@@ -33,16 +37,19 @@ module.exports = {
     function addPlayer(id) {
       const p = { id, x: 0, y: 0, z: 0, yaw: 0, pitch: 0, hp: 100, armor: 0, w: 0, own: NONE(), mag: WEAPONS.map((w) => w.mag), res: WEAPONS.map((w) => w.reserve),
         dead: 0, prot: 0, kills: 0, deaths: 0, score: 0, streak: 0, best: 0, heads: 0, dmg: 0, lastKiller: null, hurtBy: new Map(), power: null, powerT: 0, nextFire: 0, nextMelee: 0, cr: 0, lo: 0, bornT: 0, reloadT: 0, lvl: 1, ch: players.size % 8, sk: 0, lastKillT: -99, multi: 0 };
+      if (TEAMS) { const n = [0, 0]; for (const o of players.values()) n[o.team]++; p.team = n[0] <= n[1] ? 0 : 1; } // join the smaller team
       players.set(id, p); spawn(p); return p;
     }
     function spawn(p) {
       let best = MAP.spawns[0], bd = -1;
-      for (const s of MAP.spawns) { let d = 1e9; for (const o of players.values()) if (o !== p && !o.dead) d = Math.min(d, Math.hypot(o.x - s.x, o.z - s.z)); d += Math.random() * 6; if (d > bd) { bd = d; best = s; } }
+      const side = TEAMS ? MAP.spawns.filter((s) => (p.team === 0 ? s.z < 0 : s.z > 0)) : []; // Red spawns north, Blue south
+      for (const s of side.length ? side : MAP.spawns) { let d = 1e9; for (const o of players.values()) if (o !== p && !o.dead) d = Math.min(d, Math.hypot(o.x - s.x, o.z - s.z)); d += Math.random() * 6; if (d > bd) { bd = d; best = s; } }
       Object.assign(p, { x: best.x, y: 0, z: best.z, yaw: best.yaw, pitch: 0, hp: 100, armor: 0, w: 0, own: NONE(), mag: WEAPONS.map((w) => w.mag), res: WEAPONS.map((w) => w.reserve), dead: 0, prot: 2.5, power: null, powerT: 0, reloadT: 0, nextFire: 0, streak: 0 });
       p.hurtBy.clear(); p.bornT = t; starter(p);
       api.emit('g:event', { type: 'spawn', id: p.id, x: p.x, y: p.y, z: p.z, yaw: r2(p.yaw) });
     }
     for (const pl of api.players()) addPlayer(pl.id);
+    if (TEAMS) { let i = 0; const hum = api.players().filter((q) => !q.bot), bots = api.players().filter((q) => q.bot); for (const q of hum.concat(bots)) { players.get(q.id).team = i++ % 2; } for (const p of players.values()) spawn(p); } // alternate humans first, then bots, so both halves are even
 
     // loadout: the starter blaster chosen in the locker, with half the usual spare darts
     function starter(p) { const w = p.lo; if (!w || p.own[w]) return; p.own[w] = true; p.mag[w] = WEAPONS[w].mag; p.res[w] = Math.round(WEAPONS[w].reserve / 2); }
@@ -56,6 +63,7 @@ module.exports = {
     function hurt(v, amount, byId, weapon, head, from) {
       if (v.dead || v.prot > 0 || over) return 0;
       const by = players.get(byId);
+      if (TEAMS && by && by !== v && by.team === v.team) return 0; // no friendly fire
       if (by && by !== v && by.power === 'mega') amount *= 2;
       amount = Math.max(1, Math.round(amount));
       const soak = Math.min(v.armor, Math.round(amount * 0.5)); v.armor -= soak; v.hp -= amount - soak;
@@ -86,7 +94,8 @@ module.exports = {
       v.deaths++; v.dead = RESPAWN; v.hp = 0; v.power = null; v.powerT = 0; v.reloadT = 0;
       api.emit('g:event', { type: 'kill', k: by ? by.id : null, v: v.id, w: weapon, head: head ? 1 : 0, streak: by ? by.streak : 0, ended: v.streak, tags, x: r2(v.x), y: r2(v.y), z: r2(v.z) });
       v.streak = 0;
-      if (by && by.kills >= KILL_GOAL) finish();
+      if (TEAMS && by) { tk[by.team]++; if (tk[by.team] >= TEAM_GOAL) finish(); }
+      else if (by && by.kills >= KILL_GOAL) finish();
     }
     function explode(x, y, z, ownerId, direct, w = 4) {
       const def = WEAPONS[w];
@@ -106,6 +115,13 @@ module.exports = {
       const nm = (p) => (api.player(p.id) || { name: '?' }).name;
       const top = (f) => list.slice().sort((a, b) => f(b) - f(a))[0];
       const awards = []; if (list.length) { const a = top((p) => p.heads), b = top((p) => p.best), c = top((p) => p.dmg); if (a.heads) awards.push(['Sharpshooter', a.id, a.heads + ' headshots']); if (b.best >= 2) awards.push(['On a roll', b.id, b.best + ' in a row']); if (c.dmg) awards.push(['Heavy hitter', c.id, c.dmg + ' damage']); }
+      if (TEAMS) { // winning team: everyone on it gets a bonus, and the match summary is about the teams
+        const wt = tk[0] === tk[1] ? -1 : tk[0] > tk[1] ? 0 : 1;
+        for (const p of list) if (p.team === wt) pts[p.id] += 3;
+        api.emit('g:event', { type: 'over', winner: list[0] ? list[0].id : null, team: wt, tk, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills, tm: p.team })) });
+        api.after(5000, () => api.end(pts, wt < 0 ? `It's a draw, ${tk[0]} tags each.` : `${TEAM_NAMES[wt]} team wins ${tk[wt]} to ${tk[1 - wt]}.${list[0] ? ` Top tagger: ${nm(list[0])} with ${list[0].kills}.` : ''}`));
+        return;
+      }
       api.emit('g:event', { type: 'over', winner: list[0] ? list[0].id : null, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills })) });
       const w = list[0];
       api.after(5000, () => api.end(pts, w ? `${nm(w)} wins with ${w.kills} tags.${awards.length ? ' ' + awards.map(([n, id, d]) => `${n}: ${(api.player(id) || { name: '?' }).name} (${d})`).join('. ') + '.' : ''}` : 'Nobody played.'));
@@ -127,7 +143,7 @@ module.exports = {
         else if (m.type === 'drop') { // throw the blaster you are holding on the floor in front of you (not the sidearm)
           const w = p.w; if (p.dead || w === 0 || !p.own[w]) return;
           const f = B.dirFrom(p.yaw, 0); let dx = p.x + f[0] * 1.7, dz = p.z + f[2] * 1.7; const lim = MAP.size - 1;
-          if (Math.abs(dx) > lim || Math.abs(dz) > lim || B.overlap(dx, p.y + 0.05, dz) || !B.los(p.x, p.y + 1, p.z, dx, p.y + 1, dz)) { dx = p.x; dz = p.z; }
+          if (Math.abs(dx) > lim || Math.abs(dz) > lim || B.overlap(dx, p.y + 0.05, dz, MAP) || !B.los(p.x, p.y + 1, p.z, dx, p.y + 1, dz, MAP)) { dx = p.x; dz = p.z; }
           drops.push({ id: ++seq, w, x: dx, y: p.y, z: dz, t: DROP_LIFE + 10, ammo: p.mag[w] + p.res[w], by: pid, hold: 1.5 });
           p.own[w] = false; p.mag[w] = 0; p.res[w] = 0; p.reloadT = 0;
           const next = m.next | 0; p.w = next > 0 && next < WEAPONS.length && p.own[next] ? next : 0; p.nextFire = Math.max(p.nextFire, t + 0.3);
@@ -211,15 +227,15 @@ module.exports = {
         // rockets
         for (let i = rockets.length - 1; i >= 0; i--) {
           const rk = rockets[i]; rk.age += dt; rk.life -= dt; if (rk.g) rk.vy -= rk.g * dt; const sp = Math.hypot(rk.vx, rk.vy, rk.vz) || 0.001, step = sp * dt, dx = rk.vx / sp, dy = rk.vy / sp, dz = rk.vz / sp;
-          let hitT = B.rayMap(rk.x, rk.y, rk.z, dx, dy, dz, step), direct = null;
+          let hitT = B.rayMap(rk.x, rk.y, rk.z, dx, dy, dz, step, MAP), direct = null;
           for (const v of players.values()) { if (v.dead || (v.id === rk.o && rk.age < 0.25)) continue; const h = B.rayPlayer(rk.x, rk.y, rk.z, dx, dy, dz, v.x, v.y, v.z, Math.min(step, hitT), v.cr); if (h) { hitT = h.t; direct = v; } }
           if (hitT !== Infinity || rk.life <= 0) { const tt = hitT === Infinity ? step : Math.max(0, hitT - 0.05); explode(rk.x + dx * tt, rk.y + dy * tt, rk.z + dz * tt, rk.o, direct, rk.w); rockets.splice(i, 1); if (over) return; continue; }
           rk.x += dx * step; rk.y += dy * step; rk.z += dz * step;
         }
         const pw = pick[0];
         api.emit('g:state', {
-          t: Math.ceil(left), goal: KILL_GOAL,
-          ps: [...players.values()].map((p) => ({ id: p.id, x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch), hp: Math.ceil(p.hp), ar: Math.round(p.armor), w: p.w, m: p.mag[p.w], r: p.res[p.w] === Infinity ? -1 : p.res[p.w], own: p.own.reduce((a, v, i) => a | (v ? 1 << i : 0), 0), rl: p.reloadT > 0 ? 1 : 0, dead: p.dead > 0 ? r2(p.dead) : 0, prot: p.prot > 0 ? 1 : 0, k: p.kills, d: p.deaths, sc: p.score, st: p.streak, pw: p.power || 0, pwt: p.powerT > 0 ? Math.ceil(p.powerT) : 0, lvl: p.lvl, ch: p.ch, sk: p.sk, cr: p.cr })),
+          t: Math.ceil(left), goal: TEAMS ? TEAM_GOAL : KILL_GOAL, map: MAP.id, tm: TEAMS ? 1 : 0, tk: TEAMS ? tk : undefined,
+          ps: [...players.values()].map((p) => ({ id: p.id, x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch), hp: Math.ceil(p.hp), ar: Math.round(p.armor), w: p.w, m: p.mag[p.w], r: p.res[p.w] === Infinity ? -1 : p.res[p.w], own: p.own.reduce((a, v, i) => a | (v ? 1 << i : 0), 0), rl: p.reloadT > 0 ? 1 : 0, dead: p.dead > 0 ? r2(p.dead) : 0, prot: p.prot > 0 ? 1 : 0, k: p.kills, d: p.deaths, sc: p.score, st: p.streak, pw: p.power || 0, pwt: p.powerT > 0 ? Math.ceil(p.powerT) : 0, lvl: p.lvl, ch: p.ch, sk: p.sk, cr: p.cr, tm: TEAMS ? p.team : undefined })),
           pk: pick.map((k) => (k.t > 0 ? 0 : 1)), pw: { kind: pw.kind || 0, up: pw.t <= 0 ? 1 : 0, in: Math.max(0, Math.ceil(pw.t)) },
           dr: drops.map((d) => ({ id: d.id, w: d.w, x: r2(d.x), y: r2(d.y), z: r2(d.z) })), rk: rockets.map((k) => ({ id: k.id, w: k.w, x: r2(k.x), y: r2(k.y), z: r2(k.z) })),
           tr: train.x === null ? null : [r2(train.x), train.dir],

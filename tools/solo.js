@@ -28,6 +28,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // pick the game without depending on the lobby layout (the card may be hidden by a redesigned lobby)
   await page.evaluate((g) => { const el = document.querySelector(`.gcard[data-id="${g}"]`); if (el) el.click(); }, GAME); await sleep(300);
   await page.screenshot({ path: path.join(OUT, `lobby.png`) });
+  if (process.env.MODE) { await page.evaluate((m) => { const el = document.querySelector(`#modePick [data-mode="${m}"]`); if (el) el.click(); }, process.env.MODE); await sleep(300); } // MODE=teams picks the shooter's team mode
   if (process.env.MAP) { await page.evaluate((m) => { const el = document.querySelector(`#mapPicker [data-map="${m}"]`); if (el) el.click(); }, process.env.MAP); await sleep(300); }
   await page.evaluate(() => document.querySelector('#startBtn').click());
   await page.waitForSelector('#game:not(.hidden)');

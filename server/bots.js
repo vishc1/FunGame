@@ -58,15 +58,15 @@ function route(map, from, to) {
 
 // ---- Toy Box Blasters: bots simulate their own body with the shared physics, exactly like a browser does -----
 const BL = require('../public/games/blasters.shared.js');
-let BLNAV = null;
-function blNav() { // 1 m grid of cells a standing body can occupy at ground level (bots stay on the ground floor)
-  if (BLNAV) return BLNAV;
-  const n = BL.MAP.size * 2, blocked = new Uint8Array(n * n);
-  for (let cz = 0; cz < n; cz++) for (let cx = 0; cx < n; cx++) if (BL.overlap(cx - BL.MAP.size + 0.5, 0.01, cz - BL.MAP.size + 0.5) || BL.rampAt(cx - BL.MAP.size + 0.5, cz - BL.MAP.size + 0.5) > 0.45) blocked[cz * n + cx] = 1;
-  return (BLNAV = { n, blocked, prev: new Int32Array(n * n) });
+const BLNAV = {}; // one grid per map
+function blNav(map) { // 1 m grid of cells a standing body can occupy at ground level (bots stay on the ground floor)
+  if (BLNAV[map.id]) return BLNAV[map.id];
+  const n = map.size * 2, blocked = new Uint8Array(n * n);
+  for (let cz = 0; cz < n; cz++) for (let cx = 0; cx < n; cx++) if (BL.overlap(cx - map.size + 0.5, 0.01, cz - map.size + 0.5, map) || BL.rampAt(cx - map.size + 0.5, cz - map.size + 0.5, map) > 0.45) blocked[cz * n + cx] = 1;
+  return (BLNAV[map.id] = { n, blocked, prev: new Int32Array(n * n) });
 }
-function blRoute(from, to) {
-  const { n, blocked, prev } = blNav(), S = BL.MAP.size;
+function blRoute(from, to, map) {
+  const { n, blocked, prev } = blNav(map), S = map.size;
   const cell = (x, z) => { let cx = Math.max(0, Math.min(n - 1, Math.floor(x + S))), cz = Math.max(0, Math.min(n - 1, Math.floor(z + S))); if (!blocked[cz * n + cx]) return cz * n + cx; let best = -1, bd = 1e9; for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) { const nx = cx + dx, nz = cz + dz; if (nx < 0 || nz < 0 || nx >= n || nz >= n || blocked[nz * n + nx]) continue; const d = dx * dx + dz * dz; if (d < bd) { bd = d; best = nz * n + nx; } } return best; };
   const a = cell(from.x, from.z), z = cell(to.x, to.z); if (a < 0 || z < 0 || a === z) return to;
   prev.fill(-1); prev[z] = z; const q = [z];
@@ -84,21 +84,21 @@ const BRAINS = {
     if (!m.hello) { m.hello = 1; out.push({ type: 'hello', lvl: 1 + Math.floor(Math.random() * 9), ch: Math.floor(Math.random() * 8), sk: pick([0, 0, 1, 4]), lo: pick([0, 0, 1, 2]) }); /* bots only wear skins that keep their own colour (Classic, Pastel, Neon) */ }
     if (me.dead) { m.body = null; return out; }
     if (!m.body || Math.hypot(m.body.x - me.x, m.body.z - me.z) > 6) { m.body = BL.newBody(me.x, me.y, me.z); m.yaw = me.yw; m.pitch = 0; m.strafe = 1; m.strafeT = 0; m.see = 0; m.fireCd = 0.6; m.goal = null; m.goalT = 0; }
-    const body = m.body, ex = body.x, ey = body.y + P.EYE, ez = body.z;
+    const body = m.body, ex = body.x, ey = body.y + P.EYE, ez = body.z, MAP = BL.mapById(s.map) || BL.MAP; // the room's map comes with every snapshot
     // nearest enemy this bot can actually see
     let tgt = null, td = 1e9;
-    for (const o of s.ps) { if (o.id === b.id || o.dead) continue; const d = Math.hypot(o.x - body.x, o.y - body.y, o.z - body.z); if (d > 55 || d >= td || (o.pw === 'ghost' && d > 9)) continue; if (BL.los(ex, ey, ez, o.x, o.y + 1.2, o.z)) { tgt = o; td = d; } }
+    for (const o of s.ps) { if (o.id === b.id || o.dead || (s.tm && o.tm === me.tm)) continue; const d = Math.hypot(o.x - body.x, o.y - body.y, o.z - body.z); if (d > 55 || d >= td || (o.pw === 'ghost' && d > 9)) continue; if (BL.los(ex, ey, ez, o.x, o.y + 1.2, o.z, MAP)) { tgt = o; td = d; } }
     if (tgt) { m.see += c.dt; m.last = { x: tgt.x, z: tgt.z, t: 6 }; } else { m.see = 0; if (m.last && (m.last.t -= c.dt) <= 0) m.last = null; }
     // where to go
-    const ground = (i) => s.pk[i] && BL.MAP.pickups[i].y < 0.5;
-    const nearestPickup = (ok) => { let best = null, bd = 1e9; BL.MAP.pickups.forEach((pk, i) => { if (!ground(i) || !ok(pk)) return; const d = Math.hypot(pk.x - body.x, pk.z - body.z); if (d < bd) { bd = d; best = pk; } }); return best; };
+    const ground = (i) => s.pk[i] && MAP.pickups[i].y < 0.5;
+    const nearestPickup = (ok) => { let best = null, bd = 1e9; MAP.pickups.forEach((pk, i) => { if (!ground(i) || !ok(pk)) return; const d = Math.hypot(pk.x - body.x, pk.z - body.z); if (d < bd) { bd = d; best = pk; } }); return best; };
     let goal = null;
     if (me.hp < 45) goal = nearestPickup((pk) => pk.kind === 'health' || pk.kind === 'mega');
     if (!goal && me.own === 1) goal = (s.dr || []).find((d) => d.y < 0.5 && Math.hypot(d.x - body.x, d.z - body.z) < 18) || nearestPickup((pk) => pk.kind === 'weapon');
     if (!goal && tgt) goal = { x: tgt.x, z: tgt.z };
     if (!goal && m.last) goal = m.last;
-    if (!goal) { m.goalT -= c.dt; if (!m.goal || m.goalT <= 0 || Math.hypot(m.goal.x - body.x, m.goal.z - body.z) < 2) { const sp = pick(BL.MAP.spawns.concat(BL.MAP.pickups.filter((pk) => pk.y < 0.5))); m.goal = { x: sp.x, z: sp.z }; m.goalT = 9; } goal = m.goal; }
-    const wp = blRoute(body, goal); let mx = wp.x - body.x, mz = wp.z - body.z; const ml = Math.hypot(mx, mz) || 1; mx /= ml; mz /= ml;
+    if (!goal) { m.goalT -= c.dt; if (!m.goal || m.goalT <= 0 || Math.hypot(m.goal.x - body.x, m.goal.z - body.z) < 2) { const sp = pick(MAP.spawns.concat(MAP.pickups.filter((pk) => pk.y < 0.5))); m.goal = { x: sp.x, z: sp.z }; m.goalT = 9; } goal = m.goal; }
+    const wp = blRoute(body, goal, MAP); let mx = wp.x - body.x, mz = wp.z - body.z; const ml = Math.hypot(mx, mz) || 1; mx /= ml; mz /= ml;
     const wdef = BL.WEAPONS[me.w], pref = me.w === 1 ? 5 : me.w === 3 ? 22 : 11;
     if (tgt && td < pref + 4) { // fight: circle-strafe at the weapon's preferred range
       m.strafeT -= c.dt; if (m.strafeT <= 0) { m.strafe = Math.random() < 0.5 ? 1 : -1; m.strafeT = rnd(0.5, 1.4); }
@@ -111,7 +111,7 @@ const BRAINS = {
     // move with the same physics a player uses
     const sin = Math.sin(m.yaw), cos = Math.cos(m.yaw), f = mx * -sin + mz * -cos, st = mx * cos + mz * -sin;
     const jump = (tgt && Math.random() < 0.05) || (Math.hypot(body.vx, body.vz) < 0.6 && Math.random() < 0.25);
-    for (let i = 0; i < 6; i++) BL.stepPlayer(body, { f, s: st, yaw: m.yaw, jump: i === 0 && jump, dash: i === 0 && tgt && Math.random() < 0.03 }, c.dt / 6, me.pw === 'speed' ? 1.45 : 1);
+    for (let i = 0; i < 6; i++) BL.stepPlayer(body, { f, s: st, yaw: m.yaw, jump: i === 0 && jump, dash: i === 0 && tgt && Math.random() < 0.03 }, c.dt / 6, me.pw === 'speed' ? 1.45 : 1, MAP);
     // bots bonk you with the foam sword when you get in their face, and sometimes crouch while shooting
     if (tgt && td < BL.MELEE.range && Math.abs(tgt.y - body.y) < 1.2 && every(b, 'sword', BL.MELEE.cd + 0.5, c.dt)) out.push({ type: 'melee', hits: [tgt.id] });
     if (every(b, 'crouchFlip', 2.5, c.dt)) m.cr = tgt && td > 10 && Math.random() < 0.35 ? 1 : 0;
@@ -131,7 +131,7 @@ const BRAINS = {
       else {
         const chance = BL_AIM[me.w] * Math.max(0.3, Math.min(1, 1.25 - td / 45));
         if (Math.random() < chance) { const n = wdef.pellets > 1 ? Math.max(1, Math.round(wdef.pellets * Math.max(0.2, 1 - td / 16) * rnd(0.5, 1))) : 1; msg.hits.push({ id: tgt.id, n, h: Math.random() < 0.15 ? 1 : 0 }); msg.e = [tgt.x, tgt.y + 1.1, tgt.z]; }
-        else { const miss = BL.rayMap(ex, ey, ez, dir[0], dir[1], dir[2], 80); const tt = miss === Infinity ? 80 : miss; msg.e = [ex + dir[0] * tt + rnd(-1, 1), ey + dir[1] * tt + rnd(0, 1.5), ez + dir[2] * tt + rnd(-1, 1)]; }
+        else { const miss = BL.rayMap(ex, ey, ez, dir[0], dir[1], dir[2], 80, MAP); const tt = miss === Infinity ? 80 : miss; msg.e = [ex + dir[0] * tt + rnd(-1, 1), ey + dir[1] * tt + rnd(0, 1.5), ez + dir[2] * tt + rnd(-1, 1)]; }
       }
       out.push(msg);
     }

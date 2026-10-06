@@ -732,12 +732,14 @@ registerGame('memekarts', (G) => {
     // what your item does: a card at the top while you hold one (pops when you pick it up)
     if (me && me.weapon !== cardW) { cardW = me.weapon; cardT = time; }
     if (me && me.weapon && !me.dead) {
-      const narrow = W < 700, cw = Math.min(W - 24, 540), cy = narrow ? 196 : timerY + 52, pop = reducedMotion ? 0 : Math.max(0, 1 - (time - cardT) / 0.3);
+      /* big for the first six seconds after a pickup (so you can read what it does), then it shrinks out of the way */
+      const narrow = W < 700, fresh = Math.max(0, Math.min(1, (6.6 - (time - cardT)) / 0.6)), big = fresh, cw = Math.min(W - 24, 540 + 220 * big), cy = narrow ? 196 : timerY + 52 + 16 * big, pop = reducedMotion ? 0 : Math.max(0, 1 - (time - cardT) / 0.3);
+      const chh = 50 + 32 * big, ic = 13 + 7 * big, nameSz = 15 + 9 * big, infoSz = (cw < 440 ? 10.5 : 13) + 6 * big;
       ctx.save(); ctx.translate(W / 2, cy); ctx.scale(1 + pop * 0.14, 1 + pop * 0.14);
-      rr(-cw / 2, -25, cw, 50, 14, 'rgba(8,12,20,.82)', '#ffd84d');
-      (ICONS[me.weapon] || ICONS.green)(-cw / 2 + 28, 0, 13);
-      G.text(WEAPON_NAMES[me.weapon] || me.weapon, -cw / 2 + 54, -10, { size: 15, weight: 800, align: 'left', color: '#ffd84d', stroke: false });
-      G.text(WEAPON_INFO[me.weapon] || '', -cw / 2 + 54, 10, { size: cw < 440 ? 10.5 : 13, align: 'left', color: '#fff', stroke: false });
+      rr(-cw / 2, -chh / 2, cw, chh, 14 + 4 * big, 'rgba(8,12,20,.82)', '#ffd84d'); if (big > 0) rr(-cw / 2, -chh / 2, 8 * big, chh, 4, '#ffd84d');
+      (ICONS[me.weapon] || ICONS.green)(-cw / 2 + 28 + 8 * big, 0, ic);
+      G.text(WEAPON_NAMES[me.weapon] || me.weapon, -cw / 2 + 54 + 16 * big, -10 - 9 * big, { size: nameSz, weight: 900, align: 'left', color: '#ffd84d', stroke: false });
+      G.text(WEAPON_INFO[me.weapon] || '', -cw / 2 + 54 + 16 * big, 10 + 9 * big, { size: infoSz, weight: big > 0.5 ? 600 : 400, align: 'left', color: '#fff', stroke: false });
       ctx.restore();
     }
     // minimap
