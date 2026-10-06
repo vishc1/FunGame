@@ -1,0 +1,9 @@
+{
+  "collision_boxes": 117,
+  "decoration_components": 606,
+  "omitted_reserved_decoration": [
+    "Moulded stud.009",
+    "Moulded stud.021"
+  ],
+  "conflicts": []
+}

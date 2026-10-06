@@ -1,6 +1,6 @@
 # Toy Box Blasters: Blender delivery
 
-Built from `fps3d.md`, starting with eight figures, five blasters, five pickups/props, then the arena. Later deliveries add a train, four more blasters, a water balloon, a foam sword and a cannonball. All **27 GLBs** are in `../../public/models/`, with matching editable `.blend` sources here. All designs are original moulded-plastic toys. The game-code owner's sword-loading fix is verified: the custom model appears and swings in-game.
+Built from `fps3d.md`, starting with eight figures, five blasters, five pickups/props, then the arena. Later deliveries add a train, four more blasters, a water balloon, a foam sword, a cannonball and Block Towers. All **28 GLBs** are in `../../public/models/`, with matching editable `.blend` sources here. The figures now have named limb pivots for walking. All designs are original moulded-plastic toys. The game-code owner's sword-loading fix is verified: the custom model appears and swings in-game.
 
 ## Assets and triangle counts
 
@@ -34,9 +34,10 @@ Counts are measured in Blender and independently checked after GLTFLoader import
 | `fps_rocket.glb` | Orange foam rocket, soft red nose and blue fins | 136 | 300 |
 | `fps_crate.glb` | Cuboid wooden toy crate with stretch-safe bands | 164 | 300 |
 | `fps_arena.glb` | Complete decorated 101-box arena and 64 × 64 m play-mat | 15,752 | 80,000 |
+| `fps_arena_towers.glb` | Decorated Block Towers, 117 collision boxes and 60 × 60 m play-mat | 11,238 | 60,000 |
 | `fps_train.glb` | Red/yellow engine, open green and blue wagons, toy-block cargo | 2,468 | 2,500 |
 
-The complete set contains **36,268 triangles**, counting each unique asset once. In-game totals depend on how many instances are visible.
+The complete set contains **47,506 triangles**, counting each unique asset once. In-game totals depend on how many instances are visible.
 
 ## Arena
 
@@ -52,7 +53,7 @@ The refreshed `map.json` also contains four ramps, four teleporter positions and
 
 ## Export conventions
 
-- Blender +Z is up. Figures face −Y; blasters and rockets point +Y. All transforms are applied. GLBs export with +Y Up and contain only static mesh art: no cameras, lights, rigs, empties or animations.
+- Blender +Z is up. Figures face −Y; blasters and rockets point +Y. Rotation and scale are applied. Named limbs retain their joint-position translations; other transforms are applied. GLBs export with +Y Up and contain static mesh art, with no cameras, lights, rigs or baked animations. Multi-material limbs become named glTF parent nodes with material-specific mesh children.
 - Figures are grounded and horizontally centred, with the 1.8 m body/head proportions from the brief. Decorative hats and antennae extend above that height, up to 2.2 m on the wizard. Head-core centres remain at 1.56 m after the current loader's anchor-based fit; body geometry below 1.36 m stays within the 0.84 × 0.84 m footprint. Character-right is Blender −X when facing −Y, so the reaching hand aligns with the game's positive-X weapon side after its 180° rotation.
 - Each figure has an exact `Paint` material on torso, arms and back shell. All eight player colours and all nine skin finishes were tested on all eight figures. The locker check confirms fixed accents stay unchanged and Lava/Rainbow update over time. Materials are plain Principled BSDF; no image textures or external dependencies are used.
 - Blaster origins are at the bottom of the grip, `(0,0,0)`, with every barrel centre line at Z = 0.27 m. Authored lengths are Dart 0.5 m, Scatter 0.85 m, Rapid 0.6 m, Long Shot 1.2 m, Boom Tube 0.85 m, and 0.7 m each for Burst, Splash Lobber and Zap Ray. These supersede the first delivery's uniform 0.7 m length. Weapons are not recentered during export. Pickups and props are grounded and horizontally centred.
@@ -175,3 +176,45 @@ All checks requested in `codex.md` passed: the full-game suite, map and kart-hei
 This delivery changed no protected game files, and their SHA-256 hashes match the starting baseline. GitHub and deployment state were not touched. A local server was already listening on port 3000; the start attempt skipped `prestart` to avoid regenerating protected files.
 
 The supplementary `node art/blasters/check-new-items.mjs` also passes: all eight non-default blasters load through `]`, the custom cannonball moves in flight, and the balloon and sword checks remain clean. `new-items-runtime.json` records 11 cannonball samples with two position changes, zero browser errors and no blockers. The diagnostic now waits briefly after its test-only teleport before firing; the initial immediate-fire probe missed the cannon projectile. `in-game-cannon.png` shows the custom first-person cannon.
+
+## Walking figures and Block Towers delivery
+
+All eight `fps_char_<n>.glb` files were rebuilt with `leg_l`, `leg_r` and `arm_l`. Boots, soles and knee caps move with their legs; the free hand moves with its sleeve. `head_core` and `right_hand` are preserved, as are the figure shapes and neutral `Paint` material. Team recolouring includes the moving sleeve.
+
+| Figure | Triangles | Budget |
+| --- | ---: | ---: |
+| `fps_char_0.glb` | 1,300 | 2,500 |
+| `fps_char_1.glb` | 1,728 | 2,500 |
+| `fps_char_2.glb` | 1,520 | 2,500 |
+| `fps_char_3.glb` | 1,172 | 2,500 |
+| `fps_char_4.glb` | 1,508 | 2,500 |
+| `fps_char_5.glb` | 1,376 | 2,500 |
+| `fps_char_6.glb` | 1,776 | 2,500 |
+| `fps_char_7.glb` | 1,668 | 2,500 |
+
+Counts are unchanged. Blender joint origins are left hip `(0.175, 0, 0.70)`, right hip `(-0.175, 0, 0.70)` and left shoulder `(0.33, 0, 1.265)`. The zero forward-axis offset also matches the runtime's leg-position animation. Limbs are joined multi-material meshes in Blender; GLTFLoader preserves each named pivot as the parent of its material primitives. No skeleton or baked animation is needed.
+
+`fps_arena_towers.glb` uses **11,238 / 60,000 triangles**. Its 117 solid cuboids match `map-towers.json` exactly at 1 metre per unit. The 60 × 60 m floor has a warm checker pattern and printed roads. Block colours match the map; shallow studs and side seams give them moulded-toy detail. Catwalks are yellow rulers, stairs have book covers, and cardboard perimeter walls have tape and crayon-coloured bands.
+
+`node tools/blasters-map.js towers` ran before construction. Its JSON omits the map's block colour field, so `prepare-towers.cjs` reruns that exporter and adds the original colours from `BLASTERS.mapById('towers').boxes[i].c`, read-only. Collision coordinates remain the official export. No game or tool file was changed for this workaround.
+
+The arena has 606 shallow decoration components. Each remains within 5 cm of a collision box. The build skips two decorations that would enter reserved areas; the saved-source audit checks every remaining component against all four ramps, four teleporters, four jump pads, 24 pickups and the train corridor. It reports zero conflicts. The game continues to draw these interactive features itself.
+
+Rebuild from the repository root:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/blasters/build_assets.py -- figures
+node art/blasters/prepare-towers.cjs
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/blasters/build_towers.py
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/blasters/check-towers-clearances.py
+```
+
+Matching `.blend` sources are saved here. `validation.json` records counts; `browser-validation.json` records independent GLB measurements; `towers-source-audit.json` records the clearance audit. `walking-catalog.png` shows all eight posed exports, and `arena_towers-catalog.png` shows the decorated arena.
+
+All eight user-requested checks passed. The complete command list and results are in `../memekarts/README.md`, under “Required checks for this delivery”. The shooter audit now checks 28 models and both arenas' 218 boxes. Its live head-height check measures in the figure's local coordinates so existing lean and bob do not create false failures. Nine-blaster checks remain supported. All browser checks use the windowless launcher.
+
+No protected game code was edited. The kart `]` shortcut omission is documented in the Meme Karts README. GitHub and deployment state were left untouched; static model manifests still require the owner's normal publishing build.
+
+The supplementary `node art/check-optional-delivery.mjs` verifies the custom Towers arena in a live team match. All three remote figures have moving legs and free arms; their `Paint` materials are red or blue. No browser errors were recorded. The same check reports the kart shortcut omission and missing pie spin separately, without changing game code.
+
+The team-colour audit accounts for the bots' Classic, Pastel and Neon finishes, including the white mix applied by Pastel. Before/after SHA-256 hashes of every protected game file match.

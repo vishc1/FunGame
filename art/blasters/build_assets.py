@@ -119,7 +119,21 @@ def apply(o):
     bpy.ops.object.select_all(action='DESELECT')
     o.select_set(True)
     bpy.context.view_layer.objects.active = o
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    bpy.ops.object.transform_apply(location=o.name not in ('leg_l', 'leg_r', 'arm_l'), rotation=True, scale=True)
+
+
+def joint_mesh(objects, name, pivot):
+    """Keep all colours of a limb together around its runtime rotation joint."""
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in objects:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objects[0]
+    bpy.ops.object.join()
+    o = objects[0]
+    o.name = name
+    bpy.context.scene.cursor.location = pivot
+    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    return o
 
 
 def export(name, budget, center=True, metadata=None):
@@ -139,12 +153,13 @@ def export(name, budget, center=True, metadata=None):
         triangles += len(o.data.loop_triangles)
     assert triangles <= budget, (name, triangles, budget)
     assert all(o.type == 'MESH' for o in objects)
-    assert all(o.location.length < 1e-8 and all(abs(s - 1) < 1e-8 for s in o.scale) for o in objects)
+    assert all((o.location.length < 1e-8 or o.name in ('leg_l', 'leg_r', 'arm_l'))
+               and all(abs(s - 1) < 1e-8 for s in o.scale) for o in objects)
     bpy.ops.wm.save_as_mainfile(filepath=str(ART / (name + '.blend')))
     # Export static pieces by material, retaining semantic meshes for runtime validation.
     groups = {}
     for o in objects:
-        if o.name.startswith(('head_core', 'right_hand', 'muzzle_tip', 'grip', 'collision_', 'train_nose', 'balloon_knot', 'sword_blade', 'ramp_core')):
+        if o.name.startswith(('head_core', 'right_hand', 'leg_l', 'leg_r', 'arm_l', 'muzzle_tip', 'grip', 'collision_', 'train_nose', 'balloon_knot', 'sword_blade', 'ramp_core')):
             continue
         groups.setdefault(o.data.materials[0].name, []).append(o)
     for mat_name, group in groups.items():
@@ -182,16 +197,20 @@ def figure(k):
     # Decorative hats extend above the head without shifting its 1.56 m centre.
     # Character-right is Blender -X when facing -Y. The renderer rotates characters 180 degrees after import.
     for x in [-.175, .175]:
+        before = set(bpy.context.scene.objects)
         box('Boot', (x, -.06, .10), (.26, .38, .20), DARK)
         box('Sole', (x, -.06, .035), (.27, .39, .07), WHITE, .008)
         box('Leg', (x, .015, .43), (.215, .24, .51), BLUE if k != 5 else DARK)
         ball('Knee joint', (x, -.114, .49), (.10, .035, .08), METAL, 8, 4)
+        joint_mesh(list(set(bpy.context.scene.objects) - before), 'leg_l' if x > 0 else 'leg_r', (x, 0, .70))
     box('Torso', (0, 0, 1.02), (.57, .38, .59), PAINT, .035)
     box('Belt', (0, -.005, .745), (.59, .405, .09), DARK)
     box('Buckle', (0, -.216, .745), (.10, .04, .07), YELLOW, .01)
     # Symmetric bounds also preserve the head's X/Y origin under the loader's bbox-centering.
-    box('Left sleeve', (.33, .015, 1.05), (.18, .23, .43), PAINT, .025)
-    ball('Left hand', (.33, -.005, .79), (.09, .09, .105), SKIN, 10, 5)
+    joint_mesh([
+        box('Left sleeve', (.33, .015, 1.05), (.18, .23, .43), PAINT, .025),
+        ball('Left hand', (.33, -.005, .79), (.09, .09, .105), SKIN, 10, 5)
+    ], 'arm_l', (.33, 0, 1.265))
     box('Right sleeve', (-.33, -.11, 1.2), (.18, .43, .18), PAINT, .025)
     box('right_hand', (-.33, -.36, 1.2), (.18, .12, .145), SKIN, .025)
     box('Back shell', (0, .3075, 1.06), (.36, .225, .4), PAINT, .025)
@@ -289,7 +308,8 @@ def figure(k):
     assert 1.7999 <= hi[2] <= 2.4, (k, hi)
     assert lo[0] >= -.421 and hi[0] <= .421 and lo[1] >= -.421 and hi[1] <= .421, (k, lo, hi)
     export('fps_char_' + str(k), 2500, center=False,
-           metadata=dict(head_center=[0, 0, 1.56], body_box=[.84, .84, 1.36], facing='-Y'))
+           metadata=dict(head_center=[0, 0, 1.56], body_box=[.84, .84, 1.36], facing='-Y',
+                         joints={'leg_l': [.175, 0, .70], 'leg_r': [-.175, 0, .70], 'arm_l': [.33, 0, 1.265]}))
 
 
 def blaster(kind):

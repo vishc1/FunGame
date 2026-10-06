@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 const report = JSON.parse(await readFile('art/blasters/validation.json', 'utf8'));
 const map = JSON.parse(await readFile('art/blasters/map.json', 'utf8'));
+const towers = JSON.parse(await readFile('art/blasters/map-towers.json', 'utf8'));
 const browser = await launchArtBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
@@ -12,7 +13,7 @@ page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 try {
   await page.goto(process.env.TEST_URL || 'http://127.0.0.1:3000');
   await page.waitForFunction(() => window.THREE && window.GLTFLoader && window.BLASTERS);
-  const result = await page.evaluate(async ({ report, map }) => {
+  const result = await page.evaluate(async ({ report, map, towers }) => {
     const T = THREE, loaded = {}, result = [], colors = ['#ff5d5d', '#4da6ff', '#5ee07a', '#ffd84d', '#c77dff', '#ff9f43', '#2ee6d6', '#ff75c5'];
     const ensure = (ok, message) => { if (!ok) throw Error(message); };
     const files = await (await fetch('/models/list')).json();
@@ -37,6 +38,17 @@ try {
       ensure(Math.abs(bb.min.y) < .0001, name + ' not grounded');
       if (/fps_char_/.test(name)) {
         ensure(paint > 0, name + ' missing Paint');
+        for (const [joint, coords] of Object.entries(spec.joints)) {
+          const limb = scene.getObjectByName(joint);
+          ensure(limb, name + ' missing ' + joint);
+          const [x,y,z] = coords, pivot = limb.getWorldPosition(new T.Vector3());
+          ensure(pivot.distanceTo(new T.Vector3(x,z,-y)) < .0001, name + ' wrong pivot ' + joint);
+          const before = new T.Box3().setFromObject(limb).getCenter(new T.Vector3());
+          limb.rotation.x = .6; scene.updateMatrixWorld(true);
+          ensure(limb.getWorldPosition(new T.Vector3()).distanceTo(pivot) < .0001, name + ' pivot moved');
+          ensure(new T.Box3().setFromObject(limb).getCenter(new T.Vector3()).distanceTo(before) > .1, name + ' limb does not swing');
+          limb.rotation.x = 0; scene.updateMatrixWorld(true);
+        }
         ensure(size.y >= 1.7999 && size.y <= 2.4, name + ' decorative height');
         const head = new T.Box3().setFromObject(scene.getObjectByName('head_core')).getCenter(new T.Vector3());
         const factor = 1.56 / (head.y - bb.min.y);
@@ -97,24 +109,26 @@ try {
         const nose = new T.Box3().setFromObject(scene.getObjectByName('train_nose')).getCenter(new T.Vector3());
         ensure(nose.z < -3.9 && spec.wagons === 2, 'Train direction or car count wrong');
       }
-      if (name === 'fps_arena') {
+      if (name === 'fps_arena' || name === 'fps_arena_towers') {
+        const layout = name === 'fps_arena' ? map : towers;
         const collision = []; scene.traverse(o => { if (/^collision_/.test(o.name)) collision.push(o); });
-        ensure(collision.length === 101, 'Arena lost collision boxes');
-        for (const box of map.boxes) {
+        ensure(collision.length === layout.boxes.length, name + ' lost collision boxes');
+        for (const box of layout.boxes) {
           const o = scene.getObjectByName(`collision_${String(box.i).padStart(3, '0')}_${box.type}`);
           ensure(o, 'Missing collision ' + box.i);
           const actual = new T.Box3().setFromObject(o), c = actual.getCenter(new T.Vector3()), d = actual.getSize(new T.Vector3());
           const [x, y, z] = box.blender_center, [w, depth, h] = box.blender_size;
           ensure(c.distanceTo(new T.Vector3(x, z, -y)) < .0001 && d.distanceTo(new T.Vector3(w, h, depth)) < .0001, 'Arena box mismatch ' + box.i);
+          if (box.color) ensure(o.material.color.getHexString() === box.color.slice(1), 'Block colour mismatch ' + box.i);
         }
         // Every exported vertex is either floor paint or within 5 cm of an actual solid box.
-        const boxes = map.boxes.map(b => { const [x,y,z]=b.blender_center,[w,d,h]=b.blender_size;return new T.Box3(new T.Vector3(x-w/2-.0501,z-h/2-.0501,-y-d/2-.0501),new T.Vector3(x+w/2+.0501,z+h/2+.0501,-y+d/2+.0501)); });
+        const boxes = layout.boxes.map(b => { const [x,y,z]=b.blender_center,[w,d,h]=b.blender_size;return new T.Box3(new T.Vector3(x-w/2-.0501,z-h/2-.0501,-y-d/2-.0501),new T.Vector3(x+w/2+.0501,z+h/2+.0501,-y+d/2+.0501)); });
         scene.traverse(o => {
           if (!o.isMesh) return;
           const p = new T.Vector3(), a = o.geometry.attributes.position;
           for (let i = 0; i < a.count; i++) {
             p.fromBufferAttribute(a, i).applyMatrix4(o.matrixWorld);
-            ensure((p.y >= -.0001 && p.y <= .02 && Math.abs(p.x) <= 32.001 && Math.abs(p.z) <= 32.001) || boxes.some(b => b.containsPoint(p)), 'Arena decoration leaves allowed collision envelope: ' + o.name);
+            ensure((p.y >= -.0001 && p.y <= .02 && Math.abs(p.x) <= layout.arena.half_size+.001 && Math.abs(p.z) <= layout.arena.half_size+.001) || boxes.some(b => b.containsPoint(p)), 'Arena decoration leaves allowed collision envelope: ' + o.name);
           }
         });
       }
@@ -126,10 +140,10 @@ try {
     window.fpsArt = loaded;
     window.fpsColors = colors;
     return result;
-  }, { report, map });
-  assert.equal(result.length, 27);
+  }, { report, map, towers });
+  assert.equal(result.length, 28);
   // Contact sheets are rendered from the exported GLBs, not Blender's source viewport.
-  for (const group of ['figures', 'crouched', 'items', 'new-items', 'cannon', 'arena', 'train']) {
+  for (const group of ['figures', 'walking', 'crouched', 'items', 'new-items', 'cannon', 'arena', 'arena_towers', 'train']) {
     await page.evaluate(group => {
       const T = THREE;
       window.fpsCatalog?.remove();
@@ -138,19 +152,25 @@ try {
       document.body.appendChild(root);
       const r = new T.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(1440, 1000); r.toneMapping = T.ACESFilmicToneMapping; root.appendChild(r.domElement); r.setScissorTest(true);
       const newNames = ['fps_w_burst','fps_w_lob','fps_w_zap','fps_balloon','fps_sword'], cannonNames=['fps_w_cannon','fps_cannonball'];
-      const names = Object.keys(fpsArt).filter(n => ['figures','crouched'].includes(group) ? n.startsWith('fps_char_') : ['arena','train'].includes(group) ? n === 'fps_'+group : group === 'cannon' ? cannonNames.includes(n) : group === 'new-items' ? newNames.includes(n) : !n.startsWith('fps_char_') && !['fps_arena','fps_train',...newNames,...cannonNames].includes(n));
-      const cols = group==='cannon'?2:['figures','crouched'].includes(group) ? 4 : group === 'items' ? 5 : group === 'new-items' ? 3 : 1, rows = ['arena','train','cannon'].includes(group) ? 1 : 2;
+      const figures = ['figures','walking','crouched'].includes(group), arena = group.startsWith('arena');
+      const names = Object.keys(fpsArt).filter(n => figures ? n.startsWith('fps_char_') : arena || group === 'train' ? n === 'fps_'+group : group === 'cannon' ? cannonNames.includes(n) : group === 'new-items' ? newNames.includes(n) : !n.startsWith('fps_char_') && !['fps_arena','fps_arena_towers','fps_train',...newNames,...cannonNames].includes(n));
+      const cols = group==='cannon'?2:figures ? 4 : group === 'items' ? 5 : group === 'new-items' ? 3 : 1, rows = arena || ['train','cannon'].includes(group) ? 1 : 2;
       names.forEach((name, i) => {
         const model = fpsArt[name].clone(true);
-        if (['figures','crouched'].includes(group)) model.traverse(o => { if (o.isMesh && o.material.name === 'Paint') { o.material = o.material.clone(); o.material.color.set(fpsColors[i]); } });
+        if (figures) model.traverse(o => { if (o.isMesh && o.material.name === 'Paint') { o.material = o.material.clone(); o.material.color.set(fpsColors[i]); } });
+        if (group === 'walking') {
+          model.getObjectByName('leg_l').rotation.x=.6;
+          model.getObjectByName('leg_r').rotation.x=-.6;
+          model.getObjectByName('arm_l').rotation.x=-.48;
+        }
         if (group === 'crouched') model.scale.y=.62;
         const bb = new T.Box3().setFromObject(model), c = bb.getCenter(new T.Vector3()), size = bb.getSize(new T.Vector3());
-        const width = 1440 / cols, height = 1000 / rows, radius = Math.max(size.y * .62, size.x * .62 * height / width, size.z * .62 * height / width) * (group === 'arena' ? 1.28 : 1.05);
+        const width = 1440 / cols, height = 1000 / rows, radius = Math.max(size.y * .62, size.x * .62 * height / width, size.z * .62 * height / width) * (arena ? 1.28 : 1.05);
         const scene = new T.Scene(); scene.background = new T.Color(i % 2 ? '#26394a' : '#20313e');
         scene.add(model, new T.HemisphereLight('#deefff', '#846c4b', 1.6));
         const sun = new T.DirectionalLight('#fff3df', 2.6); sun.position.set(-10, 20, 14); scene.add(sun);
         const cam = new T.OrthographicCamera(-radius*width/height, radius*width/height, radius, -radius, .01, 1000);
-        cam.position.copy(c).add(new T.Vector3(group === 'arena' ? 1 : group === 'train' ? 1.5 : .85, group === 'arena' ? 1.4 : .48, /^fps_w_|fps_rocket|fps_train/.test(name) ? -1.5 : 1.5).multiplyScalar(Math.max(3, radius*4))); cam.lookAt(c);
+        cam.position.copy(c).add(new T.Vector3(arena ? 1 : group === 'train' ? 1.5 : .85, arena ? 1.4 : .48, /^fps_w_|fps_rocket|fps_train/.test(name) ? -1.5 : 1.5).multiplyScalar(Math.max(3, radius*4))); cam.lookAt(c);
         const x = (i % cols) * width, y = 1000 - (Math.floor(i/cols)+1)*height;
         r.setViewport(x, y, width, height); r.setScissor(x, y, width, height); r.render(scene, cam);
         const label = document.createElement('div'); label.textContent = name;
@@ -181,7 +201,7 @@ try {
       const colors = new Set(); figure.userData.parts.custom.traverse(o => { if (o.isMesh && o.material.name === 'Paint') colors.add(o.material.color.getHexString()); });
       result.paintColors.push([...colors]);
       const head = new THREE.Box3().setFromObject(figure.getObjectByName('head_core')).getCenter(new THREE.Vector3());
-      result.headHeights.push((head.y - figure.position.y) / figure.scale.y);
+      result.headHeights.push(figure.worldToLocal(head).y);
     }
     return result;
   });
@@ -193,5 +213,5 @@ try {
   assert.deepEqual([...new Set(errors)], []);
   await writeFile('art/blasters/browser-validation.json', JSON.stringify({ assets: result, integration, errors, checks: ['budgets', 'grounding', 'head alignment', 'body bounds', '64 Paint recolors', 'hand and barrel orientation', '101 arena boxes', '5 cm decoration envelope', 'body/head/outside rays', 'real eight-player match uses GLBs for arena/remote figures/held blasters'] }, null, 2) + '\n');
   console.log(JSON.stringify(result.map(r => ({ name: r.name, triangles: r.triangles })), null, 2));
-  console.log('27 assets, figure proportions/colors/crouching, orientations, new blasters/balloon/sword/cannonball, train tunnel fit, all 101 collision boxes, decoration envelope, and browser errors: PASS');
+  console.log('28 assets, named limb pivots, figure proportions/colors/crouching, weapon orientations, both arenas (218 collision boxes), decoration envelopes, and browser errors: PASS');
 } finally { await browser.close(); }

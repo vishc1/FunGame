@@ -1,0 +1,199 @@
+{
+  "pie": {
+    "triangles": 280,
+    "size": [
+      1.600000023841858,
+      1.0212609767913818,
+      1.600000023841858
+    ],
+    "floor": 0,
+    "animations": 0,
+    "parts": true
+  },
+  "flight": {
+    "samples": 92,
+    "first": {
+      "position": [
+        -452,
+        9,
+        -514
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "last": {
+      "position": [
+        -32.208945437586635,
+        35,
+        -549.6632156428203
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "moving": true,
+    "spinning": false
+  },
+  "towers": {
+    "collisionBoxes": 117,
+    "teams": 1,
+    "paint": [
+      "4da6ff",
+      "ff5d5d"
+    ],
+    "finishes": [
+      {
+        "base": "#4da6ff",
+        "skin": 0,
+        "expected": "4da6ff",
+        "actual": [
+          "4da6ff"
+        ]
+      },
+      {
+        "base": "#ff5d5d",
+        "skin": 4,
+        "expected": "ff5d5d",
+        "actual": [
+          "ff5d5d"
+        ]
+      },
+      {
+        "base": "#4da6ff",
+        "skin": 4,
+        "expected": "4da6ff",
+        "actual": [
+          "4da6ff"
+        ]
+      }
+    ],
+    "figures": 3,
+    "namedLimbs": 3,
+    "swings": [
+      {
+        "id": "a47f48fe-eded-4e73-be6a-8336aed0e5d9",
+        "samples": 2,
+        "leg": 0,
+        "arm": 0
+      },
+      {
+        "id": "9262bd7b-3f97-45bf-89b6-4f3f33258b65",
+        "samples": 2,
+        "leg": 0,
+        "arm": 0
+      },
+      {
+        "id": "6c1b9ab4-8064-426f-9d6d-240d327fdc41",
+        "samples": 2,
+        "leg": 0,
+        "arm": 0
+      },
+      {
+        "id": "ccd9aa35-ff60-49c8-a315-d48443faeba5",
+        "samples": 485,
+        "leg": 1.3999607385586854,
+        "arm": 1.1199685908469486
+      },
+      {
+        "id": "f84b946f-4b4c-4295-b061-ae0db4bb21d3",
+        "samples": 485,
+        "leg": 1.3997698110662178,
+        "arm": 1.1198158488529741
+      },
+      {
+        "id": "7469f775-639d-406d-accf-7d7e3d2bae6e",
+        "samples": 485,
+        "leg": 1.3999738325024769,
+        "arm": 1.1199790660019815
+      }
+    ]
+  },
+  "itemCycle": [
+    {
+      "weapon": "green",
+      "toast": "Test item: Green shell"
+    },
+    {
+      "weapon": "triple",
+      "toast": "Test item: Triple shells"
+    },
+    {
+      "weapon": "red",
+      "toast": "Test item: Red shell"
+    },
+    {
+      "weapon": "blue",
+      "toast": "Test item: Blue shell"
+    },
+    {
+      "weapon": "tnt",
+      "toast": "Test item: TNT"
+    },
+    {
+      "weapon": "bomb",
+      "toast": "Test mode: [ and ] give you any item.  M mutes sound."
+    },
+    {
+      "weapon": "pad",
+      "toast": "Test item: Launch pad"
+    },
+    {
+      "weapon": "egg",
+      "toast": "Test item: Egg gun"
+    },
+    {
+      "weapon": "banana",
+      "toast": "Test item: Banana"
+    },
+    {
+      "weapon": "fake",
+      "toast": "Test item: Fake item box"
+    },
+    {
+      "weapon": "fire",
+      "toast": "Test item: Fire flower"
+    },
+    {
+      "weapon": "gun",
+      "toast": "Test item: Minigun"
+    },
+    {
+      "weapon": "mush",
+      "toast": "Test item: Boost mushroom"
+    },
+    {
+      "weapon": "star",
+      "toast": "Test item: Star"
+    },
+    {
+      "weapon": "boo",
+      "toast": "Test item: Boo ghost"
+    },
+    {
+      "weapon": "bolt",
+      "toast": "Test item: Lightning"
+    },
+    {
+      "weapon": "bill",
+      "toast": "Test item: Bullet Bill"
+    },
+    {
+      "weapon": "ink",
+      "toast": "Test item: Blooper"
+    },
+    {
+      "weapon": "green",
+      "toast": "Test item: Green shell"
+    }
+  ],
+  "blockers": [
+    "public/games/memekarts.extras.js ITEMS still lists 18 items and omits pie, so ] cannot equip Cream pie. Game code left untouched; flight check uses the existing practice-room give command.",
+    "public/games/memekarts.js updateEnts does not rotate pie entities; the custom GLB moves but has no runtime spin. Static asset export intentionally has no baked animation."
+  ],
+  "errors": []
+}

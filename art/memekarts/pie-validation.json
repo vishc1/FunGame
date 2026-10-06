@@ -1,0 +1,24 @@
+{
+  "pie": {
+    "triangles": 280,
+    "budget": 300,
+    "min": [
+      -0.800000011920929,
+      -0.800000011920929,
+      0.0
+    ],
+    "max": [
+      0.800000011920929,
+      0.800000011920929,
+      1.0212609767913818
+    ],
+    "materials": [
+      "Cherry glaze",
+      "Cherry stem",
+      "Fluted pie tin",
+      "Whipped vanilla"
+    ],
+    "diameter": 1.6,
+    "origin": "dish bottom"
+  }
+}

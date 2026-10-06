@@ -32,7 +32,24 @@
       0.84,
       1.36
     ],
-    "facing": "-Y"
+    "facing": "-Y",
+    "joints": {
+      "leg_l": [
+        0.175,
+        0,
+        0.7
+      ],
+      "leg_r": [
+        -0.175,
+        0,
+        0.7
+      ],
+      "arm_l": [
+        0.33,
+        0,
+        1.265
+      ]
+    }
   },
   "fps_char_1": {
     "triangles": 1728,
@@ -69,7 +86,24 @@
       0.84,
       1.36
     ],
-    "facing": "-Y"
+    "facing": "-Y",
+    "joints": {
+      "leg_l": [
+        0.175,
+        0,
+        0.7
+      ],
+      "leg_r": [
+        -0.175,
+        0,
+        0.7
+      ],
+      "arm_l": [
+        0.33,
+        0,
+        1.265
+      ]
+    }
   },
   "fps_char_2": {
     "triangles": 1520,
@@ -104,7 +138,24 @@
       0.84,
       1.36
     ],
-    "facing": "-Y"
+    "facing": "-Y",
+    "joints": {
+      "leg_l": [
+        0.175,
+        0,
+        0.7
+      ],
+      "leg_r": [
+        -0.175,
+        0,
+        0.7
+      ],
+      "arm_l": [
+        0.33,
+        0,
+        1.265
+      ]
+    }
   },
   "fps_char_3": {
     "triangles": 1172,
@@ -140,7 +191,24 @@
       0.84,
       1.36
     ],
-    "facing": "-Y"
+    "facing": "-Y",
+    "joints": {
+      "leg_l": [
+        0.175,
+        0,
+        0.7
+      ],
+      "leg_r": [
+        -0.175,
+        0,
+        0.7
+      ],
+      "arm_l": [
+        0.33,
+        0,
+        1.265
+      ]
+    }
   },
   "fps_char_4": {
     "triangles": 1508,
@@ -175,7 +243,24 @@
       0.84,
       1.36
     ],
-    "facing": "-Y"
+    "facing": "-Y",
+    "joints": {
+      "leg_l": [
+        0.175,
+        0,
+        0.7
+      ],
+      "leg_r": [
+        -0.175,
+        0,
+        0.7
+      ],
+      "arm_l": [
+        0.33,
+        0,
+        1.265
+      ]
+    }
   },
   "fps_char_5": {
     "triangles": 1376,
@@ -209,7 +294,24 @@
       0.84,
       1.36
     ],
-    "facing": "-Y"
+    "facing": "-Y",
+    "joints": {
+      "leg_l": [
+        0.175,
+        0,
+        0.7
+      ],
+      "leg_r": [
+        -0.175,
+        0,
+        0.7
+      ],
+      "arm_l": [
+        0.33,
+        0,
+        1.265
+      ]
+    }
   },
   "fps_char_6": {
     "triangles": 1776,
@@ -243,7 +345,24 @@
       0.84,
       1.36
     ],
-    "facing": "-Y"
+    "facing": "-Y",
+    "joints": {
+      "leg_l": [
+        0.175,
+        0,
+        0.7
+      ],
+      "leg_r": [
+        -0.175,
+        0,
+        0.7
+      ],
+      "arm_l": [
+        0.33,
+        0,
+        1.265
+      ]
+    }
   },
   "fps_char_7": {
     "triangles": 1668,
@@ -278,7 +397,24 @@
       0.84,
       1.36
     ],
-    "facing": "-Y"
+    "facing": "-Y",
+    "joints": {
+      "leg_l": [
+        0.175,
+        0,
+        0.7
+      ],
+      "leg_r": [
+        -0.175,
+        0,
+        0.7
+      ],
+      "arm_l": [
+        0.33,
+        0,
+        1.265
+      ]
+    }
   },
   "fps_w_dart": {
     "triangles": 316,
@@ -2055,5 +2191,52 @@
     ],
     "diameter": 0.5,
     "highlight": true
+  },
+  "fps_arena_towers": {
+    "triangles": 11238,
+    "budget": 60000,
+    "min": [
+      -31.0,
+      -31.0,
+      0.0
+    ],
+    "max": [
+      31.0,
+      31.0,
+      9.0
+    ],
+    "materials": [
+      "Apple",
+      "Block enamel 4da6ff",
+      "Block enamel 5ee07a",
+      "Block enamel c77dff",
+      "Block enamel ff5d5d",
+      "Block enamel ff9f43",
+      "Block enamel ffd84d",
+      "Block top 4da6ff",
+      "Block top 5ee07a",
+      "Block top c77dff",
+      "Block top ff5d5d",
+      "Block top ff9f43",
+      "Block top ffd84d",
+      "Blueberry",
+      "Book pages",
+      "Cardboard.001",
+      "Ink navy.001",
+      "Ivory printed marks",
+      "Paper tape.001",
+      "Playmat ink roads",
+      "Playmat warm cork",
+      "Playmat woven squares",
+      "Ruler yellow"
+    ],
+    "collision_boxes": 117,
+    "floor_size": [
+      60,
+      60
+    ],
+    "units": "metres; no rescaling",
+    "decoration_components": 606,
+    "omitted_reserved_decoration": 2
   }
 }

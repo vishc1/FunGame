@@ -1,6 +1,6 @@
 # Meme Karts Blender assets
 
-All 23 original required assets are exported in `../../public/models/`, along with six environment models, three decks and three ramps: 35 GLBs. Each asset has an editable `.blend` source here. The optional arena was not generated.
+All 23 original required assets are exported in `../../public/models/`, along with six environment models, three decks, three ramps and the Cream pie: 36 GLBs. Each asset has an editable `.blend` source here. The optional kart arena was not generated.
 
 `contact-sheet.png` shows the full set. `validation.json` records Blender triangle counts, budgets, grounded bounds, wheel names, and materials. The parent `../runtime-report.json` contains the independent Three.js browser checks; `../runtime-game.png` shows the models in the running game.
 
@@ -109,3 +109,44 @@ Rebuild all six, or just the Stadium ramp:
 - `node art/blasters/check-assets.mjs`: PASS, all 27 shooter exports and eight-player integration.
 
 No game code or GitHub state was changed. Protected-file SHA-256 hashes match the starting baseline. `npm --ignore-scripts start` skipped the manifest-writing prestart hook and found port 3000 already occupied, so art checks used the existing local server. Driving and shooting harnesses started their own isolated servers. Static deployment manifests were left untouched; they will need the owner's normal build step when publishing the new files.
+
+## Cream pie delivery
+
+`pie.glb` contains a folded silver tin, a whipped-cream dome and a glazed red cherry with a green stem. It is 1.6 m across, with its origin at the dish bottom and all geometry above Z = 0. Plain Principled materials provide the metal, cream and cherry finishes; there are no textures, rigs or baked animations.
+
+| Export | Triangles | Budget |
+| --- | ---: | ---: |
+| `pie.glb` | 280 | 300 |
+
+The 36 kart/item/environment exports now total 24,958 triangles. Source: `pie.blend`; build script: `build_pie.py`; measurements: `pie-validation.json`; exported-model preview: `pie-catalog.png`.
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/memekarts/build_pie.py
+```
+
+### Preview shortcut blocker
+
+`public/games/memekarts.extras.js` still has 18 entries in its `ITEMS` array and omits `pie`. Pressing `]` wraps from Blooper to Green shell without offering Cream pie. The renderer and server support it. The game-code owner needs to add `['pie', 'Cream pie']` to that shortcut list. No game code was edited.
+
+For now, start a Meme Karts practice lobby and run `G.send({type:'give', weapon:'pie'})` in the browser console. Hold SPACE to aim and release to throw. The separate art diagnostic uses that existing practice-room command when the shortcut skips the pie, and records the shortcut issue in `../optional-delivery-validation.json`.
+
+The current `public/games/memekarts.js` entity update also has no rotation branch for `pie`. The model loads and moves, but does not spin. This needs a renderer change by the game-code owner; the GLB stays static as required by the brief.
+
+`node art/check-optional-delivery.mjs` observed 92 frames of the player's custom pie moving through its lobbed trajectory, with zero browser errors. It uses the existing practice-room positioning command to keep the throw away from immediate collisions. `pie-aim.png` and `pie-in-flight.png` capture the live check. Both game-code issues above are reported separately from asset validation.
+
+### Required checks for this delivery
+
+All eight requested checks passed:
+
+- `node tools/fullrun.js`: all games and scenarios.
+- `node tools/kart-items-check.js`: all 19 logical items, including the pie.
+- `node tools/solo.js memekarts 25`: completed in-game, zero browser errors.
+- `node tools/solo.js blasters 25`: completed in-game, zero browser errors.
+- `MAP=towers node tools/solo.js blasters 25`: completed in-game, zero browser errors.
+- `node tools/blasters-hit.js`: 28 confirmed hits from 36 fired darts (78%; required threshold 70%), zero browser errors.
+- `node art/check-environment.mjs`: all three maps, deck/ramp geometry and landmark animation at 30/60/120 fps, including reduced motion.
+- `node art/blasters/check-assets.mjs`: all 28 shooter exports, joint pivots, team-compatible Paint materials and both arenas' 218 collision boxes.
+
+Browser checks use the windowless launcher. The start attempt skipped the manifest-writing `prestart` hook and found port 3000 occupied; a fresh server on port 3093 was used for the supplementary live art check. GitHub and deployment files were left untouched.
+
+SHA-256 hashes of all protected game files match the starting baseline. The temporary port-3093 test server was stopped after validation; the pre-existing port-3000 server was left running.
