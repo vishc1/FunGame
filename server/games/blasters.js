@@ -242,6 +242,7 @@ module.exports = {
         });
       },
       destroy() {},
+      __power() { return pick[0]; }, // for tools/blasters-items-check.js only: the power-up plinth's state
     };
   },
 };

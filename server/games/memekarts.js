@@ -80,7 +80,7 @@ const WEAPONS = [
   { id: 'red', name: 'Red shell', color: '#ff4040', w: 8, fire(g, k) { shoot(g, k, 'red', 380, { life: 8, r: 9, dmg: 1, name: 'Red shell' }); } },
   { id: 'blue', name: 'Blue shell', color: '#3b6cff', w: 3, fire(g, k) { shoot(g, k, 'blue', 400, { life: 12, r: 11, name: 'Blue shell' }); } },
   { id: 'tnt', name: 'TNT', color: '#e0442a', w: 7, fire(g, k) { const p = g.behind(k, 34); g.spawn({ kind: 'tnt', x: p.x, y: p.y, owner: k.id, life: 2, name: 'TNT' }); } },
-  { id: 'bomb', name: 'Bob-omb', color: '#222', w: 6, fire(g, k) { shoot(g, k, 'bomb', 340, { life: 1.0, r: 10, fly: 1.0, name: 'Bob-omb' }); } },
+  { id: 'bomb', name: 'Bob-omb', color: '#222', w: 6, fire(g, k) { shoot(g, k, 'bomb', 340, { life: 4, r: 10, fly: 1.0, name: 'Bob-omb' }); } }, // life outlasts the 1 s flight; landing sets the real fuse
   { id: 'pad', name: 'Launch pad', color: '#4da6ff', w: 6, fire(g, k) { g.spawn({ kind: 'pad', x: k.x, y: k.y, owner: k.id, life: 20, name: 'Launch pad' }); k.padCd = 0.8; } },
   { id: 'egg', name: 'Egg gun', color: '#fff3c4', w: 7, fire(g, k) { for (const da of [-0.25, 0, 0.25]) shoot(g, k, 'egg', 480, { life: 2, r: 7, name: 'Egg gun' }, da); } },
   { id: 'banana', name: 'Banana', color: '#ffe135', w: 9, fire(g, k) { const p = g.behind(k, 34); g.spawn({ kind: 'banana', x: p.x, y: p.y, owner: k.id, life: 30, name: 'Banana' }); } },
@@ -113,8 +113,9 @@ function explode(g, x, y, r, dmg, by, name, el) { // el: the height it went off 
 function projHit(e, g) {
   for (const k of g.karts.values()) {
     if (k.dead || k.air || k.ghost > 0) continue;
-    if (k.id === e.owner && e.age < 0.4) continue;
-    if (Math.hypot(k.x - e.x, k.y - e.y) < (e.r || 8) + R && Math.abs(k.el - (e.el || 0)) < 24) { KINDS[e.kind].hit(e, g, k); return false; }
+    const d = Math.hypot(k.x - e.x, k.y - e.y);
+    if (k.id === e.owner && !e.cleared) { if (d > (e.r || 8) + R + 6 || e.age > 0.4) e.cleared = true; continue; } // your own shot cannot hit you until it has left your kart; after that a rebound can
+    if (d < (e.r || 8) + R && Math.abs(k.el - (e.el || 0)) < 24) { KINDS[e.kind].hit(e, g, k); return false; }
   }
   return true;
 }
@@ -184,7 +185,8 @@ const KINDS = {
   },
   bomb: { // lobbed, then sits with a lit fuse, explodes on contact or timeout
     update(e, g, dt) {
-      if (e.fly > 0) { e.fly -= dt; e.x += e.vx * dt; e.y += e.vy * dt; e.z = Math.sin(Math.min(1, 1 - e.fly) * Math.PI) * 60; if (g.wallHit(e, e.r, 0.3)) { e.fly = 0; } if (e.fly <= 0) { e.z = 0; e.el = g.surf(e.x, e.y); e.vx = e.vy = 0; e.life = 1.6; } return true; }
+      if (e.fly > 0) { e.fly -= dt; e.x += e.vx * dt; e.y += e.vy * dt; e.z = Math.sin(Math.min(1, 1 - e.fly) * Math.PI) * 60; if (g.wallHit(e, e.r, 0.3)) { e.fly = 0; } if (e.fly <= 0) { e.z = 0; e.el = g.surf(e.x, e.y); e.vx = e.vy = 0; e.life = 1.6; }
+        if (e.z >= 30) return true; /* high in its arc it sails over karts; low down it can hit one */ }
       for (const k of g.karts.values()) { if (k.dead || k.air || k.ghost > 0) continue; if (k.id === e.owner && e.age < 0.8) continue; if (Math.hypot(k.x - e.x, k.y - e.y) < 24 && Math.abs(k.el - (e.el || 0)) < 24) { explode(g, e.x, e.y, 100, 2, e.owner, 'Bob-omb', e.el); return false; } }
       return true;
     },
@@ -419,6 +421,7 @@ module.exports = {
         api.emit('g:state', snap());
       },
       destroy() {},
+      __state() { return { karts, ents, damage: g.damage }; }, // for tools/kart-items-check.js only
     };
     function snap() {
       return {
