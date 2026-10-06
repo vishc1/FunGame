@@ -67,6 +67,7 @@ module.exports = {
       if (by && by !== v && by.power === 'mega') amount *= 2;
       amount = Math.max(1, Math.round(amount));
       const soak = Math.min(v.armor, Math.round(amount * 0.5)); v.armor -= soak; v.hp -= amount - soak;
+      if (by && by !== v && by.power === 'vamp' && !by.dead) by.hp = Math.min(150, by.hp + amount); // Vampire Darts
       if (by && by !== v) { by.dmg += amount; const h = v.hurtBy.get(byId) || { n: 0, t: 0 }; h.n += amount; h.t = t; v.hurtBy.set(byId, h); }
       const dead = v.hp <= 0;
       if (by && by !== v) api.to(byId, 'g:event', { type: 'dmg', v: v.id, n: amount, head: head ? 1 : 0, kill: dead ? 1 : 0, x: r2(v.x), y: r2(v.y + 1.3), z: r2(v.z) });
@@ -114,7 +115,7 @@ module.exports = {
       const pts = {}; list.forEach((p, i) => { pts[p.id] = Math.max(1, list.length - i) + Math.floor(p.kills / 4); });
       const nm = (p) => (api.player(p.id) || { name: '?' }).name;
       const top = (f) => list.slice().sort((a, b) => f(b) - f(a))[0];
-      const awards = []; if (list.length) { const a = top((p) => p.heads), b = top((p) => p.best), c = top((p) => p.dmg); if (a.heads) awards.push(['Sharpshooter', a.id, a.heads + ' headshots']); if (b.best >= 2) awards.push(['On a roll', b.id, b.best + ' in a row']); if (c.dmg) awards.push(['Heavy hitter', c.id, c.dmg + ' damage']); }
+      const awards = []; if (list.length) { const a = top((p) => p.heads), b = top((p) => p.best), c = top((p) => p.dmg); if (a.heads) awards.push(['Sharpshooter', a.id, a.heads + ' headshots']); if (b.best >= 2) awards.push(['On a roll', b.id, b.best + ' in a row']); if (c.dmg) awards.push(['Heavy hitter', c.id, c.dmg + ' damage']); const d = top((p) => p.rares || 0); if (d.rares) awards.push(['Lucky', d.id, d.rares + ' rare power-up' + (d.rares > 1 ? 's' : '')]); }
       if (TEAMS) { // winning team: everyone on it gets a bonus, and the match summary is about the teams
         const wt = tk[0] === tk[1] ? -1 : tk[0] > tk[1] ? 0 : 1;
         for (const p of list) if (p.team === wt) pts[p.id] += 3;
@@ -139,7 +140,7 @@ module.exports = {
         } else if (m.type === 'hello') { if (fin(m.lvl)) p.lvl = Math.max(1, Math.min(99, m.lvl | 0)); if (fin(m.ch)) p.ch = Math.abs(m.ch | 0) % 8; if (fin(m.sk)) p.sk = Math.abs(m.sk | 0) % 16;
           if (fin(m.lo) && LOADOUT.includes(m.lo | 0)) { p.lo = m.lo | 0; if (!p.dead && t - p.bornT < 4) starter(p); } } // a loadout chosen in the first seconds of a life applies right away
         else if (m.type === 'switch') { const w = m.w | 0; if (!p.dead && w >= 0 && w < WEAPONS.length && p.own[w] && w !== p.w) { p.w = w; p.reloadT = 0; p.nextFire = Math.max(p.nextFire, t + 0.3); } }
-        else if (m.type === 'reload') { const def = WEAPONS[p.w]; if (!p.dead && p.reloadT <= 0 && p.mag[p.w] < def.mag && p.res[p.w] > 0) p.reloadT = def.reload; }
+        else if (m.type === 'reload') { const def = WEAPONS[p.w]; if (!p.dead && p.power !== 'inf' && p.reloadT <= 0 && p.mag[p.w] < def.mag && p.res[p.w] > 0) p.reloadT = def.reload; }
         else if (m.type === 'drop') { // throw the blaster you are holding on the floor in front of you (not the sidearm)
           const w = p.w; if (p.dead || w === 0 || !p.own[w]) return;
           const f = B.dirFrom(p.yaw, 0); let dx = p.x + f[0] * 1.7, dz = p.z + f[2] * 1.7; const lim = MAP.size - 1;
@@ -161,7 +162,7 @@ module.exports = {
         else if (m.type === 'fire') {
           const def = WEAPONS[p.w];
           if (p.dead || (m.w | 0) !== p.w || p.reloadT > 0 || p.mag[p.w] <= 0 || t < p.nextFire - 0.06) return;
-          p.mag[p.w]--; p.nextFire = t + 1 / def.rate; p.prot = 0;
+          if (p.power !== 'inf') p.mag[p.w]--; p.nextFire = t + 1 / def.rate; p.prot = 0; // Bottomless Mag: darts are free
           const o = Array.isArray(m.o) && m.o.length === 3 && m.o.every(fin) && Math.hypot(m.o[0] - p.x, m.o[1] - p.y, m.o[2] - p.z) < 4 ? m.o : [p.x, p.y + P.EYE, p.z];
           let d = Array.isArray(m.d) && m.d.length === 3 && m.d.every(fin) ? m.d : B.dirFrom(p.yaw, p.pitch); const dl = Math.hypot(d[0], d[1], d[2]) || 1; d = [d[0] / dl, d[1] / dl, d[2] / dl];
           if (def.projectile) { rockets.push({ id: ++seq, o: pid, w: p.w, g: def.gravity || 0, x: o[0], y: o[1], z: o[2], vx: d[0] * def.speed, vy: d[1] * def.speed + (def.gravity ? 2.5 : 0), vz: d[2] * def.speed, life: def.gravity ? 6 : 4, age: 0 }); api.emit('g:event', { type: 'shot', id: pid, w: p.w }); return; }
@@ -190,7 +191,7 @@ module.exports = {
         for (let i = 0; i < pick.length; i++) {
           const k = pick[i], d = k.def;
           if (d.kind === 'power') { // cycles: announce, appear, get taken, wait
-            if (k.t > 0) { const before = k.t; k.t -= dt; if (before > POWER_WARN && k.t <= POWER_WARN) { k.kind = Object.keys(POWERS)[Math.floor(Math.random() * 4)]; api.emit('g:event', { type: 'powersoon', kind: k.kind }); } if (k.t <= 0 && !k.kind) k.kind = Object.keys(POWERS)[Math.floor(Math.random() * 4)]; continue; }
+            if (k.t > 0) { const before = k.t; k.t -= dt; if (before > POWER_WARN && k.t <= POWER_WARN) { k.kind = B.rollPower(); api.emit('g:event', { type: 'powersoon', kind: k.kind }); } if (k.t <= 0 && !k.kind) k.kind = B.rollPower(); continue; }
           } else if (k.t > 0) { k.t -= dt; continue; }
           for (const p of players.values()) {
             if (p.dead || Math.hypot(p.x - d.x, p.z - d.z) > 1.35 || Math.abs(p.y - d.y) > 1.5) continue;
@@ -198,7 +199,7 @@ module.exports = {
             else if (d.kind === 'mega') { if (p.hp >= 150) continue; p.hp = Math.min(150, p.hp + 100); }
             else if (d.kind === 'armor') { if (p.armor >= 100) continue; p.armor = Math.min(100, p.armor + 50); }
             else if (d.kind === 'weapon') give(p, d.w);
-            else if (d.kind === 'power') { if (k.kind === 'tank') { p.hp = 150; p.armor = 100; } else { p.power = k.kind; p.powerT = POWERS[k.kind].time; } api.emit('g:event', { type: 'power', id: p.id, kind: k.kind }); }
+            else if (d.kind === 'power') { if (POWERS[k.kind].rare) p.rares = (p.rares || 0) + 1; if (k.kind === 'tank') { p.hp = 150; p.armor = 100; } else { p.power = k.kind; p.powerT = POWERS[k.kind].time; } api.emit('g:event', { type: 'power', id: p.id, kind: k.kind }); }
             api.emit('g:event', { type: 'pickup', id: p.id, i, kind: d.kind, w: d.w, pk: d.kind === 'power' ? k.kind : undefined });
             k.t = d.kind === 'power' ? POWER_EVERY : d.respawn; if (d.kind === 'power') k.kind = null; break;
           }

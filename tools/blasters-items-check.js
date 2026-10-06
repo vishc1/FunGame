@@ -44,7 +44,7 @@ for (const map of B.MAPS) {
   }
   // --- the power-up cycle and each power
   const pi = map.pickups.indexOf(at('power'));
-  for (const kind of ['mega', 'speed', 'ghost', 'tank']) {
+  for (const kind of Object.keys(B.POWERS)) {
     w = world(map.id); w.park('a'); w.park('b');
     let n = 0; while (!w.state.pw.up && n < 30 * 60) { w.tick(); n++; } ok(T + `the power-up appears (took ${(n / 30).toFixed(0)} s)`, w.state.pw.up === 1 && w.ev.some((e) => e.type === 'powersoon'));
     { const k = w.game.__power(); k.kind = kind; } // force which power is on the plinth this time
@@ -55,10 +55,22 @@ for (const map of B.MAPS) {
     if (kind === 'mega') { w.put('a', 10, 0, 28); w.put('b', 12, 0, 28); w.tick(); w.shoot('a', 'b'); ok(T + 'Mega Darts: a dart does double, 40', w.me('b').hp === 60, 'hp=' + w.me('b').hp); }
     if (kind !== 'tank') { w.park('a'); w.tick(30 * (B.POWERS[kind].time + 1)); ok(T + `${name} wears off after ${B.POWERS[kind].time} s`, w.me('a').pw === 0 && w.ev.some((e) => e.type === 'powerend' && e.to === 'a')); }
     if (kind === 'mega') { w.put('a', 10, 0, 28); w.put('b', 12, 0, 28); w.tick(); w.shoot('a', 'b'); ok(T + 'Mega Darts: back to 20 per dart afterwards', w.me('b').hp === 40, 'hp=' + w.me('b').hp); }
+    if (kind === 'inf') { w = world(map.id); w.park('a'); w.park('b'); let n2 = 0; while (!w.state.pw.up && n2 < 30 * 60) { w.tick(); n2++; } w.game.__power().kind = 'inf'; go(w, 'a', pk2); w.put('a', 10, 0, 28); w.put('b', 15, 0, 28); w.tick();
+      for (let i = 0; i < 20; i++) w.shoot('a', 'b'); ok(T + 'Bottomless Mag: 20 shots and the magazine is still full', w.me('a').m === B.WEAPONS[0].mag, 'm=' + w.me('a').m);
+      w.game.onInput('a', { type: 'reload' }); w.tick(); ok(T + 'Bottomless Mag: reloading does nothing', w.me('a').rl === 0); }
+    if (kind === 'vamp') { w = world(map.id); w.park('a'); w.park('b'); let n2 = 0; while (!w.state.pw.up && n2 < 30 * 60) { w.tick(); n2++; } w.put('a', 10, 0, 28); w.put('b', 15, 0, 28); w.tick(); w.shoot('b', 'a'); w.shoot('b', 'a'); ok(T + 'Vampire Darts: start hurt at 60', w.me('a').hp === 60);
+      w.game.__power().kind = 'vamp'; go(w, 'a', pk2); w.put('a', 10, 0, 28); w.tick(); w.shoot('a', 'b'); ok(T + 'Vampire Darts: a 20 hit heals 20', w.me('a').hp === 80, 'hp=' + w.me('a').hp); }
+    if (kind === 'moon') { const jx = [14, 20, 3, -14].find((x) => !B.overlap(x, 0.01, 28, map) && !B.overlap(x, 5, 28, map)), b1 = B.newBody(jx, 0, 28), b2 = B.newBody(jx, 0, 28); b2.grav = 0.33; /* open floor, no ceiling */ let h1 = 0, h2 = 0; for (let i = 0; i < 120; i++) { B.stepPlayer(b1, { f: 0, s: 0, yaw: 0, jump: i === 1 }, 1 / 60, 1, map); B.stepPlayer(b2, { f: 0, s: 0, yaw: 0, jump: i === 1 }, 1 / 60, 1, map); h1 = Math.max(h1, b1.y); h2 = Math.max(h2, b2.y); }
+      ok(T + 'Moon Boots: a jump goes about three times as high', h2 > h1 * 2.7 && h2 < h1 * 3.3, `${h1.toFixed(2)} m -> ${h2.toFixed(2)} m`); }
+    if (kind === 'bighead') { const hitNormal = B.rayPlayer(0, 1.56 + 0.45, -5, 0, 0, 1, 0, 0, 0, 10, 0), hitBig = B.rayPlayer(0, 1.56 + 0.45, -5, 0, 0, 1, 0, 0, 0, 10, 0, 0.62);
+      ok(T + 'Big Head Mode: a ray that misses a normal head hits a big one', (!hitNormal || !hitNormal.head) && hitBig && hitBig.head); }
   }
   // --- the power-up only announces when it is about to come back
   w = world(map.id); w.park('a'); w.park('b'); let n = 0; while (!w.state.pw.up && n < 30 * 60) { w.tick(); n++; } const announced = w.ev.filter((e) => e.type === 'powersoon').length; ok(T + 'exactly one announcement before it appears', announced === 1, 'announcements=' + announced);
 }
+// --- rarity: about one power-up in four is rare, and every power can come up
+{ const seen = {}; for (let i = 0; i < 20000; i++) { const k = B.rollPower(); seen[k] = (seen[k] || 0) + 1; } const rare = Object.keys(B.POWERS).filter((k) => B.POWERS[k].rare), rareN = rare.reduce((a, k) => a + (seen[k] || 0), 0), total = Object.values(seen).reduce((a, b) => a + b, 0);
+  ok('about one power-up in four is rare', rareN / total > 0.21 && rareN / total < 0.29, (100 * rareN / total).toFixed(1) + '%'); ok('every power-up can come up', Object.keys(B.POWERS).every((k) => seen[k] > 0), JSON.stringify(seen)); }
 // --- the hitscan blasters: listed damage per dart, headshot multipliers, range limits and distance falloff
 {
   const w0 = () => { const w = world('fort'); w.put('a', 10, 0, 28); w.put('b', 15, 0, 28); w.tick(); return w; };

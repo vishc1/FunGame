@@ -177,7 +177,14 @@
     speed: { name: 'Sugar Rush', time: 12, color: '#ffd84d', tip: 'Run much faster and dash twice as often for 12 seconds.' },
     ghost: { name: 'Ghost', time: 10, color: '#b8c4ff', tip: 'Nearly invisible for 10 seconds.' },
     tank: { name: 'Bubble Wrap', time: 0, color: '#5ee07a', tip: 'Instantly 150 health and full armour.' },
+    // rare ones: one cycle in four puts a rare power on the plinth instead of a common one
+    inf: { name: 'Bottomless Mag', time: 12, color: '#ffffff', rare: true, tip: 'Darts never run out and nothing needs reloading for 12 seconds. Yes, the cannon too.' },
+    vamp: { name: 'Vampire Darts', time: 12, color: '#ff2d55', rare: true, tip: 'Every hit you land heals you by the damage you did, for 12 seconds.' },
+    moon: { name: 'Moon Boots', time: 15, color: '#9fe8ff', rare: true, tip: 'Low gravity for 15 seconds: jump three times as high and float down. Reach any roof.' },
+    bighead: { name: 'Big Head Mode', time: 12, color: '#ff9f43', rare: true, tip: 'Everyone else grows a giant head for 12 seconds. Headshots for days.' },
   };
+  const POWER_RARE_CHANCE = 0.25;
+  const rollPower = (r = Math.random(), r2 = Math.random()) => { const keys = Object.keys(POWERS), pool = keys.filter((k) => !!POWERS[k].rare === (r < POWER_RARE_CHANCE)); return pool[Math.floor(r2 * pool.length)]; };
   const PICKUP_INFO = {
     health: { name: 'Snack', tip: '+30 health.' }, mega: { name: 'Lunchbox', tip: '+100 health, up to 150.' }, armor: { name: 'Cardboard Armour', tip: '+50 armour. Armour soaks up half of every hit.' },
   };
@@ -229,7 +236,7 @@
       const along = p.vx * wx + p.vz * wz, add = Math.max(0, Math.min(P.AIR_ACCEL * dt, max - along)); p.vx += wx * add; p.vz += wz * add;
     }
     if (inp.jump) { if (p.ground) { p.vy = P.JUMP; p.jumps = 1; p.ground = false; p.jumped = 1; } else if (p.jumps < 2) { p.vy = P.JUMP * 0.95; p.jumps = 2; p.jumped = 2; } }
-    p.vy -= P.G * dt; if (p.vy < -40) p.vy = -40;
+    const grav = P.G * (p.grav || 1); p.vy -= grav * dt; if (p.vy < -40 * (p.grav || 1)) p.vy = -40 * (p.grav || 1); // p.grav < 1: Moon Boots
     // which ramp are we standing on before moving (for launch ramps)
     const before = p.ground ? rampUnder(p.x, p.z, map) : null, onRamp = before && Math.abs(p.y - before.h) < 0.08 ? before.r : null;
     // horizontal moves with step-up. A ramp surface more than one step above your feet is a wall (its sides and high end).
@@ -289,9 +296,9 @@
   // can a point see another point?
   function los(ax, ay, az, bx, by, bz, map = MAP) { const dx = bx - ax, dy = by - ay, dz = bz - az, d = Math.hypot(dx, dy, dz); if (d < 1e-6) return true; return rayMap(ax, ay, az, dx / d, dy / d, dz / d, d, map) === Infinity; }
   // ray vs one standing player (body cylinder approximated by a box, plus a head sphere). Returns { t, head } or null.
-  function rayPlayer(ox, oy, oz, dx, dy, dz, px, py, pz, max, crouched) {
-    let hit = null; const headY = crouched ? 1.0 : 1.56, top = crouched ? 0.82 : 1.36; // crouching makes you a smaller target
-    { const hx = ox - px, hy = oy - (py + headY), hz = oz - pz, b = hx * dx + hy * dy + hz * dz, c = hx * hx + hy * hy + hz * hz - 0.27 * 0.27, disc = b * b - c; if (disc >= 0) { const t = -b - Math.sqrt(disc); if (t > 0 && t < max) hit = { t, head: true }; } }
+  function rayPlayer(ox, oy, oz, dx, dy, dz, px, py, pz, max, crouched, headR = 0.27) {
+    let hit = null; const headY = crouched ? 1.0 : 1.56, top = crouched ? 0.82 : 1.36; // crouching makes you a smaller target; headR grows in Big Head Mode
+    { const hx = ox - px, hy = oy - (py + headY), hz = oz - pz, b = hx * dx + hy * dy + hz * dz, c = hx * hx + hy * hy + hz * hz - headR * headR, disc = b * b - c; if (disc >= 0) { const t = -b - Math.sqrt(disc); if (t > 0 && t < max) hit = { t, head: true }; } }
     { const b0 = [px - 0.42, py, pz - 0.42], b1 = [px + 0.42, py + top, pz + 0.42], o = [ox, oy, oz], d = [dx, dy, dz]; let t0 = 0, t1 = max, ok = true;
       for (let i = 0; i < 3 && ok; i++) { if (Math.abs(d[i]) < 1e-9) { if (o[i] < b0[i] || o[i] > b1[i]) ok = false; } else { let a = (b0[i] - o[i]) / d[i], c = (b1[i] - o[i]) / d[i]; if (a > c) { const s = a; a = c; c = s; } if (a > t0) t0 = a; if (c < t1) t1 = c; if (t0 > t1) ok = false; } }
       if (ok && t0 > 0 && (!hit || t0 < hit.t)) hit = { t: t0, head: false }; }
@@ -299,5 +306,5 @@
   }
   const falloff = (w, dist) => { if (!w.falloff) return 1; const [a, b, m] = w.falloff; return dist <= a ? 1 : dist >= b ? m : 1 - ((dist - a) / (b - a)) * (1 - m); };
 
-  return { MAP, MAPS, mapById, WEAPONS, MELEE, LOADOUT, POWERS, PICKUP_INFO, P, newBody, stepPlayer, overlap, rampAt, rampUnder, dirFrom, rayMap, los, rayPlayer, falloff };
+  return { MAP, MAPS, mapById, WEAPONS, MELEE, LOADOUT, POWERS, rollPower, PICKUP_INFO, P, newBody, stepPlayer, overlap, rampAt, rampUnder, dirFrom, rayMap, los, rayPlayer, falloff };
 });

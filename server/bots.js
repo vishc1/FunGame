@@ -111,6 +111,7 @@ const BRAINS = {
     // move with the same physics a player uses
     const sin = Math.sin(m.yaw), cos = Math.cos(m.yaw), f = mx * -sin + mz * -cos, st = mx * cos + mz * -sin;
     const jump = (tgt && Math.random() < 0.05) || (Math.hypot(body.vx, body.vz) < 0.6 && Math.random() < 0.25);
+    body.grav = me.pw === 'moon' ? 0.33 : 1;
     for (let i = 0; i < 6; i++) BL.stepPlayer(body, { f, s: st, yaw: m.yaw, jump: i === 0 && jump, dash: i === 0 && tgt && Math.random() < 0.03 }, c.dt / 6, me.pw === 'speed' ? 1.45 : 1, MAP);
     // bots bonk you with the foam sword when you get in their face, and sometimes crouch while shooting
     if (tgt && td < BL.MELEE.range && Math.abs(tgt.y - body.y) < 1.2 && every(b, 'sword', BL.MELEE.cd + 0.5, c.dt)) out.push({ type: 'melee', hits: [tgt.id] });
