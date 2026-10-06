@@ -25,7 +25,7 @@ Browser party games for friends on a call. Node + Express + Socket.IO server, va
   - `node tools/blasters-hit.js`, `node tools/blasters-shots.js` — shooter: a real browser's shot must register; captures the main screens.
   - `node tools/mp.js` — two separate browsers in one room for both primary games: each sees the other move, shots land. `node tools/home.js` — home page and lobby game switch. `node tools/blasters-rules.js`, `node tools/blasters-map-check.js` — shooter rules and map physics without a browser.
   - `node tools/refresh.js [gameId]` — real page refresh in the lobby and mid-game, plus the Leave button.
-  - `node tools/kart-items-check.js` — every Meme Karts item fired at placed karts, asserting the logical outcome (hits, homing, bounces, steals, immunities, timers). `node tools/blasters-items-check.js` — every shooter pickup, power-up and hitscan blaster rule on both maps. Run both after touching items.
+  - `node tools/kart-items-check.js` — every Meme Karts item fired at placed karts, asserting the logical outcome (hits, homing, bounces, steals, immunities, timers). `node tools/blasters-items-check.js` — every shooter pickup, power-up and hitscan blaster rule on both maps. Run both after touching items. Power-ups: `POWERS` in the shared file; `rare: true` ones come up through `rollPower()` (25%): `inf` (no ammo use, server), `vamp` (heal on hit, server), `moon` (`body.grav` in the shared physics, set by the client and the bots), `bighead` (client-only: bigger `headR` in `rayPlayer` and scaled heads).
   - `node tools/items.js [mapId]`, `node tools/playnow.js`, `node tools/shapes.js`, `node tools/glbinfo.js <file.glb>`.
 
 ## Conventions
