@@ -75,7 +75,7 @@ function blRoute(from, to, map) {
   let step = prev[a]; if (prev[step] !== step) step = prev[step];
   return step === z ? to : { x: (step % n) - S + 0.5, z: ((step / n) | 0) - S + 0.5 };
 }
-const BL_AIM = [0.42, 0.6, 0.34, 0.45, 1, 0.4, 1, 0.5, 1]; // per weapon; the Splash Lobber (6) is never chosen by bots // chance a bot's shot connects at point-blank, per weapon
+const BL_AIM = [0.32, 0.46, 0.26, 0.34, 1, 0.3, 1, 0.38, 1]; // eased: bots land about a quarter fewer darts than before // per weapon; the Splash Lobber (6) is never chosen by bots // chance a bot's shot connects at point-blank, per weapon
 
 const BRAINS = {
   blasters(b, s, c) {
@@ -114,7 +114,7 @@ const BRAINS = {
     body.grav = me.pw === 'moon' ? 0.33 : 1;
     for (let i = 0; i < 6; i++) BL.stepPlayer(body, { f, s: st, yaw: m.yaw, jump: i === 0 && jump, dash: i === 0 && tgt && Math.random() < 0.03 }, c.dt / 6, me.pw === 'speed' ? 1.45 : 1, MAP);
     // bots bonk you with the foam sword when you get in their face, and sometimes crouch while shooting
-    if (tgt && td < BL.MELEE.range && Math.abs(tgt.y - body.y) < 1.2 && every(b, 'sword', BL.MELEE.cd + 0.5, c.dt)) out.push({ type: 'melee', hits: [tgt.id] });
+    if (tgt && td < BL.MELEE.range && Math.abs(tgt.y - body.y) < 1.2 && every(b, 'sword', BL.MELEE.cd + 1.2, c.dt)) out.push({ type: 'melee', hits: [tgt.id] });
     if (every(b, 'crouchFlip', 2.5, c.dt)) m.cr = tgt && td > 10 && Math.random() < 0.35 ? 1 : 0;
     out.push({ type: 'p', x: +body.x.toFixed(2), y: +body.y.toFixed(2), z: +body.z.toFixed(2), yaw: +m.yaw.toFixed(2), pitch: +m.pitch.toFixed(2), cr: m.cr || 0 });
     // weapon choice, reload, fire
@@ -124,14 +124,14 @@ const BRAINS = {
     if (m.swT > 0) m.swT -= c.dt;
     if (me.m === 0 && !me.rl) { if (me.r !== 0) out.push({ type: 'reload' }); else if (me.w !== 0) out.push({ type: 'switch', w: 0 }); return out; }
     m.fireCd -= c.dt;
-    if (tgt && m.see > 0.4 && m.fireCd <= 0 && !me.rl && me.m > 0) {
-      m.fireCd = Math.max(1 / wdef.rate, wdef.auto ? 0.22 : 0.5) + rnd(0, 0.25);
+    if (tgt && m.see > 0.7 && m.fireCd <= 0 && !me.rl && me.m > 0) { // bots take 0.7 s to notice you and pause a little longer between shots
+      m.fireCd = Math.max(1 / wdef.rate, wdef.auto ? 0.3 : 0.6) + rnd(0.05, 0.4);
       const d = [tgt.x - ex, (wdef.projectile ? tgt.y + 0.2 : tgt.y + 1.1) - ey, tgt.z - ez], dl = Math.hypot(d[0], d[1], d[2]) || 1, dir = d.map((v) => v / dl);
       const msg = { type: 'fire', w: me.w, o: [+ex.toFixed(2), +ey.toFixed(2), +ez.toFixed(2)], d: dir.map((v) => +v.toFixed(3)), hits: [] };
       if (wdef.projectile) { const e = 0.07; msg.d = [dir[0] + rnd(-e, e), dir[1] + rnd(-e, e), dir[2] + rnd(-e, e)]; }
       else {
-        const chance = BL_AIM[me.w] * Math.max(0.3, Math.min(1, 1.25 - td / 45));
-        if (Math.random() < chance) { const n = wdef.pellets > 1 ? Math.max(1, Math.round(wdef.pellets * Math.max(0.2, 1 - td / 16) * rnd(0.5, 1))) : 1; msg.hits.push({ id: tgt.id, n, h: Math.random() < 0.15 ? 1 : 0 }); msg.e = [tgt.x, tgt.y + 1.1, tgt.z]; }
+        const chance = BL_AIM[me.w] * Math.max(0.22, Math.min(1, 1.15 - td / 40)); // and they miss more at range
+        if (Math.random() < chance) { const n = wdef.pellets > 1 ? Math.max(1, Math.round(wdef.pellets * Math.max(0.2, 1 - td / 16) * rnd(0.5, 1))) : 1; msg.hits.push({ id: tgt.id, n, h: Math.random() < 0.08 ? 1 : 0 }); msg.e = [tgt.x, tgt.y + 1.1, tgt.z]; }
         else { const miss = BL.rayMap(ex, ey, ez, dir[0], dir[1], dir[2], 80, MAP); const tt = miss === Infinity ? 80 : miss; msg.e = [ex + dir[0] * tt + rnd(-1, 1), ey + dir[1] * tt + rnd(0, 1.5), ez + dir[2] * tt + rnd(-1, 1)]; }
       }
       out.push(msg);

@@ -645,7 +645,7 @@ registerGame('memekarts', (G) => {
       gl.style.left = l + 'px'; gl.style.top = t + 'px'; gl.style.width = w + 'px'; gl.style.height = h + 'px';
       renderer.setSize(Math.max(1, w), Math.max(1, h), false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix();
       if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(Math.max(1, w), Math.max(1, h)); }
-      const uiScale=Math.max(.65,Math.min(1.15,h/800)), dpr=Math.min(devicePixelRatio||1,2);
+      const uiScale=Math.max(.65,Math.min(1.6,Math.min(w/1280,h/800)*1.15)), dpr=Math.min(devicePixelRatio||1,2); /* the HUD grows with the screen: readable on a monitor */
       W=w/uiScale;H=h/uiScale;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr*uiScale,0,0,dpr*uiScale,0,0);
     }
     const camTarget = new THREE.Vector3(), lookTarget = new THREE.Vector3(); let wasBack = false;
