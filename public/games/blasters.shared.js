@@ -182,6 +182,7 @@
     vamp: { name: 'Vampire Darts', time: 12, color: '#ff2d55', rare: true, tip: 'Every hit you land heals you by the damage you did, for 12 seconds.' },
     moon: { name: 'Moon Boots', time: 15, color: '#9fe8ff', rare: true, tip: 'Low gravity for 15 seconds: jump three times as high and float down. Reach any roof.' },
     bighead: { name: 'Big Head Mode', time: 12, color: '#ff9f43', rare: true, tip: 'Everyone else grows a giant head for 12 seconds. Headshots for days.' },
+    shadow: { name: 'Shadow Ninja', time: 8, color: '#8a2be2', rare: true, tip: 'Completely invisible for 8 seconds, and every hit you land is a one-tap. Nobody sees it coming.' },
   };
   const POWER_RARE_CHANCE = 0.25;
   const rollPower = (r = Math.random(), r2 = Math.random()) => { const keys = Object.keys(POWERS), pool = keys.filter((k) => !!POWERS[k].rare === (r < POWER_RARE_CHANCE)); return pool[Math.floor(r2 * pool.length)]; };

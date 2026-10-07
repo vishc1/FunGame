@@ -408,14 +408,15 @@ registerGame('blasters', (G) => {
         v.crs = (v.crs || 0) + ((p.cr ? 1 : 0) - (v.crs || 0)) * Math.min(1, dt * 14); v.cr = p.cr;
         { const sy = (1 - 0.38 * v.crs) * (1 - 0.22 * v.squash + idle) * (airborne && vyNow > 1 ? 1.05 : 1), sxz = 1 + 0.14 * v.squash - idle * 0.5; v.g.scale.set(sxz, sy, sxz); u.label.scale.y = 0.42 / sy; } /* crouching squashes the toy; so does landing hard */
         const down=B.rayMap(v.x,v.y+.12,v.z,0,-1,0,40,MAP),height=Number.isFinite(down)?Math.max(0,down-.12):40;
-        u.contact.visible=Number.isFinite(down)&&height<5&&p.pw!=='ghost'&&B.rampAt(v.x,v.z,MAP)<0;
+        const unseen = (p.pw === 'ghost' || p.pw === 'shadow') && !mate; /* ghosts are faint, shadow ninjas are gone; teammates still see both */
+        u.contact.visible=Number.isFinite(down)&&height<5&&!unseen&&B.rampAt(v.x,v.z,MAP)<0;
         u.contact.position.y=(.018-height)/v.g.scale.y;u.contact.material.opacity=.28/(1+height);u.contact.scale.setScalar(1+Math.min(height,5)*.12);
         if (pr.head) pr.head.rotation.x = v.pitch * 0.8 + v.flinch * 0.35;
         if (pr.legL) { const sw = airborne ? 0 : Math.sin(v.walk) * Math.min(0.7, spd / 8), tuck = airborne && !reducedMotion ? 0.55 : 0; pr.legL.rotation.x = sw + tuck; pr.legR.rotation.x = -sw + tuck * 0.6; pr.legL.position.z = -Math.sin(sw) * 0.3; pr.legR.position.z = Math.sin(sw) * 0.3; if (pr.armL) { pr.armL.rotation.x = -sw * 0.8 - (airborne ? 0.5 : 0); pr.armL.rotation.z = airborne ? 0.6 : 0; } }
         pr.gun.rotation.x = v.pitch - v.recoil * 0.35 - (v.swing > 0 ? Math.sin(v.swing * Math.PI) * 1.3 : 0); if (pr.gunW !== p.w) { pr.gunW = p.w; pr.gun.clear(); pr.gun.add(weaponModel(p.w)); u.look = ''; }
         if (v.sk >= 7) paintSkin(u.paint, fc, v.sk, time + v.x);
         { const want = mySt() && mySt().pw === 'bighead' ? 2.3 : 1; if (u.parts.head && Math.abs(u.parts.head.scale.x - want) > 0.01) { const k = u.parts.head.scale.x + (want - u.parts.head.scale.x) * Math.min(1, dt * 6); u.parts.head.scale.setScalar(k); } } // Big Head Mode: in the holder's eyes everyone's head balloons
-        setOpacity(v.g, p.pw === 'ghost' && !mate ? 0.1 : 1); u.label.visible = p.pw !== 'ghost' || mate; u.label.material.depthTest = !mate; u.label.renderOrder = mate ? 999 : 0; u.bubble.visible = !!p.prot; drawTag(u, pl.name, fc, p.hp, p.lvl); /* teammates: tag shows through walls */
+        setOpacity(v.g, p.pw === 'shadow' && !mate ? 0 : p.pw === 'ghost' && !mate ? 0.1 : 1); v.g.visible = v.g.visible && !(p.pw === 'shadow' && !mate); u.label.visible = !unseen; u.label.material.depthTest = !mate; u.label.renderOrder = mate ? 999 : 0; u.bubble.visible = !!p.prot; drawTag(u, pl.name, fc, p.hp, p.lvl); /* teammates: tag shows through walls */
         if (p.pw === 'mega' && Math.random() < 0.5) spark(v.x + (Math.random() - 0.5) * 0.6, v.y + Math.random() * 1.8, v.z + (Math.random() - 0.5) * 0.6, 0, 1.2, 0, '#ff4dd8', 0.5, 0);
         if (p.pw === 'speed' && spd > 3 && Math.random() < 0.6) spark(v.x, v.y + 0.3, v.z, 0, 0.6, 0, '#ffd84d', 0.45, 0);
       }
@@ -652,38 +653,38 @@ registerGame('blasters', (G) => {
     }
     // top: timer, goal, leader, power-up
     const lead = s.ps.slice().sort((a, b) => b.k - a.k)[0];
-    rr(cx - 150, 10, 300, 40, 12, 'rgba(8,12,20,.72)'); txt(`${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')}`, cx, 30, { size: 20, color: s.t <= 20 ? '#ff6b6b' : '#fff', stroke: false });
-    if (s.tm) { txt(`RED ${s.tk[0]}`, cx - 96, 30, { size: 16, weight: 900, color: TEAM[0].color, stroke: false }); txt(`BLUE ${s.tk[1]}`, cx + 96, 30, { size: 16, weight: 900, color: TEAM[1].color, stroke: false }); txt(`first to ${s.goal}`, cx, 46, { size: 9.5, color: '#9aa3b8', stroke: false }); }
-    else { if (st) txt(`You ${st.k}`, cx - 96, 30, { size: 14, color: G.player(G.me).color, stroke: false }); if (lead) txt(`${lead.id === G.me ? 'Leading' : nm(lead.id)} ${lead.k}/${s.goal}`, cx + 92, 30, { size: 12, color: '#ffd84d', stroke: false }); }
-    if (s.pw.up) { const pc = POWERS[s.pw.kind] || POWERS.mega; txt(`${pc.rare ? '★★ RARE: ' : '★ '}${pc.name} is on ${MAP.powerSpot || 'the tower roof'}`, cx, 64, { size: pc.rare ? 14 : 13, weight: pc.rare ? 900 : 400, color: pc.rare ? '#ffd84d' : pc.color }); } else if (s.pw.in <= 15) txt(`★ Power-up in ${s.pw.in}s`, cx, 64, { size: 13, color: '#ffffff' });
+    rr(cx - 190, 10, 380, 50, 14, 'rgba(8,12,20,.72)'); txt(`${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')}`, cx, 35, { size: 26, weight: 900, color: s.t <= 20 ? '#ff6b6b' : '#fff', stroke: false });
+    if (s.tm) { txt(`RED ${s.tk[0]}`, cx - 118, 35, { size: 20, weight: 900, color: TEAM[0].color, stroke: false }); txt(`BLUE ${s.tk[1]}`, cx + 118, 35, { size: 20, weight: 900, color: TEAM[1].color, stroke: false }); txt(`first to ${s.goal}`, cx, 54, { size: 11, color: '#9aa3b8', stroke: false }); }
+    else { if (st) txt(`You ${st.k}`, cx - 118, 35, { size: 18, weight: 800, color: G.player(G.me).color, stroke: false }); if (lead) txt(`${lead.id === G.me ? 'Leading' : nm(lead.id)} ${lead.k}/${s.goal}`, cx + 114, 35, { size: 15, weight: 700, color: '#ffd84d', stroke: false }); }
+    if (s.pw.up) { const pc = POWERS[s.pw.kind] || POWERS.mega; txt(`${pc.rare ? '★★ RARE: ' : '★ '}${pc.name} is on ${MAP.powerSpot || 'the tower roof'}`, cx, 78, { size: pc.rare ? 17 : 16, weight: pc.rare ? 900 : 700, color: pc.rare ? '#ffd84d' : pc.color }); } else if (s.pw.in <= 15) txt(`★ Power-up in ${s.pw.in}s`, cx, 78, { size: 16, weight: 700, color: '#ffffff' });
     // item card (what did I just pick up)
     if (card) { card.t -= dt; if (card.t <= 0) card = null; else { // big, high-contrast, wrapped onto two lines if needed, and it stays up for six seconds
       const cw = Math.min(W - 24, 760), a = Math.min(1, card.t * 2), x0 = cx - cw / 2 + 26; ctx.font = '600 19px system-ui, sans-serif';
       const words = card.tip.split(' '), lines = ['']; for (const w of words) { const tryLine = (lines[lines.length - 1] + ' ' + w).trim(); if (ctx.measureText(tryLine).width > cw - 52 && lines[lines.length - 1]) lines.push(w); else lines[lines.length - 1] = tryLine; }
-      const ch = 66 + lines.length * 26; ctx.globalAlpha = a; rr(cx - cw / 2, 82, cw, ch, 18, 'rgba(8,12,20,.9)', card.color); rr(cx - cw / 2, 82, 10, ch, 5, card.color);
-      txt(card.name, x0, 110, { size: 26, weight: 900, align: 'left', color: card.color, stroke: false });
-      lines.forEach((l, i) => txt(l, x0, 146 + i * 26, { size: 19, weight: 600, align: 'left', color: '#fff', stroke: false }));
+      const ch = 66 + lines.length * 26, cy0 = H - 150 - ch; /* sits at the bottom, just above the health and ammo panels */ ctx.globalAlpha = a; rr(cx - cw / 2, cy0, cw, ch, 18, 'rgba(8,12,20,.9)', card.color); rr(cx - cw / 2, cy0, 10, ch, 5, card.color);
+      txt(card.name, x0, cy0 + 28, { size: 26, weight: 900, align: 'left', color: card.color, stroke: false });
+      lines.forEach((l, i) => txt(l, x0, cy0 + 64 + i * 26, { size: 19, weight: 600, align: 'left', color: '#fff', stroke: false }));
       ctx.globalAlpha = 1; } }
     for (let i = banners.length - 1; i >= 0; i--) { banners[i].t -= dt; if (banners[i].t <= 0) banners.splice(i, 1); }
     banners.forEach((b, i) => { const age = b.d - b.t, sc = reducedMotion ? 1 : 1 + Math.max(0, 0.25 - age) * 2; ctx.save(); ctx.globalAlpha = Math.min(1, b.t * 3); ctx.translate(cx, 168 + i * 36); ctx.scale(sc, sc); txt(b.text, 0, 0, { size: 28 - i * 5, color: b.color, weight: 900 }); ctx.restore(); });
     // kill feed
     for (let i = feed.length - 1; i >= 0; i--) { feed[i].t -= dt; if (feed[i].t <= 0) feed.splice(i, 1); }
-    feed.forEach((f, i) => txt(f.text, W - 16, 86 + i * 19, { size: 12.5, align: 'right', color: f.mine ? '#ffd84d' : `rgba(255,255,255,${Math.min(1, f.t)})` }));
-    // bottom-left: health + armour
+    feed.forEach((f, i) => txt(f.text, W - 16, 88 + i * 22, { size: 15, align: 'right', color: f.mine ? '#ffd84d' : `rgba(255,255,255,${Math.min(1, f.t)})` }));
+    // bottom-left: health + armour. Big type: you must be able to read your health and what you are holding at a glance.
     if (st) {
-      rr(16, H - 74, 230, 58, 14, 'rgba(8,12,20,.72)');
-      txt('♥', 34, H - 55, { size: 18, color: '#ff5d5d', stroke: false }); rr(50, H - 63, 150, 14, 7, 'rgba(255,255,255,.12)'); if (st.hp > 0) rr(50, H - 63, 150 * Math.min(1, st.hp / 100), 14, 7, st.hp > 100 ? '#7dffb0' : st.hp > 35 ? '#5ee07a' : '#ff4d4d'); txt(String(st.hp), 222, H - 55, { size: 15, stroke: false });
-      txt('⛨', 34, H - 33, { size: 15, color: '#4da6ff', stroke: false }); rr(50, H - 40, 150, 10, 5, 'rgba(255,255,255,.12)'); if (st.ar > 0) rr(50, H - 40, 150 * st.ar / 100, 10, 5, '#4da6ff'); txt(String(st.ar), 222, H - 34, { size: 12, color: '#9fc8ff', stroke: false });
-      if (st.pw) txt(`${POWERS[st.pw].name}  ${st.pwt}s`, 131, H - 90, { size: 14, color: POWERS[st.pw].color, weight: 800 });
-      const cdf = Math.max(0, Math.min(1, 1 - body.dashCd / P.DASH_CD)); rr(16, H - 12, 230, 5, 2, 'rgba(255,255,255,.12)'); rr(16, H - 12, 230 * cdf, 5, 2, cdf >= 1 ? '#35e6ff' : '#5a6b80'); 
-      // bottom-right: ammo + weapon slots
-      rr(W - 246, H - 74, 230, 58, 14, 'rgba(8,12,20,.72)');
-      txt(String(me.mag), W - 150, H - 46, { size: 34, weight: 900, align: 'right', color: me.mag === 0 ? '#ff5d5d' : '#fff', stroke: false }); txt(st.r < 0 ? '/ ∞' : `/ ${st.r}`, W - 142, H - 42, { size: 15, align: 'left', color: '#aab', stroke: false });
-      txt(def.name, W - 30, H - 58, { size: 12, align: 'right', color: '#ffd84d', stroke: false });
-      for (let i = 0; i < WEAPONS.length; i++) { const own = (st.own >> i) & 1, x = W - 140 + i * 14; rr(x, H - 36, 11, 11, 3, i === me.w ? '#ffd84d' : own ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.12)'); }
-      txt(`1-${WEAPONS.length} / wheel`, W - 84, H - 16, { size: 9.5, color: 'rgba(255,255,255,.5)', stroke: false });
-      { const mf = Math.max(0, Math.min(1, 1 - (me.nextMelee - time) / MELEE.cd)); txt('E', W - 262, H - 45, { size: 13, weight: 800, color: mf >= 1 ? '#ffb347' : '#5a6b80' }); ctx.beginPath(); ctx.arc(W - 262, H - 45, 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * mf); ctx.strokeStyle = mf >= 1 ? '#ffb347' : '#5a6b80'; ctx.lineWidth = 3; ctx.stroke(); }
-      if (body.crouched && me.alive) txt(body.slideT > 0 ? 'SLIDING' : 'CROUCHED', 131, H - 108, { size: 11, color: '#9fc8ff' });
+      rr(16, H - 100, 290, 84, 16, 'rgba(8,12,20,.74)');
+      txt('♥', 38, H - 72, { size: 24, color: '#ff5d5d', stroke: false }); rr(58, H - 83, 180, 20, 10, 'rgba(255,255,255,.12)'); if (st.hp > 0) rr(58, H - 83, 180 * Math.min(1, st.hp / 100), 20, 10, st.hp > 100 ? '#7dffb0' : st.hp > 35 ? '#5ee07a' : '#ff4d4d'); txt(String(st.hp), 276, H - 72, { size: 24, weight: 900, stroke: false });
+      txt('⛨', 38, H - 40, { size: 20, color: '#4da6ff', stroke: false }); rr(58, H - 50, 180, 14, 7, 'rgba(255,255,255,.12)'); if (st.ar > 0) rr(58, H - 50, 180 * st.ar / 100, 14, 7, '#4da6ff'); txt(String(st.ar), 276, H - 41, { size: 18, weight: 800, color: '#9fc8ff', stroke: false });
+      if (st.pw) txt(`${POWERS[st.pw].name}  ${st.pwt}s`, 161, H - 116, { size: 19, color: POWERS[st.pw].color, weight: 900 });
+      const cdf = Math.max(0, Math.min(1, 1 - body.dashCd / P.DASH_CD)); rr(16, H - 12, 290, 6, 3, 'rgba(255,255,255,.12)'); rr(16, H - 12, 290 * cdf, 6, 3, cdf >= 1 ? '#35e6ff' : '#5a6b80');
+      // bottom-right: ammo + weapon slots. The blaster's name is the biggest thing in the panel.
+      rr(W - 326, H - 100, 310, 84, 16, 'rgba(8,12,20,.74)');
+      txt(def.name, W - 30, H - 76, { size: 22, weight: 900, align: 'right', color: '#ffd84d', stroke: false });
+      txt(String(me.mag), W - 200, H - 40, { size: 40, weight: 900, align: 'right', color: me.mag === 0 ? '#ff5d5d' : '#fff', stroke: false }); txt(st.r < 0 ? '/ ∞' : `/ ${st.r}`, W - 192, H - 36, { size: 18, align: 'left', color: '#aab', stroke: false });
+      for (let i = 0; i < WEAPONS.length; i++) { const own = (st.own >> i) & 1, x = W - 160 + i * 15; rr(x, H - 44, 12, 12, 3, i === me.w ? '#ffd84d' : own ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.12)'); }
+      if (!TOUCH) txt(`1-${WEAPONS.length} or wheel to switch`, W - 94, H - 22, { size: 11, color: 'rgba(255,255,255,.55)', stroke: false });
+      { const mf = Math.max(0, Math.min(1, 1 - (me.nextMelee - time) / MELEE.cd)); txt('E', W - 348, H - 56, { size: 15, weight: 800, color: mf >= 1 ? '#ffb347' : '#5a6b80' }); ctx.beginPath(); ctx.arc(W - 348, H - 56, 16, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * mf); ctx.strokeStyle = mf >= 1 ? '#ffb347' : '#5a6b80'; ctx.lineWidth = 3; ctx.stroke(); }
+      if (body.crouched && me.alive) txt(body.slideT > 0 ? 'SLIDING' : 'CROUCHED', 161, H - 138, { size: 15, weight: 800, color: '#9fc8ff' });
     }
     // death screen
     if (st && st.dead && !over) { ctx.fillStyle = 'rgba(10,0,0,.4)'; ctx.fillRect(0, 0, W, H); txt(deathBy || 'Tagged out!', cx, cy - 40, { size: 30, color: '#ff6b6b', weight: 900 }); txt(`Back in ${Math.max(0, st.dead).toFixed(1)}s`, cx, cy, { size: 18 }); txt(`${CHAR_NAMES[charIdx]} in ${SKINS[skinIdx].name}   •   press L for the locker`, cx, cy + 34, { size: 13, color: '#cfd6e4' }); }

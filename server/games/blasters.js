@@ -66,6 +66,7 @@ module.exports = {
       if (v.dead || v.prot > 0 || over) return 0;
       const by = players.get(byId);
       if (TEAMS && by && by !== v && by.team === v.team) return 0; // no friendly fire
+      if (by && by !== v && by.power === 'shadow') amount = 999; // Shadow Ninja: one-tap
       if (by && by !== v && by.power === 'mega') amount *= 2;
       amount = Math.max(1, Math.round(amount));
       const soak = Math.min(v.armor, Math.round(amount * 0.5)); v.armor -= soak; v.hp -= amount - soak;

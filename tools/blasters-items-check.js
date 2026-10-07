@@ -62,6 +62,9 @@ for (const map of B.MAPS) {
       w.game.__power().kind = 'vamp'; go(w, 'a', pk2); w.put('a', 10, 0, 28); w.tick(); w.shoot('a', 'b'); ok(T + 'Vampire Darts: a 20 hit heals 20', w.me('a').hp === 80, 'hp=' + w.me('a').hp); }
     if (kind === 'moon') { const jx = [14, 20, 3, -14].find((x) => !B.overlap(x, 0.01, 28, map) && !B.overlap(x, 5, 28, map)), b1 = B.newBody(jx, 0, 28), b2 = B.newBody(jx, 0, 28); b2.grav = 0.33; /* open floor, no ceiling */ let h1 = 0, h2 = 0; for (let i = 0; i < 120; i++) { B.stepPlayer(b1, { f: 0, s: 0, yaw: 0, jump: i === 1 }, 1 / 60, 1, map); B.stepPlayer(b2, { f: 0, s: 0, yaw: 0, jump: i === 1 }, 1 / 60, 1, map); h1 = Math.max(h1, b1.y); h2 = Math.max(h2, b2.y); }
       ok(T + 'Moon Boots: a jump goes about three times as high', h2 > h1 * 2.7 && h2 < h1 * 3.3, `${h1.toFixed(2)} m -> ${h2.toFixed(2)} m`); }
+    if (kind === 'shadow') { w = world(map.id); w.park('a'); w.park('b'); let n2 = 0; while (!w.state.pw.up && n2 < 30 * 60) { w.tick(); n2++; } w.game.__power().kind = 'shadow'; go(w, 'a', pk2); w.put('a', 10, 0, 28); w.put('b', 15, 0, 28); w.tick(); w.shoot('a', 'b');
+      ok(T + 'Shadow Ninja: one dart tags a full-health player', w.me('b').dead > 0 && w.me('a').k === 1, `hp=${w.me('b').hp} dead=${w.me('b').dead}`);
+      w.tick(30 * 4); w.put('b', 15, 0, 28); w.tick(); w.shoot('b', 'a'); ok(T + 'Shadow Ninja: the ninja still takes normal damage', w.me('a').hp === 80, 'hp=' + w.me('a').hp); }
     if (kind === 'bighead') { const hitNormal = B.rayPlayer(0, 1.56 + 0.45, -5, 0, 0, 1, 0, 0, 0, 10, 0), hitBig = B.rayPlayer(0, 1.56 + 0.45, -5, 0, 0, 1, 0, 0, 0, 10, 0, 0.62);
       ok(T + 'Big Head Mode: a ray that misses a normal head hits a big one', (!hitNormal || !hitNormal.head) && hitBig && hitBig.head); }
   }

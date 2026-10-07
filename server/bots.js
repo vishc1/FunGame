@@ -87,7 +87,7 @@ const BRAINS = {
     const body = m.body, ex = body.x, ey = body.y + P.EYE, ez = body.z, MAP = BL.mapById(s.map) || BL.MAP; // the room's map comes with every snapshot
     // nearest enemy this bot can actually see
     let tgt = null, td = 1e9;
-    for (const o of s.ps) { if (o.id === b.id || o.dead || (s.tm && o.tm === me.tm)) continue; const d = Math.hypot(o.x - body.x, o.y - body.y, o.z - body.z); if (d > 55 || d >= td || (o.pw === 'ghost' && d > 9)) continue; if (BL.los(ex, ey, ez, o.x, o.y + 1.2, o.z, MAP)) { tgt = o; td = d; } }
+    for (const o of s.ps) { if (o.id === b.id || o.dead || (s.tm && o.tm === me.tm)) continue; const d = Math.hypot(o.x - body.x, o.y - body.y, o.z - body.z); if (d > 55 || d >= td || (o.pw === 'ghost' && d > 9) || o.pw === 'shadow') continue; if (BL.los(ex, ey, ez, o.x, o.y + 1.2, o.z, MAP)) { tgt = o; td = d; } }
     if (tgt) { m.see += c.dt; m.last = { x: tgt.x, z: tgt.z, t: 6 }; } else { m.see = 0; if (m.last && (m.last.t -= c.dt) <= 0) m.last = null; }
     // where to go
     const ground = (i) => s.pk[i] && MAP.pickups[i].y < 0.5;
