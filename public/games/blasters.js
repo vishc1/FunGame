@@ -478,6 +478,7 @@ registerGame('blasters', (G) => {
       // the HUD scales with the screen: designed for about 1280x800, it grows on a monitor and shrinks a little on a phone
       const uiScale = Math.max(0.75, Math.min(1.7, Math.min(w / 1280, h / 800) * 1.15)), dpr = Math.min(window.devicePixelRatio || 1, 2);
       W = w / uiScale; H = h / uiScale; canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); ctx.setTransform(dpr * uiScale, 0, 0, dpr * uiScale, 0, 0);
+      document.documentElement.style.setProperty('--bl-hud', uiScale); /* the touch overlay keeps clear of the scaled panels */
     }
     const proj = new THREE.Vector3(); let preview = null;
     return {
@@ -663,7 +664,7 @@ registerGame('blasters', (G) => {
     if (card) { card.t -= dt; if (card.t <= 0) card = null; else { // big, high-contrast, wrapped onto two lines if needed, and it stays up for six seconds
       const cw = Math.min(W - 24, 760), a = Math.min(1, card.t * 2), x0 = cx - cw / 2 + 26; ctx.font = '600 19px system-ui, sans-serif';
       const words = card.tip.split(' '), lines = ['']; for (const w of words) { const tryLine = (lines[lines.length - 1] + ' ' + w).trim(); if (ctx.measureText(tryLine).width > cw - 52 && lines[lines.length - 1]) lines.push(w); else lines[lines.length - 1] = tryLine; }
-      const ch = 66 + lines.length * 26, cy0 = H - 172 - ch; /* sits at the bottom, just above the health and ammo panels */ ctx.globalAlpha = a; rr(cx - cw / 2, cy0, cw, ch, 18, 'rgba(8,12,20,.9)', card.color); rr(cx - cw / 2, cy0, 10, ch, 5, card.color);
+      const ch = 66 + lines.length * 26, cy0 = H - 16 - 106 - 50 - ch; /* above the bottom panels and the power-up timer */ /* sits at the bottom, just above the health and ammo panels */ ctx.globalAlpha = a; rr(cx - cw / 2, cy0, cw, ch, 18, 'rgba(8,12,20,.9)', card.color); rr(cx - cw / 2, cy0, 10, ch, 5, card.color);
       txt(card.name, x0, cy0 + 28, { size: 26, weight: 900, align: 'left', color: card.color, stroke: false });
       lines.forEach((l, i) => txt(l, x0, cy0 + 64 + i * 26, { size: 19, weight: 600, align: 'left', color: '#fff', stroke: false }));
       ctx.globalAlpha = 1; } }
@@ -671,22 +672,23 @@ registerGame('blasters', (G) => {
     banners.forEach((b, i) => { const age = b.d - b.t, sc = reducedMotion ? 1 : 1 + Math.max(0, 0.25 - age) * 2; ctx.save(); ctx.globalAlpha = Math.min(1, b.t * 3); ctx.translate(cx, 168 + i * 36); ctx.scale(sc, sc); txt(b.text, 0, 0, { size: 28 - i * 5, color: b.color, weight: 900 }); ctx.restore(); });
     // kill feed
     for (let i = feed.length - 1; i >= 0; i--) { feed[i].t -= dt; if (feed[i].t <= 0) feed.splice(i, 1); }
-    feed.forEach((f, i) => txt(f.text, W - 16, 88 + i * 22, { size: 15, align: 'right', color: f.mine ? '#ffd84d' : `rgba(255,255,255,${Math.min(1, f.t)})` }));
-    // bottom-left: health + armour. Big type: you must be able to read your health and what you are holding at a glance.
+    feed.forEach((f, i) => txt(f.text, TOUCH ? W - 300 : W - 16, 88 + i * 22, { size: 15, align: 'right', color: f.mine ? '#ffd84d' : `rgba(255,255,255,${Math.min(1, f.t)})` }));
+    // bottom panels. Big type: you must be able to read your health and what you are holding at a glance. Everything hangs off PANEL_TOP.
     if (st) {
-      rr(16, H - 122, 320, 106, 18, 'rgba(8,12,20,.76)', '#ffffff22');
-      txt('♥', 40, H - 86, { size: 28, color: '#ff5d5d', stroke: false }); rr(62, H - 98, 190, 24, 12, 'rgba(255,255,255,.12)'); if (st.hp > 0) rr(62, H - 98, 190 * Math.min(1, st.hp / 100), 24, 12, st.hp > 100 ? '#7dffb0' : st.hp > 35 ? '#5ee07a' : '#ff4d4d'); txt(String(st.hp), 300, H - 86, { size: 30, weight: 900, stroke: false });
-      txt('⛨', 40, H - 46, { size: 24, color: '#4da6ff', stroke: false }); rr(62, H - 58, 190, 18, 9, 'rgba(255,255,255,.12)'); if (st.ar > 0) rr(62, H - 58, 190 * st.ar / 100, 18, 9, '#4da6ff'); txt(String(st.ar), 300, H - 47, { size: 22, weight: 800, color: '#9fc8ff', stroke: false });
-      if (st.pw) txt(`${POWERS[st.pw].name}  ${st.pwt}s`, 176, H - 138, { size: 20, color: POWERS[st.pw].color, weight: 900 });
+      const PANEL_H = 106, PT = H - 16 - PANEL_H; // panel top
+      rr(16, PT, 320, PANEL_H, 18, 'rgba(8,12,20,.76)', '#ffffff22');
+      txt('♥', 40, PT + 36, { size: 28, color: '#ff5d5d', stroke: false }); rr(62, PT + 24, 190, 24, 12, 'rgba(255,255,255,.12)'); if (st.hp > 0) rr(62, PT + 24, 190 * Math.min(1, st.hp / 100), 24, 12, st.hp > 100 ? '#7dffb0' : st.hp > 35 ? '#5ee07a' : '#ff4d4d'); txt(String(st.hp), 300, PT + 36, { size: 30, weight: 900, stroke: false });
+      txt('⛨', 40, PT + 76, { size: 24, color: '#4da6ff', stroke: false }); rr(62, PT + 64, 190, 18, 9, 'rgba(255,255,255,.12)'); if (st.ar > 0) rr(62, PT + 64, 190 * st.ar / 100, 18, 9, '#4da6ff'); txt(String(st.ar), 300, PT + 75, { size: 22, weight: 800, color: '#9fc8ff', stroke: false });
+      if (st.pw) txt(`${POWERS[st.pw].name}  ${st.pwt}s`, 176, PT - 16, { size: 20, color: POWERS[st.pw].color, weight: 900 });
       const cdf = Math.max(0, Math.min(1, 1 - body.dashCd / P.DASH_CD)); rr(16, H - 12, 320, 6, 3, 'rgba(255,255,255,.12)'); rr(16, H - 12, 320 * cdf, 6, 3, cdf >= 1 ? '#35e6ff' : '#5a6b80');
-      // bottom-right: ammo + weapon slots. The blaster's name is the biggest thing in the panel.
-      rr(W - 396, H - 122, 380, 106, 18, 'rgba(8,12,20,.76)', '#ffd84d55');
-      txt(def.name, W - 32, H - 92, { size: 28, weight: 900, align: 'right', color: '#ffd84d', stroke: false });
-      txt(String(me.mag), W - 236, H - 44, { size: 50, weight: 900, align: 'right', color: me.mag === 0 ? '#ff5d5d' : '#fff', stroke: false }); txt(st.r < 0 ? '/ ∞' : `/ ${st.r}`, W - 226, H - 40, { size: 22, align: 'left', color: '#aab', stroke: false });
-      for (let i = 0; i < WEAPONS.length; i++) { const own = (st.own >> i) & 1, x = W - 178 + i * 17; rr(x, H - 54, 14, 14, 4, i === me.w ? '#ffd84d' : own ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.12)'); }
-      if (!TOUCH) txt(`1-${WEAPONS.length} or wheel to switch`, W - 104, H - 28, { size: 12, color: 'rgba(255,255,255,.6)', stroke: false });
-      { const mf = Math.max(0, Math.min(1, 1 - (me.nextMelee - time) / MELEE.cd)); txt('E', W - 420, H - 66, { size: 17, weight: 800, color: mf >= 1 ? '#ffb347' : '#5a6b80' }); ctx.beginPath(); ctx.arc(W - 420, H - 66, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * mf); ctx.strokeStyle = mf >= 1 ? '#ffb347' : '#5a6b80'; ctx.lineWidth = 3; ctx.stroke(); }
-      if (body.crouched && me.alive) txt(body.slideT > 0 ? 'SLIDING' : 'CROUCHED', 176, H - 160, { size: 16, weight: 800, color: '#9fc8ff' });
+      // right: ammo + weapon slots. The blaster's name is the biggest thing in the panel; the dart count sits left of the slot row so a three-digit reserve never touches it.
+      rr(W - 396, PT, 380, PANEL_H, 18, 'rgba(8,12,20,.76)', '#ffd84d55');
+      txt(def.name, W - 32, PT + 30, { size: 28, weight: 900, align: 'right', color: '#ffd84d', stroke: false });
+      txt(String(me.mag), W - 270, PT + 78, { size: 50, weight: 900, align: 'right', color: me.mag === 0 ? '#ff5d5d' : '#fff', stroke: false }); txt(st.r < 0 ? '/ ∞' : `/ ${st.r}`, W - 262, PT + 82, { size: 22, align: 'left', color: '#aab', stroke: false });
+      for (let i = 0; i < WEAPONS.length; i++) { const own = (st.own >> i) & 1, x = W - 176 + i * 17; rr(x, PT + 60, 14, 14, 4, i === me.w ? '#ffd84d' : own ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.12)'); }
+      if (!TOUCH) txt(`1-${WEAPONS.length} or wheel to switch`, W - 104, PT + 94, { size: 12, color: 'rgba(255,255,255,.6)', stroke: false });
+      { const mf = Math.max(0, Math.min(1, 1 - (me.nextMelee - time) / MELEE.cd)); txt('E', W - 420, PT + 56, { size: 17, weight: 800, color: mf >= 1 ? '#ffb347' : '#5a6b80' }); ctx.beginPath(); ctx.arc(W - 420, PT + 56, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * mf); ctx.strokeStyle = mf >= 1 ? '#ffb347' : '#5a6b80'; ctx.lineWidth = 3; ctx.stroke(); }
+      if (body.crouched && me.alive) txt(body.slideT > 0 ? 'SLIDING' : 'CROUCHED', 176, PT - 38, { size: 16, weight: 800, color: '#9fc8ff' });
     }
     // death screen
     if (st && st.dead && !over) { ctx.fillStyle = 'rgba(10,0,0,.4)'; ctx.fillRect(0, 0, W, H); txt(deathBy || 'Tagged out!', cx, cy - 40, { size: 30, color: '#ff6b6b', weight: 900 }); txt(`Back in ${Math.max(0, st.dead).toFixed(1)}s`, cx, cy, { size: 18 }); txt(`${CHAR_NAMES[charIdx]} in ${SKINS[skinIdx].name}   •   press L for the locker`, cx, cy + 34, { size: 13, color: '#cfd6e4' }); }

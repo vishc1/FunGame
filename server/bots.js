@@ -88,7 +88,8 @@ const BRAINS = {
     // nearest enemy this bot can actually see
     let tgt = null, td = 1e9;
     for (const o of s.ps) { if (o.id === b.id || o.dead || (s.tm && o.tm === me.tm)) continue; const d = Math.hypot(o.x - body.x, o.y - body.y, o.z - body.z); if (d > 55 || d >= td || (o.pw === 'ghost' && d > 9) || o.pw === 'shadow') continue; if (BL.los(ex, ey, ez, o.x, o.y + 1.2, o.z, MAP)) { tgt = o; td = d; } }
-    if (tgt) { m.see += c.dt; m.last = { x: tgt.x, z: tgt.z, t: 6 }; } else { m.see = 0; if (m.last && (m.last.t -= c.dt) <= 0) m.last = null; }
+    // 'noticing' takes 0.7 s of looking at the SAME enemy; a one-tick flicker behind a pillar only dents it, a new enemy starts it over
+    if (tgt) { if (m.seeId !== tgt.id) { m.see = 0; m.seeId = tgt.id; } m.see += c.dt; m.last = { x: tgt.x, z: tgt.z, t: 6 }; } else { m.see = Math.max(0, m.see - 2 * c.dt); if (m.last && (m.last.t -= c.dt) <= 0) m.last = null; }
     // where to go
     const ground = (i) => s.pk[i] && MAP.pickups[i].y < 0.5;
     const nearestPickup = (ok) => { let best = null, bd = 1e9; MAP.pickups.forEach((pk, i) => { if (!ground(i) || !ok(pk)) return; const d = Math.hypot(pk.x - body.x, pk.z - body.z); if (d < bd) { bd = d; best = pk; } }); return best; };
