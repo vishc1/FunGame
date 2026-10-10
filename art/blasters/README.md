@@ -1,6 +1,6 @@
 # Toy Box Blasters: Blender delivery
 
-Built from `fps3d.md`, starting with eight figures, five blasters, five pickups/props, then the arena. Later deliveries add a train, four more blasters, a water balloon, a foam sword, a cannonball and Block Towers. All **28 GLBs** are in `../../public/models/`, with matching editable `.blend` sources here. The figures now have named limb pivots for walking. All designs are original moulded-plastic toys. The game-code owner's sword-loading fix is verified: the custom model appears and swings in-game.
+Built from `fps3d.md`, starting with eight figures, five blasters, five pickups/props, then the arena. Later deliveries add a train, four more blasters, a water balloon, a foam sword, a cannonball, Block Towers and Pirate Cove. All **29 GLBs** are in `../../public/models/`, with matching editable `.blend` sources here. The figures now have named limb pivots for walking. All designs are original moulded-plastic toys. The game-code owner's sword-loading fix is verified: the custom model appears and swings in-game.
 
 ## Assets and triangle counts
 
@@ -35,9 +35,10 @@ Counts are measured in Blender and independently checked after GLTFLoader import
 | `fps_crate.glb` | Cuboid wooden toy crate with stretch-safe bands | 164 | 300 |
 | `fps_arena.glb` | Complete decorated 101-box arena and 64 × 64 m play-mat | 15,752 | 80,000 |
 | `fps_arena_towers.glb` | Decorated Block Towers, 117 collision boxes and 60 × 60 m play-mat | 11,238 | 60,000 |
+| `fps_arena_cove.glb` | Toy pirate ship, lighthouse and sandcastle beach, 96 collision boxes | 9,124 | 60,000 |
 | `fps_train.glb` | Red/yellow engine, open green and blue wagons, toy-block cargo | 2,468 | 2,500 |
 
-The complete set contains **49,994 triangles**, counting each unique asset once. In-game totals depend on how many instances are visible.
+The complete set contains **59,118 triangles**, counting each unique asset once. In-game totals depend on how many instances are visible.
 
 ## Arena
 
@@ -218,6 +219,38 @@ No protected game code was edited. The kart `]` shortcut omission is documented 
 The supplementary `node art/check-optional-delivery.mjs` verifies the custom Towers arena in a live team match. All three remote figures have moving legs and free arms; their `Paint` materials are red or blue. No browser errors were recorded. The same check reports the kart shortcut omission and missing pie spin separately, without changing game code.
 
 The team-colour audit accounts for the bots' Classic, Pastel and Neon finishes, including the white mix applied by Pastel. Before/after SHA-256 hashes of every protected game file match.
+
+## Pirate Cove, 2026-10-10
+
+`fps_arena_cove.glb` adds a decorated 68 × 68 m beach arena at **9,124 / 60,000 triangles**. Its 96 solid cuboids retain the exported collision bounds at one metre per unit, with the origin at the floor centre. The ship has honey-coloured plank paint, brass-look portholes and skull flags printed on its masts. A striped lighthouse overlooks the beach. The sandcastle has bucket-profile reliefs and paper-pennant motifs; huts and palm posts use painted toy details. The mat has a turquoise tide line and a printed shore road.
+
+Flags, bucket profiles and palm leaves are shallow face decorations. Their silhouettes stay within the 5 cm allowance around the existing boxes. No sails, canopies or railings were added across playable space. The game still draws ramps, pads, teleporters, pickups and the train.
+
+`prepare-cove.cjs` runs the official map exporter, then supplements its JSON with the original block colours from the shared map's `c` field. This reads game code without changing it. `build_cove.py` builds the arena and saves `fps_arena_cove.blend` before joining decorative meshes by material for export. Materials are plain Principled BSDF; there are no textures, rigs or baked animations.
+
+Rebuild and audit from the repository root:
+
+```sh
+node art/blasters/prepare-cove.cjs
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/blasters/build_cove.py
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/blasters/check-towers-clearances.py -- cove
+node art/blasters/check-assets.mjs
+node art/blasters/check-cove.mjs
+```
+
+The source audit checks each decoration against its parent collision box and the reserved routes, including the train at Blender Y = -29. `check-assets.mjs` now checks all three arenas. `check-cove.mjs` uses the windowless browser to confirm the new GLB loads in a real Pirate Cove match and captures four scene views plus `cove-first-person.png`. Screenshot review led to removing paint from buried stair treads and separating the sun from an overlapping cloud print.
+
+All five required checks passed:
+
+- `node tools/blasters-map-check.js`: all three shooter maps and physics checks passed.
+- `MAP=cove node tools/solo.js blasters 25`: finished in-game with zero browser errors.
+- `node tools/blasters-hit.js`: 32 of 35 fired darts registered (91%); zero browser errors.
+- `node art/blasters/check-assets.mjs`: all 29 GLBs passed, including 314 collision meshes across three arenas, triangle budgets, colours and decoration bounds.
+- `node tools/coplanar.js`: no shared faces reported in the six scanned maps.
+
+The independent Blender audit found 1,653 decoration components and zero conflicts around four ramps, four teleporter endpoints, three pads, 23 pickups and the shore train. The live Cove check confirmed all 96 custom collision meshes and themed materials with zero browser errors. The supplied `MAP=cove node tools/blasters-shots.js` harness also ran without errors; it confirmed the cannon jump, three-shot burst and passing train before the final paint-layer cleanup.
+
+No protected game files changed; their SHA-256 hashes match the starting baseline. GitHub and deployment were untouched. The local preview runs on port 3098, started with `npm --ignore-scripts start` to avoid regenerating protected files through `prestart`. Static publishing manifests remain the game-code owner's normal build step.
 
 ## Model polish, 2026-10-09
 

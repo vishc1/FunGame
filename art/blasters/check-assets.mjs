@@ -5,6 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 const report = JSON.parse(await readFile('art/blasters/validation.json', 'utf8'));
 const map = JSON.parse(await readFile('art/blasters/map.json', 'utf8'));
 const towers = JSON.parse(await readFile('art/blasters/map-towers.json', 'utf8'));
+const cove = JSON.parse(await readFile('art/blasters/map-cove.json', 'utf8'));
 const browser = await launchArtBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 const errors = [];
@@ -13,7 +14,7 @@ page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 try {
   await page.goto(process.env.TEST_URL || 'http://127.0.0.1:3000');
   await page.waitForFunction(() => window.THREE && window.GLTFLoader && window.BLASTERS);
-  const result = await page.evaluate(async ({ report, map, towers }) => {
+  const result = await page.evaluate(async ({ report, map, towers, cove }) => {
     const T = THREE, loaded = {}, result = [], colors = ['#ff5d5d', '#4da6ff', '#5ee07a', '#ffd84d', '#c77dff', '#ff9f43', '#2ee6d6', '#ff75c5'];
     const ensure = (ok, message) => { if (!ok) throw Error(message); };
     const files = await (await fetch('/models/list')).json();
@@ -109,8 +110,8 @@ try {
         const nose = new T.Box3().setFromObject(scene.getObjectByName('train_nose')).getCenter(new T.Vector3());
         ensure(nose.z < -3.9 && spec.wagons === 2, 'Train direction or car count wrong');
       }
-      if (name === 'fps_arena' || name === 'fps_arena_towers') {
-        const layout = name === 'fps_arena' ? map : towers;
+      if (name === 'fps_arena' || name === 'fps_arena_towers' || name === 'fps_arena_cove') {
+        const layout = name === 'fps_arena' ? map : name === 'fps_arena_towers' ? towers : cove;
         const collision = []; scene.traverse(o => { if (/^collision_/.test(o.name)) collision.push(o); });
         ensure(collision.length === layout.boxes.length, name + ' lost collision boxes');
         for (const box of layout.boxes) {
@@ -140,10 +141,10 @@ try {
     window.fpsArt = loaded;
     window.fpsColors = colors;
     return result;
-  }, { report, map, towers });
-  assert.equal(result.length, 28);
+  }, { report, map, towers, cove });
+  assert.equal(result.length, 29);
   // Contact sheets are rendered from the exported GLBs, not Blender's source viewport.
-  for (const group of ['figures', 'walking', 'crouched', 'items', 'new-items', 'cannon', 'arena', 'arena_towers', 'train']) {
+  for (const group of ['figures', 'walking', 'crouched', 'items', 'new-items', 'cannon', 'arena', 'arena_towers', 'arena_cove', 'train']) {
     await page.evaluate(group => {
       const T = THREE;
       window.fpsCatalog?.remove();
@@ -153,7 +154,7 @@ try {
       const r = new T.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(1440, 1000); r.toneMapping = T.ACESFilmicToneMapping; root.appendChild(r.domElement); r.setScissorTest(true);
       const newNames = ['fps_w_burst','fps_w_lob','fps_w_zap','fps_balloon','fps_sword'], cannonNames=['fps_w_cannon','fps_cannonball'];
       const figures = ['figures','walking','crouched'].includes(group), arena = group.startsWith('arena');
-      const names = Object.keys(fpsArt).filter(n => figures ? n.startsWith('fps_char_') : arena || group === 'train' ? n === 'fps_'+group : group === 'cannon' ? cannonNames.includes(n) : group === 'new-items' ? newNames.includes(n) : !n.startsWith('fps_char_') && !['fps_arena','fps_arena_towers','fps_train',...newNames,...cannonNames].includes(n));
+      const names = Object.keys(fpsArt).filter(n => figures ? n.startsWith('fps_char_') : arena || group === 'train' ? n === 'fps_'+group : group === 'cannon' ? cannonNames.includes(n) : group === 'new-items' ? newNames.includes(n) : !n.startsWith('fps_char_') && !['fps_arena','fps_arena_towers','fps_arena_cove','fps_train',...newNames,...cannonNames].includes(n));
       const cols = group==='cannon'?2:figures ? 4 : group === 'items' ? 5 : group === 'new-items' ? 3 : 1, rows = arena || ['train','cannon'].includes(group) ? 1 : 2;
       names.forEach((name, i) => {
         const model = fpsArt[name].clone(true);
@@ -211,7 +212,7 @@ try {
   await page.locator('#canvas').click(); await page.waitForTimeout(300);
   await page.screenshot({ path: 'art/blasters/in-game.png' });
   assert.deepEqual([...new Set(errors)], []);
-  await writeFile('art/blasters/browser-validation.json', JSON.stringify({ assets: result, integration, errors, checks: ['budgets', 'grounding', 'head alignment', 'body bounds', '64 Paint recolors', 'hand and barrel orientation', '101 arena boxes', '5 cm decoration envelope', 'body/head/outside rays', 'real eight-player match uses GLBs for arena/remote figures/held blasters'] }, null, 2) + '\n');
+  await writeFile('art/blasters/browser-validation.json', JSON.stringify({ assets: result, integration, errors, checks: ['budgets', 'grounding', 'head alignment', 'body bounds', '64 Paint recolors', 'hand and barrel orientation', '314 collision boxes across three arenas', '5 cm decoration envelope', 'body/head/outside rays', 'real eight-player match uses GLBs for arena/remote figures/held blasters'] }, null, 2) + '\n');
   console.log(JSON.stringify(result.map(r => ({ name: r.name, triangles: r.triangles })), null, 2));
-  console.log('28 assets, named limb pivots, figure proportions/colors/crouching, weapon orientations, both arenas (218 collision boxes), decoration envelopes, and browser errors: PASS');
+  console.log('29 assets, named limb pivots, figure proportions/colors/crouching, weapon orientations, three arenas (314 collision boxes), decoration envelopes, and browser errors: PASS');
 } finally { await browser.close(); }

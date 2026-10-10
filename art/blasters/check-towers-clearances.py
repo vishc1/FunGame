@@ -1,12 +1,17 @@
 """Independent source audit of every solid and decoration around reserved features."""
 import bpy
 import json
+import sys
 from pathlib import Path
 from mathutils import Vector
 
 HERE = Path(__file__).resolve().parent
-data = json.loads((HERE/'map-towers.json').read_text())
-bpy.ops.wm.open_mainfile(filepath=str(HERE/'fps_arena_towers.blend'))
+variant = sys.argv[sys.argv.index('--')+1] if '--' in sys.argv else 'towers'
+assert variant in ('towers', 'cove')
+data = json.loads((HERE/f'map-{variant}.json').read_text())
+bpy.ops.wm.open_mainfile(filepath=str(HERE/f'fps_arena_{variant}.blend'))
+half = data['arena']['half_size']
+track_y = data['train'].get('blender_y', 0)
 conflicts, solids, decorations = [], 0, 0
 for o in bpy.context.scene.objects:
     assert o.type == 'MESH'
@@ -22,7 +27,7 @@ for o in bpy.context.scene.objects:
         continue
     if 'decor_box' not in o:
         assert -.0001 <= lo[2] <= hi[2] <= .02
-        assert lo[0]>=-30.001 and lo[1]>=-30.001 and hi[0]<=30.001 and hi[1]<=30.001
+        assert lo[0]>=-half-.001 and lo[1]>=-half-.001 and hi[0]<=half+.001 and hi[1]<=half+.001
         continue
     decorations += 1
     b = data['boxes'][o['decor_box']]
@@ -38,10 +43,10 @@ for o in bpy.context.scene.objects:
         dx,dy=max(lo[0]-x,0,x-hi[0]),max(lo[1]-y,0,y-hi[1])
         if dx*dx+dy*dy<radius*radius and hi[2]>z+.015 and lo[2]<z+height:
             conflicts.append([o.name,kind,[x,y,z]])
-    if hi[1]>-data['train']['track_half_width'] and lo[1]<data['train']['track_half_width'] and lo[2]<2.4 and abs(b['blender_center'][0])<30:
+    if hi[1]>track_y-data['train']['track_half_width'] and lo[1]<track_y+data['train']['track_half_width'] and lo[2]<2.4 and abs(b['blender_center'][0])<half:
         conflicts.append([o.name,'track'])
-assert solids == 117
+assert solids == len(data['boxes'])
 result = dict(solids=solids,decorations=decorations,ramps=len(data['ramps']),teleporters=4,pads=len(data['jump_pads']),pickups=len(data['pickups']),conflicts=conflicts)
-(HERE/'towers-source-audit.json').write_text(json.dumps(result,indent=2)+'\n')
+(HERE/f'{variant}-source-audit.json').write_text(json.dumps(result,indent=2)+'\n')
 print(json.dumps(result,indent=2))
 assert not conflicts

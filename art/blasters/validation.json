@@ -2238,5 +2238,47 @@
     "units": "metres; no rescaling",
     "decoration_components": 606,
     "omitted_reserved_decoration": 2
+  },
+  "fps_arena_cove": {
+    "triangles": 9124,
+    "budget": 60000,
+    "min": [
+      -35.0,
+      -35.0,
+      0.0
+    ],
+    "max": [
+      35.0,
+      35.0,
+      12.61400032043457
+    ],
+    "materials": [
+      "Cove block enamel 8a5a34",
+      "Cove block enamel c9a06a",
+      "Cove block enamel d8d8d0",
+      "Cove block enamel f0e2b4",
+      "Cove brass plastic",
+      "Cove damp tide line",
+      "Cove deck honey plastic",
+      "Cove hut teal",
+      "Cove ivory paint",
+      "Cove lighthouse coral",
+      "Cove moulded cedar",
+      "Cove navy ink",
+      "Cove palm ink",
+      "Cove sand speckles",
+      "Cove seafoam ink",
+      "Cove sky blue backdrop",
+      "Cove turquoise tide ink",
+      "Cove warm sand"
+    ],
+    "collision_boxes": 96,
+    "floor_size": [
+      68,
+      68
+    ],
+    "units": "metres; no rescaling",
+    "decoration_components": 1653,
+    "omitted_reserved_decoration": 245
   }
 }

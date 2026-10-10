@@ -335,6 +335,18 @@
         9,
         62
       ]
+    },
+    {
+      "name": "fps_arena_cove",
+      "triangles": 9124,
+      "budget": 60000,
+      "meshes": 109,
+      "paint": 0,
+      "size": [
+        70,
+        12.61400032043457,
+        70
+      ]
     }
   ],
   "integration": {
@@ -353,10 +365,10 @@
         "ffd84d"
       ],
       [
-        "c77dff"
+        "e8d2ff"
       ],
       [
-        "ff9f43"
+        "ffdbc8"
       ],
       [
         "2ee6d6"
@@ -366,13 +378,13 @@
       ]
     ],
     "headHeights": [
-      1.5599999999999998,
+      1.56,
       1.5600000000000003,
       1.5600000000000005,
-      1.5599999999999998,
-      1.5599999999999998,
       1.56,
-      1.5600000000000005
+      1.5599999999999992,
+      1.5599999999999998,
+      1.56
     ]
   },
   "errors": [],
@@ -383,7 +395,7 @@
     "body bounds",
     "64 Paint recolors",
     "hand and barrel orientation",
-    "101 arena boxes",
+    "314 collision boxes across three arenas",
     "5 cm decoration envelope",
     "body/head/outside rays",
     "real eight-player match uses GLBs for arena/remote figures/held blasters"
