@@ -112,10 +112,10 @@ try {
         const g=decks.find(o=>Math.abs(o.position.x-cx)<.01&&Math.abs(o.position.z-cz)<.01);
         if(!g?.userData.glb)throw Error('Deck is a placeholder');
         const bb=new T.Box3().setFromObject(g),sz=bb.getSize(new T.Vector3());
-        if(Math.abs(sz.x-d.w)>.01||Math.abs(sz.z-d.h)>.01||Math.abs(sz.y-32)>.01||Math.abs(bb.min.y)>.01)throw Error('Deck collision bounds mismatch');
+        if(Math.abs(sz.x-d.w)>.01||Math.abs(sz.z-d.h)>.01||Math.abs(sz.y-(d.z||48))>.01||Math.abs(bb.min.y)>.01)throw Error('Deck collision bounds mismatch'); /* a deck is 48 high; a second tier (d.z) is 100 and still starts on the floor */
         for(const u of [-.49,0,.49])for(const v of [-.49,0,.49]){
-          const ray=new T.Raycaster(new T.Vector3(cx+u*d.w,40,cz+v*d.h),new T.Vector3(0,-1,0));
-          if(Math.abs((ray.intersectObject(g,true)[0]?.point.y??-999)-32)>.01)throw Error('Deck top not solid/flat');
+          const ray=new T.Raycaster(new T.Vector3(cx+u*d.w,140,cz+v*d.h),new T.Vector3(0,-1,0));
+          if(Math.abs((ray.intersectObject(g,true)[0]?.point.y??-999)-(d.z||48))>.01)throw Error('Deck top not solid/flat'); /* decks are 48 high now; a second tier (z) is 100 */
         }
       }
       const ramps = scene.children.filter(o=>o.getObjectByName('ramp_core'));
@@ -125,13 +125,14 @@ try {
         const g=ramps.find(g=>Math.abs(g.position.x-cx)<.01&&Math.abs(g.position.z-cz)<.01);
         if(!g) throw Error('Ramp missing at map coordinates');
         const bb=new T.Box3().setFromObject(g),size=bb.getSize(new T.Vector3());
-        if(Math.abs(size.x-rp.w)>.02||Math.abs(size.z-rp.h)>.02||Math.abs(size.y-32)>.02 /* RAMP_H in public/games/memekarts.js, raised from 15 by the game-code owner */||Math.abs(bb.min.y)>.02) throw Error('Ramp collision footprint/height mismatch');
+        const z0=rp.z0||0,z1=rp.z1||48,rise=z1-z0; /* per-ramp: floor ramps rise 0->48, a tower's second ramp 48->100 (set by the game-code owner) */
+        if(Math.abs(size.x-rp.w)>.02||Math.abs(size.z-rp.h)>.02||Math.abs(size.y-rise)>.02||Math.abs(bb.min.y-z0)>.02) throw Error('Ramp collision footprint/height mismatch');
         const dx=rp.dir==='E'?1:rp.dir==='W'?-1:0,dz=rp.dir==='S'?1:rp.dir==='N'?-1:0;
-        const len=dx?rp.w:rp.h,ray=new T.Raycaster(new T.Vector3(cx-dx*len*.25,40,cz-dz*len*.25),new T.Vector3(0,-1,0));
+        const len=dx?rp.w:rp.h,ray=new T.Raycaster(new T.Vector3(cx-dx*len*.25,140,cz-dz*len*.25),new T.Vector3(0,-1,0));
         const low=ray.intersectObject(g.getObjectByName('ramp_core'))[0]?.point.y;
-        ray.ray.origin.set(cx+dx*len*.25,40,cz+dz*len*.25);
+        ray.ray.origin.set(cx+dx*len*.25,140,cz+dz*len*.25);
         const high=ray.intersectObject(g.getObjectByName('ramp_core'))[0]?.point.y;
-        if(Math.abs(low-8)>.02||Math.abs(high-24)>.02) throw Error('Ramp slopes against its uphill direction'); /* a quarter and three quarters of the way up a 32-unit ramp (was 15) */
+        if(Math.abs(low-(z0+rise*.25))>.02||Math.abs(high-(z0+rise*.75))>.02) throw Error('Ramp slopes against its uphill direction'); /* a quarter and three quarters of the way up this ramp's rise */
       }
       for (const g of obstacles) {
         const b = new T.Box3().setFromObject(g), size = b.getSize(new T.Vector3()), o = g.userData.obstacle;

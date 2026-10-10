@@ -21,12 +21,14 @@ for (const m of maps) {
   for (const rp of m.ramps || []) {
     const cx = rp.x + rp.w / 2, cy = rp.y + rp.h / 2, [dx, dy] = DV[rp.dir], half = dx ? rp.w / 2 : rp.h / 2;
     for (const o of m.obstacles) if (rp.x < o.x + o.w && rp.x + rp.w > o.x && rp.y < o.y + o.h && rp.y + rp.h > o.y) fail(m.id, 'ramp overlaps an obstacle', JSON.stringify(rp));
-    if (surf(cx + dx * (half + 3), cy + dy * (half + 3)) !== DZ) fail(m.id, 'the top of a ramp does not meet a deck', JSON.stringify(rp));
-    const ax = cx - dx * (half + 45), ay = cy - dy * (half + 45); if (blocked(ax, ay, R) || surf(ax, ay) !== 0) fail(m.id, 'no clear floor in front of the bottom of a ramp', JSON.stringify(rp));
+    const [z0, z1] = maps.rampZ(rp);
+    { const top = surf(cx + dx * (half + 3), cy + dy * (half + 3)); if (top < z1 - 0.5 || top > z1 + 6) fail(m.id, 'the top of a ramp does not meet a deck at its height', JSON.stringify(rp)); } /* a little above z1 is fine: the next ramp of a tower starts right there */
+    const ax = cx - dx * (half + 45), ay = cy - dy * (half + 45); const run = surf(ax, ay); if (blocked(ax, ay, R) || !(run === z0 || (z0 > 0 && run > 0 && run <= z0))) fail(m.id, 'no clear ground in front of the bottom of a ramp', JSON.stringify(rp)); /* a second ramp may start straight off the first one's top */
     for (const [k, x, y] of pts) if (inRect(x, y, rp, 14)) fail(m.id, k, 'sits on a ramp at', x, y);
   }
   for (const [k, x, y] of pts) if (k !== 'box' && surf(x, y) > 0) fail(m.id, k, 'must be on the floor, not on a deck, at', x, y);
-  for (const [k, x, y] of pts) if (k === 'box' && surf(x, y) === DZ && !(m.decks || []).some((d) => inRect(x, y, d, -22))) fail(m.id, 'box too close to a deck edge at', x, y);
+  for (const [k, x, y] of pts) if (k === 'box' && surf(x, y) >= DZ && !(m.decks || []).some((d) => maps.deckZ(d) === surf(x, y) && inRect(x, y, d, -22))) fail(m.id, 'box too close to a deck edge at', x, y);
+  for (const d of m.decks || []) if (d.z) { const base = (m.decks || []).find((o) => !o.z && d.x >= o.x && d.x + d.w <= o.x + o.w && d.y >= o.y && d.y + d.h <= o.y + o.h); if (!base) fail(m.id, 'a second tier must sit entirely on a first-tier deck', JSON.stringify(d)); }
   for (const mv of m.movers || []) { const [a0, c0] = mv.path; for (let i = 0; i <= 80; i++) { const x = a0[0] + (c0[0] - a0[0]) * i / 80, y = a0[1] + (c0[1] - a0[1]) * i / 80; if ([[0, 0], [mv.r, 0], [-mv.r, 0], [0, mv.r], [0, -mv.r]].some(([ox, oy]) => surf(x + ox, y + oy) > 0)) { fail(m.id, mv.kind, 'path runs through a deck or ramp at', Math.round(x), Math.round(y)); break; } } }
   for (const z of m.zones || []) for (const rp of [...(m.ramps || []), ...(m.decks || [])]) if (z.x < rp.x + rp.w && z.x + z.w > rp.x && z.y < rp.y + rp.h && z.y + z.h > rp.y) fail(m.id, 'zone overlaps a deck or ramp', JSON.stringify(z));
   for (const [k, x, y, pad] of pts) if (blocked(x, y, pad)) fail(m.id, k, 'too close to a wall or obstacle at', x, y);

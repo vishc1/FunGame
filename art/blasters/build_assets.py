@@ -77,6 +77,12 @@ def box(name, p, size, m, bevel=.015):
         b.width = min(bevel, min(size) * .22)
         b.segments = 1
         bpy.ops.object.modifier_apply(modifier=b.name)
+        for face in o.data.polygons:
+            face.use_smooth = True
+        o.data.use_auto_smooth = True
+        normals = o.modifiers.new('Weighted moulded normals', 'WEIGHTED_NORMAL')
+        normals.keep_sharp = True
+        bpy.ops.object.modifier_apply(modifier=normals.name)
     return finish(o, name, m)
 
 
@@ -216,7 +222,13 @@ def figure(k):
     box('Back shell', (0, .3075, 1.06), (.36, .225, .4), PAINT, .025)
     box('Chest badge', (.10, -.199, 1.15), (.11, .025, .13), [YELLOW, BLUE, RED, GLOW, PURPLE, RED, WHITE, GREEN][k], .01)
     cone('Neck', (0, 0, 1.345), .09, .09, .09, SKIN)
-    ball('head_core', (0, 0, 1.56), (.21, .20, .19 if k == 0 else .21), SKIN)
+    ball('head_core', (0, 0, 1.56), (.21, .20, .19 if k == 0 else .21), SKIN, 16, 8)
+    # Small costume seams and a framed badge preserve the team-coloured silhouette.
+    for x in [-.245,.245]:
+        box('Torso piping', (x,-.195,1.02), (.018,.012,.42), WHITE, .003)
+    box('Badge frame', (.10,-.196,1.15), (.14,.023,.16), DARK, .01)
+    for x in [-.10,.10]:
+        box('Back shell vent', (x,.412,1.06), (.035,.012,.20), DARK, .003)
     if k in [1, 2, 4, 6]:
         face()
     if k == 0:

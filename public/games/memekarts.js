@@ -309,47 +309,49 @@ registerGame('memekarts', (G) => {
         const topTex = tex(256, 256, (c, cw, ch) => { c.fillStyle = night ? '#2a3760' : desert ? '#d9a066' : '#8fb0b4'; c.fillRect(0, 0, cw, ch); c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 3; for (let i = 0; i <= cw; i += 32) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, ch); c.moveTo(0, i); c.lineTo(cw, i); c.stroke(); } for (let i = 0; i < 500; i++) { c.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; c.fillRect(Math.random() * cw, Math.random() * ch, 4, 4); } });
         topTex.wrapS = topTex.wrapT = THREE.RepeatWrapping; topTex.repeat.set(d.w / 80, d.h / 80);
         const blockM = [side, side, new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.8 }), side, side, side];
-        const model = asset(night ? 'deck_neon' : desert ? 'deck_canyon' : 'deck', 100) || asset('deck', 100); /* optional Blender deck, stretched to this footprint */
-        if (model) { const bb = new THREE.Box3().setFromObject(model), sz = bb.getSize(new THREE.Vector3()); model.scale.set(d.w / sz.x, RAMP_H / sz.y, d.h / sz.z); model.position.set(cx, 0, cz); model.name = 'deck'; scene.add(model); }
-        else { const blk = mesh(new THREE.BoxGeometry(d.w, RAMP_H, d.h), blockM, cx, RAMP_H / 2, cz); blk.name = 'deck'; scene.add(blk); }
+        const model = (d.z ? asset(night ? 'tower_neon' : desert ? 'tower_canyon' : 'tower', 100) : null) || asset(night ? 'deck_neon' : desert ? 'deck_canyon' : 'deck', 100) || asset('deck', 100); /* optional Blender deck (or tower summit), stretched to this footprint */
+        const DZ = window.MEMEKARTS_MAPS.deckZ(d); /* a second tier is a deck stacked on a deck: its block runs from the floor to its own height */
+        if (model) { const bb = new THREE.Box3().setFromObject(model), sz = bb.getSize(new THREE.Vector3()); model.scale.set(d.w / sz.x, DZ / sz.y, d.h / sz.z); model.position.set(cx, 0, cz); model.name = 'deck'; scene.add(model); }
+        else { const blk = mesh(new THREE.BoxGeometry(d.w, DZ, d.h), blockM, cx, DZ / 2, cz); blk.name = 'deck'; scene.add(blk); }
         /* glowing rim, with gaps where a ramp meets the deck */
         const edges = [[d.x, d.y, d.x + d.w, d.y], [d.x, d.y + d.h, d.x + d.w, d.y + d.h], [d.x, d.y, d.x, d.y + d.h], [d.x + d.w, d.y, d.x + d.w, d.y + d.h]];
         for (const [x0, y0, x1, y1] of edges) {
           const horiz = y0 === y1, lo = horiz ? x0 : y0, hi = horiz ? x1 : y1; let cuts = [];
           for (const rp of map.ramps || []) { const touch = horiz ? ((rp.dir === 'S' && Math.abs(rp.y + rp.h - y0) < 2) || (rp.dir === 'N' && Math.abs(rp.y - y0) < 2)) && rp.x < hi && rp.x + rp.w > lo : ((rp.dir === 'E' && Math.abs(rp.x + rp.w - x0) < 2) || (rp.dir === 'W' && Math.abs(rp.x - x0) < 2)) && rp.y < hi && rp.y + rp.h > lo; if (touch) cuts.push(horiz ? [rp.x, rp.x + rp.w] : [rp.y, rp.y + rp.h]); }
           cuts.sort((p, q) => p[0] - q[0]); let at = lo; const segs = []; for (const [c0, c1] of cuts) { if (c0 > at) segs.push([at, c0]); at = Math.max(at, c1); } if (at < hi) segs.push([at, hi]);
-          for (const [s0, s1] of segs) { const len = s1 - s0, mid = (s0 + s1) / 2; const rim = horiz ? box(len, 2.4, 3, glow(hot, night ? 1.8 : 0.9), mid - OX, RAMP_H + 1.2, y0 - OZ) : box(3, 2.4, len, glow(hot, night ? 1.8 : 0.9), x0 - OX, RAMP_H + 1.2, mid - OZ); rim.castShadow = false; scene.add(rim); }
+          for (const [s0, s1] of segs) { const len = s1 - s0, mid = (s0 + s1) / 2; const rim = horiz ? box(len, 2.4, 3, glow(hot, night ? 1.8 : 0.9), mid - OX, DZ + 1.2, y0 - OZ) : box(3, 2.4, len, glow(hot, night ? 1.8 : 0.9), x0 - OX, DZ + 1.2, mid - OZ); rim.castShadow = false; scene.add(rim); }
         }
       }
     }
     function buildRamps() {
       for (const rp of map.ramps || []) {
         const horiz = rp.dir === 'E' || rp.dir === 'W', len = horiz ? rp.w : rp.h, wid = horiz ? rp.h : rp.w, g = new THREE.Group();
+        const [Z0, Z1] = window.MEMEKARTS_MAPS.rampZ(rp), RH = Z1 - Z0; /* this ramp's rise; a tower's second ramp starts on the first deck */
         const custom = asset(map.theme === 'neon' ? 'ramp_neon' : map.theme === 'canyon' ? 'ramp_canyon' : 'ramp', 60) || asset('ramp', 60); /* optional model: rises toward +X in Blender; stretched to the footprint */
-        if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RAMP_H / sz.y, wid / sz.z);
+        if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RH / sz.y, wid / sz.z);
           custom.traverse((m) => { if (m.isMesh && /ink|dark|runway/i.test((m.material.name || '') + m.name)) m.material.color.set(map.theme === 'neon' ? '#ff3fd0' : '#ff8a1f'); }); /* the runway is painted a loud colour: a dark ramp reads as a floor marking */
           g.add(custom); }
         else {
           /* a wedge that rises along local +X, with chevrons painted up the slope and a glowing lip */
-          const l = len / 2, w = wid / 2, v = [[-l, 0, -w], [-l, 0, w], [l, RAMP_H, w], [-l, 0, -w], [l, RAMP_H, w], [l, RAMP_H, -w], [l, RAMP_H, -w], [l, RAMP_H, w], [l, 0, w], [l, RAMP_H, -w], [l, 0, w], [l, 0, -w], [-l, 0, -w], [l, RAMP_H, -w], [l, 0, -w], [-l, 0, w], [l, 0, w], [l, RAMP_H, w]].flat();
+          const l = len / 2, w = wid / 2, v = [[-l, 0, -w], [-l, 0, w], [l, RH, w], [-l, 0, -w], [l, RH, w], [l, RH, -w], [l, RH, -w], [l, RH, w], [l, 0, w], [l, RH, -w], [l, 0, w], [l, 0, -w], [-l, 0, -w], [l, RH, -w], [l, 0, -w], [-l, 0, w], [l, 0, w], [l, RH, w]].flat();
           const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); geo.computeVertexNormals();
           g.add(mesh(geo, M3(map.theme === 'neon' ? '#2b3350' : map.theme === 'canyon' ? '#b9773f' : '#e8a13a', { side: THREE.DoubleSide, roughness: 0.7 })));
           const t = tex(128, 128, (c, cw, ch) => { c.clearRect(0, 0, cw, ch); c.strokeStyle = '#ffffff'; c.lineWidth = 12; c.lineCap = 'round'; c.lineJoin = 'round'; for (const x of [24, 58, 92]) { c.beginPath(); c.moveTo(x - 14, 26); c.lineTo(x + 14, 64); c.lineTo(x - 14, 102); c.stroke(); } });
-          const slope = Math.hypot(len, RAMP_H), deco = mesh(new THREE.PlaneGeometry(slope * 0.86, wid * 0.8), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, color: new THREE.Color(map.accent).multiplyScalar(1.5) }), 0, RAMP_H / 2 + 0.5, 0);
-          /* lay the chevrons flat, then tilt them to the slope */ deco.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.atan2(RAMP_H, len))); deco.castShadow = false; g.add(deco);
-          const lip = box(2.5, 1.6, wid, glow(map.accent, map.theme === 'neon' ? 2 : 0.9), l - 1, RAMP_H + 0.6, 0); lip.castShadow = false; g.add(lip);
+          const slope = Math.hypot(len, RH), deco = mesh(new THREE.PlaneGeometry(slope * 0.86, wid * 0.8), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, color: new THREE.Color(map.accent).multiplyScalar(1.5) }), 0, RH / 2 + 0.5, 0);
+          /* lay the chevrons flat, then tilt them to the slope */ deco.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.atan2(RH, len))); deco.castShadow = false; g.add(deco);
+          const lip = box(2.5, 1.6, wid, glow(map.accent, map.theme === 'neon' ? 2 : 0.9), l - 1, RH + 0.6, 0); lip.castShadow = false; g.add(lip);
         }
         /* Dressing so nobody can miss it: glowing side rails up the slope, two beacon posts at the entrance, chevrons
            painted on the floor leading in, and a big arrow floating above. Local +X is uphill. */
         const dress = new THREE.Group(); /* decoration lives beside the ramp group so the ramp itself keeps its exact footprint */
-        const hot = map.theme === 'neon' ? '#68efff' : '#ffd21f', tilt = Math.atan2(RAMP_H, len), slopeLen = Math.hypot(len, RAMP_H);
+        const hot = map.theme === 'neon' ? '#68efff' : '#ffd21f', tilt = Math.atan2(RH, len), slopeLen = Math.hypot(len, RH);
         for (const sd of [-1, 1]) {
-          const rail = box(slopeLen, 3.2, 3.2, glow(hot, 1.4), 0, RAMP_H / 2 + 2.2, sd * (wid / 2 - 1.6)); rail.rotation.z = tilt; rail.castShadow = false; dress.add(rail);
-          dress.add(box(3.2, RAMP_H, 3.2, M3('#f4f4f4'), len / 2 - 1.6, RAMP_H / 2, sd * (wid / 2 - 1.6)));
+          const rail = box(slopeLen, 3.2, 3.2, glow(hot, 1.4), 0, RH / 2 + 2.2, sd * (wid / 2 - 1.6)); rail.rotation.z = tilt; rail.castShadow = false; dress.add(rail);
+          dress.add(box(3.2, RH, 3.2, M3('#f4f4f4'), len / 2 - 1.6, RH / 2, sd * (wid / 2 - 1.6)));
         }
         const lead = tex(256, 128, (c, cw, ch) => { c.clearRect(0, 0, cw, ch); c.strokeStyle = '#ffffff'; c.lineWidth = 16; c.lineCap = 'round'; c.lineJoin = 'round'; for (const x of [40, 110, 180]) { c.beginPath(); c.moveTo(x - 16, 22); c.lineTo(x + 22, 64); c.lineTo(x - 16, 106); c.stroke(); } });
         const runway = mesh(new THREE.PlaneGeometry(90, wid * 0.8), new THREE.MeshBasicMaterial({ map: lead, transparent: true, depthWrite: false, color: new THREE.Color(hot).multiplyScalar(1.5) }), -len / 2 - 50, 0.8, 0); runway.rotation.x = -Math.PI / 2; runway.castShadow = false; dress.add(runway);
-        g.position.set(rp.x + rp.w / 2 - OX, 0, rp.y + rp.h / 2 - OZ); g.rotation.y = rp.dir === 'E' ? 0 : rp.dir === 'W' ? Math.PI : rp.dir === 'N' ? Math.PI / 2 : -Math.PI / 2; scene.add(g); dress.position.copy(g.position); dress.rotation.y = g.rotation.y; scene.add(dress);
+        g.position.set(rp.x + rp.w / 2 - OX, Z0, rp.y + rp.h / 2 - OZ); g.rotation.y = rp.dir === 'E' ? 0 : rp.dir === 'W' ? Math.PI : rp.dir === 'N' ? Math.PI / 2 : -Math.PI / 2; scene.add(g); dress.position.copy(g.position); dress.rotation.y = g.rotation.y; scene.add(dress);
       }
     }
     function buildMapFeatures() {

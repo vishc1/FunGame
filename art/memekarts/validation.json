@@ -1,246 +1,5 @@
 [
   {
-    "name": "kart_0",
-    "triangles": 1732,
-    "budget": 3000,
-    "bounds_min": [
-      -1.6424999833106995,
-      -1.2300000190734863,
-      0.0
-    ],
-    "bounds_max": [
-      1.6424999833106995,
-      1.2300000190734863,
-      2.31000018119812
-    ],
-    "wheel_names": [
-      "wheel_fl",
-      "wheel_fr",
-      "wheel_rl",
-      "wheel_rr"
-    ],
-    "materials": [
-      "Chrome",
-      "Electric blue",
-      "Ivory",
-      "Lemon",
-      "Orange",
-      "Paint",
-      "Peach",
-      "Rubber"
-    ]
-  },
-  {
-    "name": "kart_1",
-    "triangles": 1684,
-    "budget": 3000,
-    "bounds_min": [
-      -1.6074999570846558,
-      -1.2300000190734863,
-      0.0
-    ],
-    "bounds_max": [
-      1.6074999570846558,
-      1.2300000190734863,
-      2.424999952316284
-    ],
-    "wheel_names": [
-      "wheel_fl",
-      "wheel_fr",
-      "wheel_rl",
-      "wheel_rr"
-    ],
-    "materials": [
-      "Chrome",
-      "Coral",
-      "Ivory",
-      "Lemon",
-      "Paint",
-      "Peach",
-      "Rubber"
-    ]
-  },
-  {
-    "name": "kart_2",
-    "triangles": 1852,
-    "budget": 3000,
-    "bounds_min": [
-      -1.5839711427688599,
-      -1.2300000190734863,
-      0.0
-    ],
-    "bounds_max": [
-      1.5839711427688599,
-      1.2300000190734863,
-      2.4700000286102295
-    ],
-    "wheel_names": [
-      "wheel_fl",
-      "wheel_fr",
-      "wheel_rl",
-      "wheel_rr"
-    ],
-    "materials": [
-      "Chrome",
-      "Coral",
-      "Ivory",
-      "Lemon",
-      "Mint",
-      "Paint",
-      "Peach",
-      "Rubber"
-    ]
-  },
-  {
-    "name": "kart_3",
-    "triangles": 2070,
-    "budget": 3500,
-    "bounds_min": [
-      -1.5699999332427979,
-      -1.2300000190734863,
-      0.0
-    ],
-    "bounds_max": [
-      1.5699999332427979,
-      1.2300000190734863,
-      4.980000019073486
-    ],
-    "wheel_names": [
-      "wheel_fl",
-      "wheel_fr",
-      "wheel_rl",
-      "wheel_rr"
-    ],
-    "materials": [
-      "Chrome",
-      "Electric blue",
-      "Ivory",
-      "Lemon",
-      "Orange",
-      "Paint",
-      "Peach",
-      "Rubber"
-    ]
-  },
-  {
-    "name": "kart_4",
-    "triangles": 1588,
-    "budget": 3000,
-    "bounds_min": [
-      -1.7500000596046448,
-      -1.2300000190734863,
-      0.0
-    ],
-    "bounds_max": [
-      1.7500000596046448,
-      1.2300000190734863,
-      2.2300000190734863
-    ],
-    "wheel_names": [
-      "wheel_fl",
-      "wheel_fr",
-      "wheel_rl",
-      "wheel_rr"
-    ],
-    "materials": [
-      "Chrome",
-      "Ivory",
-      "Lemon",
-      "Paint",
-      "Peach",
-      "Rubber"
-    ]
-  },
-  {
-    "name": "kart_5",
-    "triangles": 1580,
-    "budget": 3000,
-    "bounds_min": [
-      -1.6249999403953552,
-      -1.2300000190734863,
-      0.0
-    ],
-    "bounds_max": [
-      1.6249999403953552,
-      1.2300000190734863,
-      2.669999837875366
-    ],
-    "wheel_names": [
-      "wheel_fl",
-      "wheel_fr",
-      "wheel_rl",
-      "wheel_rr"
-    ],
-    "materials": [
-      "Chrome",
-      "Ivory",
-      "Lemon",
-      "Mint",
-      "Paint",
-      "Peach",
-      "Rubber"
-    ]
-  },
-  {
-    "name": "kart_6",
-    "triangles": 1804,
-    "budget": 3000,
-    "bounds_min": [
-      -1.5574999451637268,
-      -1.2300000190734863,
-      0.0
-    ],
-    "bounds_max": [
-      1.5574999451637268,
-      1.2300000190734863,
-      2.559999942779541
-    ],
-    "wheel_names": [
-      "wheel_fl",
-      "wheel_fr",
-      "wheel_rl",
-      "wheel_rr"
-    ],
-    "materials": [
-      "Chrome",
-      "Coral",
-      "Electric blue",
-      "Ivory",
-      "Lemon",
-      "Orange",
-      "Paint",
-      "Peach",
-      "Rubber"
-    ]
-  },
-  {
-    "name": "kart_7",
-    "triangles": 1436,
-    "budget": 3000,
-    "bounds_min": [
-      -1.8491955995559692,
-      -0.9100000262260437,
-      0.0
-    ],
-    "bounds_max": [
-      1.8491955995559692,
-      0.9100000262260437,
-      2.2499999925494194
-    ],
-    "wheel_names": [],
-    "materials": [
-      "Chrome",
-      "Coral",
-      "Electric blue",
-      "Ivory",
-      "Lemon",
-      "Orange",
-      "Paint",
-      "Peach",
-      "Rubber"
-    ]
-  },
-  {
     "name": "kart_egg",
     "triangles": 420,
     "budget": 800,
@@ -547,6 +306,266 @@
     "materials": [
       "Bark",
       "Mint"
+    ]
+  },
+  {
+    "name": "kart_0",
+    "triangles": 2676,
+    "budget": 3000,
+    "bounds_min": [
+      -1.6637499928474426,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.6637499928474426,
+      1.2300000190734863,
+      2.31000018119812
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber",
+      "Tail light lens",
+      "Warm headlight lens"
+    ]
+  },
+  {
+    "name": "kart_1",
+    "triangles": 2648,
+    "budget": 3000,
+    "bounds_min": [
+      -1.6347500085830688,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.6347500085830688,
+      1.2300000190734863,
+      2.424999952316284
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Bed wood",
+      "Chrome",
+      "Coral",
+      "Ivory",
+      "Lemon",
+      "Paint",
+      "Peach",
+      "Rubber",
+      "Tail light lens",
+      "Warm headlight lens"
+    ]
+  },
+  {
+    "name": "kart_2",
+    "triangles": 2804,
+    "budget": 3000,
+    "bounds_min": [
+      -1.592471182346344,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.592471182346344,
+      1.2300000190734863,
+      2.4700000286102295
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Coral",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Mint",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber",
+      "Tail light lens",
+      "Warm headlight lens"
+    ]
+  },
+  {
+    "name": "kart_3",
+    "triangles": 2826,
+    "budget": 3500,
+    "bounds_min": [
+      -1.5972500443458557,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.5972500443458557,
+      1.2300000190734863,
+      4.980000019073486
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber",
+      "Smoked toy glass",
+      "Tail light lens",
+      "Warm headlight lens"
+    ]
+  },
+  {
+    "name": "kart_4",
+    "triangles": 2588,
+    "budget": 3000,
+    "bounds_min": [
+      -1.7575000524520874,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.7575000524520874,
+      1.2300000190734863,
+      2.2300000190734863
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Ivory",
+      "Lemon",
+      "Paint",
+      "Peach",
+      "Rubber",
+      "Tail light lens",
+      "Warm headlight lens"
+    ]
+  },
+  {
+    "name": "kart_5",
+    "triangles": 2528,
+    "budget": 3000,
+    "bounds_min": [
+      -1.6334999799728394,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.6334999799728394,
+      1.2300000190734863,
+      2.680000066757202
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Ivory",
+      "Lemon",
+      "Mint",
+      "Paint",
+      "Peach",
+      "Rubber",
+      "Tail light lens",
+      "Warm headlight lens"
+    ]
+  },
+  {
+    "name": "kart_6",
+    "triangles": 2636,
+    "budget": 3000,
+    "bounds_min": [
+      -1.587249994277954,
+      -1.2300000190734863,
+      0.0
+    ],
+    "bounds_max": [
+      1.587249994277954,
+      1.2300000190734863,
+      2.559999942779541
+    ],
+    "wheel_names": [
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr"
+    ],
+    "materials": [
+      "Chrome",
+      "Coral",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber",
+      "Tail light lens",
+      "Warm headlight lens"
+    ]
+  },
+  {
+    "name": "kart_7",
+    "triangles": 1568,
+    "budget": 3000,
+    "bounds_min": [
+      -1.8571956157684326,
+      -0.9100000262260437,
+      0.0
+    ],
+    "bounds_max": [
+      1.8571956157684326,
+      0.9100000262260437,
+      2.2499999925494194
+    ],
+    "wheel_names": [],
+    "materials": [
+      "Chrome",
+      "Coral",
+      "Electric blue",
+      "Ivory",
+      "Lemon",
+      "Orange",
+      "Paint",
+      "Peach",
+      "Rubber",
+      "Warm headlight lens"
     ]
   }
 ]

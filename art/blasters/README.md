@@ -8,14 +8,14 @@ Counts are measured in Blender and independently checked after GLTFLoader import
 
 | File | Built | Triangles | Budget |
 | --- | --- | ---: | ---: |
-| `fps_char_0.glb` | Bucket-helmet knight, red crest, silver shoulder caps | 1,300 | 2,500 |
-| `fps_char_1.glb` | Astronaut, transparent bubble, backpack and chest controls | 1,728 | 2,500 |
-| `fps_char_2.glb` | Pirate, folded broad hat, patch and sash | 1,520 | 2,500 |
-| `fps_char_3.glb` | Square robot, antenna and emissive visor | 1,172 | 2,500 |
-| `fps_char_4.glb` | Wizard, tall bent purple hat, bell and beard | 1,508 | 2,500 |
-| `fps_char_5.glb` | Masked ninja, red headband tails and sash knot | 1,376 | 2,500 |
-| `fps_char_6.glb` | Chef, puffed white hat, moustache and apron | 1,776 | 2,500 |
-| `fps_char_7.glb` | Dinosaur hoodie kid, teeth, costume eyes and back spikes | 1,668 | 2,500 |
+| `fps_char_0.glb` | Bucket-helmet knight, red crest, silver shoulder caps | 1,624 | 2,500 |
+| `fps_char_1.glb` | Astronaut, transparent bubble, backpack and chest controls | 2,052 | 2,500 |
+| `fps_char_2.glb` | Pirate, folded broad hat, patch and sash | 1,844 | 2,500 |
+| `fps_char_3.glb` | Square robot, antenna and emissive visor | 1,392 | 2,500 |
+| `fps_char_4.glb` | Wizard, tall bent purple hat, bell and beard | 1,832 | 2,500 |
+| `fps_char_5.glb` | Masked ninja, red headband tails and sash knot | 1,700 | 2,500 |
+| `fps_char_6.glb` | Chef, puffed white hat, moustache and apron | 2,100 | 2,500 |
+| `fps_char_7.glb` | Dinosaur hoodie kid, teeth, costume eyes and back spikes | 1,992 | 2,500 |
 | `fps_w_dart.glb` | Orange pistol with blue grip | 316 | 500 |
 | `fps_w_scatter.glb` | Blue pump blaster, flared orange muzzle | 352 | 700 |
 | `fps_w_rapid.glb` | Yellow compact blaster, round orange drum | 476 | 700 |
@@ -37,7 +37,7 @@ Counts are measured in Blender and independently checked after GLTFLoader import
 | `fps_arena_towers.glb` | Decorated Block Towers, 117 collision boxes and 60 × 60 m play-mat | 11,238 | 60,000 |
 | `fps_train.glb` | Red/yellow engine, open green and blue wagons, toy-block cargo | 2,468 | 2,500 |
 
-The complete set contains **47,506 triangles**, counting each unique asset once. In-game totals depend on how many instances are visible.
+The complete set contains **49,994 triangles**, counting each unique asset once. In-game totals depend on how many instances are visible.
 
 ## Arena
 
@@ -218,3 +218,13 @@ No protected game code was edited. The kart `]` shortcut omission is documented 
 The supplementary `node art/check-optional-delivery.mjs` verifies the custom Towers arena in a live team match. All three remote figures have moving legs and free arms; their `Paint` materials are red or blue. No browser errors were recorded. The same check reports the kart shortcut omission and missing pie spin separately, without changing game code.
 
 The team-colour audit accounts for the bots' Classic, Pastel and Neon finishes, including the white mix applied by Pastel. Before/after SHA-256 hashes of every protected game file match.
+
+## Model polish, 2026-10-09
+
+Rebuilt all eight figures with smoother head silhouettes, weighted edge normals on the moulded parts, ivory torso piping and framed chest badges. The top table contains the current counts; earlier delivery sections retain their historical counts. All figures remain below 2,500 triangles.
+
+`Paint`, `head_core`, `right_hand` and the three named limb pivots are preserved. Body geometry remains inside the existing hitbox, and no rigs or baked animations were added. Materials remain plain Principled BSDF. Only the figure stage was rebuilt; weapons and arenas were left unchanged.
+
+Rebuild with `build_assets.py -- figures` as shown above. The editable `.blend` files and `validation.json` are updated. `../graphics/model-polish/fps_char-after.png` shows the eight exported figures under the same studio lighting. The windowless `check-assets.mjs` audit passes all 28 shooter assets, including limb pivots, head alignment, crouched proportions and player-colour changes.
+
+Both shooter maps completed 25-second browser runs with zero errors, including team mode on Block Towers. The hit check failed its first run at 57%, then passed an unchanged retry at 78%; no hit-detection code was edited. Full verification results are in `../graphics/model-polish/README.md`.

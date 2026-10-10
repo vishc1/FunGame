@@ -258,14 +258,14 @@ module.exports = {
     const karts = new Map();
     const ents = []; let eid = 0;
     // ---- height: decks and ramps (see public/memekarts-maps.js). `el` is how high a kart or item is standing. ----
-    const surf = (x, y) => MAPS.surface(map, x, y), STEP = 10; // a rise of more than STEP is a wall; a drop of more than STEP is a fall
+    const surf = (x, y) => MAPS.surface(map, x, y), STEP = 10, GRADE = 0.72; // a rise of more than STEP that is steeper than GRADE (rise per unit travelled) is a wall; a drop of more than STEP is a fall. Ramps climb at 0.52 at most.
     const boxes = BOXES.map(([x, y]) => ({ x, y, t: 0, el: surf(x, y) }));
     let elapsed = 0;
     // Keeps a kart on the ground it can reach after it moved from (px, py). Returns true when it ran into a deck or ramp side.
     function terrain(k, px, py, dt, rest) {
       if (surf(px, py) - k.el > STEP) { k.el = surf(k.x, k.y); return false; } // shoved inside a deck by a collision: pop up onto it
       const mx = k.x - px, my = k.y - py, ml = Math.hypot(mx, my) || 1, lx = (mx / ml) * R * 0.75, ly = (my / ml) * R * 0.75;
-      const wall = (x, y, ox, oy) => surf(x, y) - k.el > STEP || surf(x + ox, y + oy) - k.el > STEP;
+      const wall = (x, y, ox, oy) => { const d = Math.hypot(x - px, y - py), rise = surf(x, y) - k.el, rise2 = surf(x + ox, y + oy) - k.el; return (rise > STEP && rise > d * GRADE) || (rise2 > STEP && rise2 > (d + Math.hypot(ox, oy)) * GRADE); };
       let hit = false;
       if (wall(k.x, k.y, lx, ly)) {
         hit = true;
@@ -281,8 +281,8 @@ module.exports = {
     // the same idea for shells and other things that slide along the ground: decks and ramp sides bounce them, edges drop them
     function entWall(o, r, rest) {
       let hit = hitWall(o, r, rest); if (o.fly > 0) return hit;
-      const el = o.el || 0, s = surf(o.x, o.y);
-      if (s - el > STEP) {
+      const el = o.el || 0, s = surf(o.x, o.y), travel = Math.hypot(o.vx || 0, o.vy || 0) / 30 + r;
+      if (s - el > STEP && s - el > travel * GRADE) {
         hit = true; const bx = o.x - Math.sign(o.vx || 0) * (r + 8), by = o.y - Math.sign(o.vy || 0) * (r + 8);
         if (surf(bx, o.y) - el <= STEP) { o.x = bx; o.vx = -(o.vx || 0) * rest; }
         else if (surf(o.x, by) - el <= STEP) { o.y = by; o.vy = -(o.vy || 0) * rest; }

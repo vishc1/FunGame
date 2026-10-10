@@ -150,3 +150,30 @@ All eight requested checks passed:
 Browser checks use the windowless launcher. The start attempt skipped the manifest-writing `prestart` hook and found port 3000 occupied; a fresh server on port 3093 was used for the supplementary live art check. GitHub and deployment files were left untouched.
 
 SHA-256 hashes of all protected game files match the starting baseline. The temporary port-3093 test server was stopped after validation; the pre-existing port-3000 server was left running.
+
+## Model polish, 2026-10-09
+
+Rebuilt all eight karts. The seven wheeled vehicles now have rounded 16-sided tyres, white sidewall rings and five-spoke rim details. Rear bumpers support the lamps on open chassis. Headlights have inset warm lenses, and vehicle trim adds racing stripes, truck-bed planks, grilles, bus-window reflections and serving-window awnings. The sled has bright ski inserts and an orange exhaust lip. Drivers' heads have finer silhouettes, and weighted normals soften the body-panel shading.
+
+| Export | Triangles | Budget |
+| --- | ---: | ---: |
+| `kart_0.glb` | 2,676 | 3,000 |
+| `kart_1.glb` | 2,648 | 3,000 |
+| `kart_2.glb` | 2,804 | 3,000 |
+| `kart_3.glb` | 2,826 | 3,500 |
+| `kart_4.glb` | 2,588 | 3,000 |
+| `kart_5.glb` | 2,528 | 3,000 |
+| `kart_6.glb` | 2,636 | 3,000 |
+| `kart_7.glb` | 1,568 | 3,000 |
+
+The original 23-model set now contains 24,046 triangles; all 36 kart/item/environment models total 31,486. Items, ramps, decks and scenery were not rebuilt. Plain Principled materials and player-recolourable `Paint` remain in use. Static kart pieces are combined by material on export to limit draw calls; each wheel remains separate with its original axle pivot. Thin trim uses flat geometry to leave more of the triangle budget for visible silhouettes.
+
+Rebuild just the karts, keeping the other asset records:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/memekarts/build_assets.py --karts
+```
+
+Updated sources are `kart_0.blend` through `kart_7.blend`. `validation.json` contains current counts and bounds. `../graphics/model-polish/kart-after.png` shows the exported models with player colours. The windowless runtime audit verifies all eight custom karts in one match, grounded models, wheel origins and live wheel rotation.
+
+The all-game suite, 19-item logic check, final eight-kart runtime audit and 25-second gameplay check pass. Full results, including the shooter hit-test retry and preserved concurrent game-code edits, are in `../graphics/model-polish/README.md`. No game code, GitHub state or deployment was changed by this art pass.

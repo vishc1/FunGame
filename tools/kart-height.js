@@ -15,8 +15,19 @@ for (const map of MAPS) {
   const rp = map.ramps[0], d = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[rp.dir], cx = rp.x + rp.w / 2, cy = rp.y + rp.h / 2, a = Math.atan2(d[1], d[0]);
   let w = world(map.id); w.tp('a', cx - d[0] * 130, cy - d[1] * 130, a); w.tp('b', 60, 60, 0);
   ok(`${map.id}: starts on the floor`, w.k('a').el === 0);
-  let top = 0, mid = false; for (let i = 0; i < 45; i++) { w.drive('a', 1); const el = w.k('a').el; if (el > 8 && el < 26) mid = true; top = Math.max(top, el); if (top === MAPS.DECK_Z && MAPS.surface(map, w.k('a').x, w.k('a').y) === MAPS.DECK_Z) break; }
+  let top = 0, mid = false; for (let i = 0; i < 45; i++) { w.drive('a', 1); const el = w.k('a').el; if (el > 8 && el < MAPS.DECK_Z - 6) mid = true; top = Math.max(top, el); if (top === MAPS.DECK_Z && MAPS.surface(map, w.k('a').x, w.k('a').y) === MAPS.DECK_Z) break; }
   ok(`${map.id}: drives up the ramp onto the deck`, top === MAPS.DECK_Z && mid, `passed through the slope: ${mid}, top height ${top}`);
+  // the sky tower: a second ramp on the first deck climbs to the second tier; driving off it is a long fall
+  { const DV = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }, r2 = map.ramps.find((r) => r.z0), t2 = map.decks.find((d) => d.z), base = map.decks.find((d) => !d.z && t2.x >= d.x && t2.x + t2.w <= d.x + d.w && t2.y >= d.y && t2.y + t2.h <= d.y + d.h);
+    const r1 = map.ramps.find((r) => { if (r.z0) return false; const v = DV[r.dir], hx = r.x + r.w / 2 + v[0] * (r.w / 2 + 3), hy = r.y + r.h / 2 + v[1] * (r.h / 2 + 3); return hx >= base.x && hx <= base.x + base.w && hy >= base.y && hy <= base.y + base.h; }), dd = DV[r1.dir];
+    const t = world(map.id); t.tp('b', 60, 60, 0); t.tp('a', r1.x + r1.w / 2 - dd[0] * 130, r1.y + r1.h / 2 - dd[1] * 130, Math.atan2(dd[1], dd[0]));
+    let hi = 0, onTier1 = false, fellFrom = 0; for (let i = 0; i < 150; i++) { t.drive('a', 1); const k = t.k('a'); if (k.el === MAPS.DECK_Z) onTier1 = true; if (k.el > hi) hi = k.el; if (hi === MAPS.TOWER_Z && k.el < MAPS.TOWER_Z) { fellFrom = MAPS.TOWER_Z; } if (fellFrom && k.el === 0 && MAPS.surface(map, k.x, k.y) === 0) break; }
+    ok(`${map.id}: the sky tower: floor, first deck, then the second ramp up to ${MAPS.TOWER_Z}`, onTier1 && hi === MAPS.TOWER_Z, `highest ${hi}, via tier 1: ${onTier1}`);
+    ok(`${map.id}: ...and driving off the top drops all the way to the floor`, fellFrom === MAPS.TOWER_Z && t.k('a').el === 0, 'ended at height ' + t.k('a').el);
+    const bx = map.boxes.find(([x, y]) => MAPS.surface(map, x, y) === MAPS.TOWER_Z); ok(`${map.id}: there is an item box on top of the tower`, !!bx);
+    if (bx) { const u = world(map.id); u.tp('b', 60, 60, 0); u.tp('a', bx[0], bx[1], 0); u.tick(2); ok(`${map.id}: the box on the tower top is collected up there`, !!u.k('a').weapon && u.k('a').el === MAPS.TOWER_Z); }
+    // a fast kart (mushroom) still climbs a ramp instead of bouncing off it
+    const f = world(map.id); f.tp('b', 60, 60, 0); f.tp('a', r1.x + r1.w / 2 - dd[0] * 160, r1.y + r1.h / 2 - dd[1] * 160, Math.atan2(dd[1], dd[0])); f.game.onInput('a', { type: 'give', weapon: 'mush' }); f.game.onInput('a', { type: 'fire' }); let fh = 0; for (let i = 0; i < 40; i++) { f.drive('a', 1); fh = Math.max(fh, f.k('a').el); } ok(`${map.id}: a boosted kart climbs the ramp too`, fh >= MAPS.DECK_Z, 'highest ' + fh); }
   // keep going straight across the deck and off the far edge
   let fell = false, low = 99; for (let i = 0; i < 90; i++) { w.drive('a', 1); const k = w.k('a'); low = Math.min(low, k.el); if (k.el === 0 && MAPS.surface(map, k.x, k.y) === 0) { fell = true; break; } }
   ok(`${map.id}: comes back down to the floor (down a ramp or off the edge)`, fell, 'lowest height ' + low);

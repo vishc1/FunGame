@@ -35,7 +35,7 @@ Refreshing the page or a short connection drop does not lose your seat: it is he
 | Hot Potato Trivia | pass the potato, whoever holds it when it pops answers | click a player, click an answer |
 | Shadow Tag | dark map, flashlight cones, you only see lit players | WASD, mouse aim, F toggles light |
 | Build & Break | 60 s to stack blocks, then one wrecking-ball shot each | A/D, Q/E rotate, Space drop, drag to fire |
-| Meme Karts | **3D** kart battle (Smash Karts shape) with 19 items (including a Cream pie you aim by holding Space) on three large maps (speedway + fort, neon city with portals and drones, canyon with boulders and quicksand), all with raised decks you reach by ramp: shells, Boo ghost, lightning, star, Bullet Bill, bob-ombs… | WASD drive, Space fire |
+| Meme Karts | **3D** kart battle (Smash Karts shape) with 19 items (including a Cream pie you aim by holding Space) on three large maps (speedway + fort, neon city with portals and drones, canyon with boulders and quicksand), all with raised decks you reach by ramp and a two-stage sky tower with an item box on its 10 m summit: shells, Boo ghost, lightning, star, Bullet Bill, bob-ombs… | WASD drive, Space fire |
 | Character Brawl | one-screen platform brawler, parody characters | A/D, W jump, J attack, K special |
 | Prop Hunt Arena | hiders are props, seekers shoot what looks wrong | WASD, click shoot, 1-8 pick prop |
 | Tag with Powers | tag where everyone has a random power | WASD, Space power |

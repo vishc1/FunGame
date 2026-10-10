@@ -1,6 +1,6 @@
 {
   "fps_char_0": {
-    "triangles": 1300,
+    "triangles": 1624,
     "budget": 2500,
     "min": [
       -0.42000001668930054,
@@ -52,7 +52,7 @@
     }
   },
   "fps_char_1": {
-    "triangles": 1728,
+    "triangles": 2052,
     "budget": 2500,
     "min": [
       -0.42000001668930054,
@@ -106,7 +106,7 @@
     }
   },
   "fps_char_2": {
-    "triangles": 1520,
+    "triangles": 1844,
     "budget": 2500,
     "min": [
       -0.42000001668930054,
@@ -158,7 +158,7 @@
     }
   },
   "fps_char_3": {
-    "triangles": 1172,
+    "triangles": 1392,
     "budget": 2500,
     "min": [
       -0.42000001668930054,
@@ -211,7 +211,7 @@
     }
   },
   "fps_char_4": {
-    "triangles": 1508,
+    "triangles": 1832,
     "budget": 2500,
     "min": [
       -0.42000001668930054,
@@ -263,7 +263,7 @@
     }
   },
   "fps_char_5": {
-    "triangles": 1376,
+    "triangles": 1700,
     "budget": 2500,
     "min": [
       -0.42000001668930054,
@@ -314,7 +314,7 @@
     }
   },
   "fps_char_6": {
-    "triangles": 1776,
+    "triangles": 2100,
     "budget": 2500,
     "min": [
       -0.42000001668930054,
@@ -365,7 +365,7 @@
     }
   },
   "fps_char_7": {
-    "triangles": 1668,
+    "triangles": 1992,
     "budget": 2500,
     "min": [
       -0.42000001668930054,

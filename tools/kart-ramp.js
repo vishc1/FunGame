@@ -24,11 +24,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.keyboard.down('w'); let top = 0, shotOn = false, shotTop = false, down = false;
   for (let i = 0; i < 140; i++) { await sleep(40); const k = await page.evaluate(() => window.__k); if (!k) continue; top = Math.max(top, k.el);
     if (!shotOn && k.el > 12) { await page.screenshot({ path: path.join(OUT, `ramp_${MAP}_2_climbing.png`) }); shotOn = true; }
-    if (!shotTop && k.el >= 32) { await sleep(120); await page.screenshot({ path: path.join(OUT, `ramp_${MAP}_3_on_deck.png`) }); shotTop = true; }
+    if (!shotTop && k.el >= (rp.z1 || 48)) { await sleep(120); await page.screenshot({ path: path.join(OUT, `ramp_${MAP}_3_on_deck.png`) }); shotTop = true; }
     if (shotTop && k.el === 0) { down = true; await page.screenshot({ path: path.join(OUT, `ramp_${MAP}_4_back_down.png`) }); break; } }
   await page.keyboard.up('w');
-  console.log(`${MAP} ramp ${RI} (${rp.dir}): climbed to height ${top} of 32, ${down ? 'then came back down to the floor' : 'never came back down'}; page errors ${errors.length}`);
-  const launches = top >= 32 && down ? 1 : 0;
+  console.log(`${MAP} ramp ${RI} (${rp.dir}): climbed to height ${top} of ${rp.z1 || 48}, ${down ? 'then came back down to the floor' : 'never came back down'}; page errors ${errors.length}`);
+  const launches = top >= (rp.z1 || 48) && down ? 1 : 0;
   if (log) console.log('SERVER: ' + log.slice(0, 500));
   await browser.close(); srv.kill(); process.exit(launches > 0 && !errors.length ? 0 : 1);
 })().catch((e) => { console.error(e); process.exit(1); });

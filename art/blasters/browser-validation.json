@@ -2,9 +2,9 @@
   "assets": [
     {
       "name": "fps_char_0",
-      "triangles": 1300,
+      "triangles": 1624,
       "budget": 2500,
-      "meshes": 18,
+      "meshes": 19,
       "paint": 2,
       "size": [
         0.8400000333786011,
@@ -14,7 +14,7 @@
     },
     {
       "name": "fps_char_1",
-      "triangles": 1728,
+      "triangles": 2052,
       "budget": 2500,
       "meshes": 21,
       "paint": 2,
@@ -26,7 +26,7 @@
     },
     {
       "name": "fps_char_2",
-      "triangles": 1520,
+      "triangles": 1844,
       "budget": 2500,
       "meshes": 18,
       "paint": 2,
@@ -38,9 +38,9 @@
     },
     {
       "name": "fps_char_3",
-      "triangles": 1172,
+      "triangles": 1392,
       "budget": 2500,
-      "meshes": 20,
+      "meshes": 21,
       "paint": 2,
       "size": [
         0.8400000333786011,
@@ -50,7 +50,7 @@
     },
     {
       "name": "fps_char_4",
-      "triangles": 1508,
+      "triangles": 1832,
       "budget": 2500,
       "meshes": 18,
       "paint": 2,
@@ -62,9 +62,9 @@
     },
     {
       "name": "fps_char_5",
-      "triangles": 1376,
+      "triangles": 1700,
       "budget": 2500,
-      "meshes": 15,
+      "meshes": 16,
       "paint": 2,
       "size": [
         0.8400000333786011,
@@ -74,7 +74,7 @@
     },
     {
       "name": "fps_char_6",
-      "triangles": 1776,
+      "triangles": 2100,
       "budget": 2500,
       "meshes": 17,
       "paint": 2,
@@ -86,7 +86,7 @@
     },
     {
       "name": "fps_char_7",
-      "triangles": 1668,
+      "triangles": 1992,
       "budget": 2500,
       "meshes": 18,
       "paint": 2,
@@ -353,7 +353,7 @@
         "ffd84d"
       ],
       [
-        "e8d2ff"
+        "c77dff"
       ],
       [
         "ff9f43"
@@ -366,13 +366,13 @@
       ]
     ],
     "headHeights": [
-      1.56,
-      1.5600000000000003,
-      1.5600000000000003,
-      1.5600000000000007,
       1.5600000000000005,
-      1.5599999999999998,
-      1.5600000000000003
+      1.5600000000000003,
+      1.5600000000000003,
+      1.5600000000000003,
+      1.5600000000000003,
+      1.5600000000000003,
+      1.5599999999999998
     ]
   },
   "errors": [],

@@ -20,9 +20,13 @@ def reset():
 def finish(o,n,m):
  o.name=n;o.data.materials.append(m);return o
 def box(n,p,s,m,bev=.06):
+ if min(s)<.065:bev=0  # Thin trim reads as a clean inlay; spend triangles on silhouettes.
  bpy.ops.mesh.primitive_cube_add(size=1,location=p);o=bpy.context.object;o.scale=s;bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
  if bev:
   mod=o.modifiers.new('Soft toy edges','BEVEL');mod.width=bev;mod.segments=1;bpy.ops.object.modifier_apply(modifier=mod.name)
+  for face in o.data.polygons:face.use_smooth=True
+  o.data.use_auto_smooth=True
+  mod=o.modifiers.new('Weighted panel normals','WEIGHTED_NORMAL');mod.keep_sharp=True;bpy.ops.object.modifier_apply(modifier=mod.name)
  return finish(o,n,m)
 def ball(n,p,s,m,seg=12,rings=6):
  bpy.ops.mesh.primitive_uv_sphere_add(segments=seg,ring_count=rings,radius=1,location=p);o=bpy.context.object;o.scale=s
@@ -45,7 +49,31 @@ def wheels(tractor=False):
  for x,ax in [(1.05,'f'),(-1.02,'r')]:
   r=.64 if tractor and ax=='r' else .35 if tractor else .46
   for y,side in [(.99,'l'),(-.99,'r')]:
-   obs=[cone('Tyre',(x,y,r),r,r,.4,D,12,'Y'),cone('Hub',(x,y,r),r*.52,r*.52,.43,Y if tractor else C,10,'Y')]
+   verts=[];faces=[]
+   for dy,rr in [(-.2,r*.84),(-.145,r),(.145,r),(.2,r*.84)]:
+    for i in range(16):
+     a=i*math.tau/16;verts.append((x+rr*math.cos(a),y+dy,r+rr*math.sin(a)))
+   for row in range(3):
+    for i in range(16):
+     j=(i+1)%16;faces.append((row*16+i,(row+1)*16+i,(row+1)*16+j,row*16+j))
+   faces.extend([tuple(range(16)),tuple(reversed(range(48,64)))])
+   mesh=bpy.data.meshes.new('Rounded tyre');mesh.from_pydata(verts,[],faces);mesh.update()
+   tyre=bpy.data.objects.new('Tyre',mesh);bpy.context.collection.objects.link(tyre);tyre.data.materials.append(D)
+   for face in mesh.polygons:face.use_smooth=len(face.vertices)==4
+   obs=[tyre,cone('Hub',(x,y,r),r*.57,r*.57,.43,Y if tractor else C,16,'Y')]
+   for sign in [-1,1]:
+    # Raised sidewall ring and five spoke inlays stay symmetric about the axle.
+    verts=[];faces=[]
+    for i in range(16):
+     a=i*math.tau/16
+     for rr in [r*.69,r*.76]:verts.append((x+rr*math.cos(a),y+sign*.201,r+rr*math.sin(a)))
+    for i in range(16):
+     j=(i+1)%16;f=(i*2,i*2+1,j*2+1,j*2);faces.append(f if sign<0 else tuple(reversed(f)))
+    mesh=bpy.data.meshes.new('Sidewall ring');mesh.from_pydata(verts,[],faces);mesh.update();o=bpy.data.objects.new('Sidewall ring',mesh);bpy.context.collection.objects.link(o);o.data.materials.append(W);obs.append(o)
+    for i in range(5):
+     a=i*math.tau/5;v=[]
+     for rr,ang in [(r*.19,a-.14),(r*.51,a-.10),(r*.51,a+.10),(r*.19,a+.14)]:v.append((x+rr*math.cos(ang),y+sign*.216,r+rr*math.sin(ang)))
+     mesh=bpy.data.meshes.new('Spoke inlay');mesh.from_pydata(v,[],[(0,1,2,3) if sign<0 else (3,2,1,0)]);mesh.update();o=bpy.data.objects.new('Spoke inlay',mesh);bpy.context.collection.objects.link(o);o.data.materials.append(D);obs.append(o)
    for yy in [y-.225,y+.225]:obs.append(cone('Axle cap',(x,yy,r),r*.2,r*.2,.03,D,8,'Y'))
    join(obs,'wheel_'+ax+side,(x,y,r))
 def eyes(x,z,y=.18):
@@ -54,7 +82,7 @@ def eyes(x,z,y=.18):
 def driver(kind=0,p=(-.3,0,1.0)):
  x,y,z=p
  ball('Jacket',(x,y,z+.25),(.34,.36,.46),[B,R,G,O,Y,G,B,R][kind],10,5)
- ball('Head',(x+.04,y,z+.87),(.36,.33,.4),S,12,6)
+ ball('Head',(x+.04,y,z+.87),(.36,.33,.4),S,16,8)
  for yy in [-.38,.38]:bar('Sleeve',(x,yy,z+.4),(x+.48,yy*.8,z+.27),.12,W);ball('Glove',(x+.48,yy*.8,z+.27),(.14,.13,.13),W,8,4)
  eyes(x+.37,z+.92)
  ball('Nose',(x+.4,y,z+.78),(.17,.13,.13),S,8,4)
@@ -86,10 +114,66 @@ def export(name,budget):
  for o in obs:o.data.calc_loop_triangles();tris+=len(o.data.loop_triangles);o.select_set(True)
  assert tris<=budget,(name,tris,budget)
  bpy.ops.wm.save_as_mainfile(filepath=ART+'/'+name+'.blend')
+ # Reduce draw calls while keeping the four independently animated wheel pivots.
+ groups={}
+ for o in obs:
+  if not o.name.startswith('wheel_'):groups.setdefault(o.data.materials[0].name,[]).append(o)
+ for name_mat,group in groups.items():
+  if len(group)<2:continue
+  bpy.ops.object.select_all(action='DESELECT')
+  for o in group:o.select_set(True)
+  bpy.context.view_layer.objects.active=group[0];bpy.ops.object.join();group[0].name='detail_'+name_mat
+ obs=list(bpy.context.scene.objects);bpy.ops.object.select_all(action='SELECT')
  bpy.ops.export_scene.gltf(filepath=OUT+'/'+name+'.glb',export_format='GLB',use_selection=True,export_yup=True,export_apply=True,export_animations=False,export_cameras=False,export_lights=False)
  reports.append(dict(name=name,triangles=tris,budget=budget,bounds_min=[lo[i]+shift[i] for i in range(3)],bounds_max=[hi[i]+shift[i] for i in range(3)],wheel_names=[o.name for o in obs if o.name.startswith('wheel_')],materials=sorted({m.name for o in obs for m in o.data.materials})))
  with open(ART+'/validation.json','w') as f:json.dump(reports,f,indent=2)
  print('ASSET_READY',name,tris,flush=True)
+def trim(k):
+ lens=mat('Warm headlight lens',(1,.84,.43),emit=.35)
+ tail=mat('Tail light lens',(.75,.025,.015),emit=.15)
+ glass=mat('Smoked toy glass',(.018,.09,.16),metal=.3)
+ # Rear lights and bumpers are deliberately prominent from the chase camera.
+ if k!=7:
+  if k in [0,2,4,5]:box('Rear bumper',(-1.51,0,.78),(.08,1.45,.18),D,.025)
+  rear=-1.64 if k==1 else -1.565 if k==3 else -1.545
+  for y in [-.56,.56]:box('Tail lamp',(rear,y,.81),(.045,.21,.10),tail,.015)
+ for y in [-.48,.48]:box('Headlight lens',(1.598,y,.86),(.018,.18,.085),lens,.012)
+ if k in [0,1,4,5]:
+  hx,hz,span={0:(1,1.008,.72),1:(.95,1.306,.88),4:(.94,1.001,1.05),5:(.8,1.456,.95)}[k]
+  for y in [-.12,.12]:box('Ivory racing stripe',(hx,y,hz),(span,.095,.012),W,.003)
+ if k==0:
+  for y in [-.62,.62]:box('Side skirt inlay',(-.2,y,.997),(1.5,.09,.012),O,.002)
+  box('Seat piping',(-.885,0,1.34),(.02,.52,.08),O,.006)
+ elif k==1:
+  box('Pickup grille',(1.566,0,1.035),(.025,.57,.30),D,.01)
+  for z in [.94,1.03,1.12]:box('Grille slat',(1.584,0,z),(.016,.49,.022),C,0)
+  wood=mat('Bed wood',(.34,.16,.055))
+  for y in [-.44,-.22,0,.22,.44]:box('Bed plank',(-1.05,y,.932),(.82,.16,.018),wood,.006)
+  for y in [-.73,.73]:box('Door handle',(-.2,y,1.26),(.23,.04,.045),C,.005)
+ elif k==2:
+  for y in [-.772,.772]:box('Basket number panel',(.15,y,1.45),(.44,.02,.27),O,.015)
+  box('Basket cargo',(-.63,0,1.17),(.45,.55,.28),B,.04)
+ elif k==3:
+  for y in [-.815,.815]:
+   box('Bus belt line',(0,y,1.39),(2.95,.018,.07),O,.006)
+   for x in [-1.1,-.35,.4]:box('Window reflection',(x+.15,y*1.004,1.81),(.055,.009,.28),W,.003)
+  box('Rear window',(-1.566,0,1.8),(.018,1.12,.40),glass,.02)
+ elif k==4:
+  for y in [-.68,.68]:box('Cooling intake',(-.7,y,1.001),(.36,.10,.012),D,.002)
+  for y in [-.55,.55]:box('Wing stripe',(-1.3,y,1.656),(.43,.16,.012),W,.002)
+  cone('Exhaust recess',(-1.807,0,.9),.22,.22,.016,D,12,'X')
+ elif k==5:
+  for y in [-.22,-.11,0,.11,.22]:box('Tractor grille slat',(1.49,y,1.08),(.018,.026,.36),C,.003)
+  box('Canopy ivory band',(-.51,0,2.674),(1.52,.20,.012),W,.003)
+ elif k==6:
+  for y in [-.817,.817]:
+   box('Serving sill',(-.6,y,1.082),(1.12,.06,.05),C,.01)
+   box('Awning',(-.6,y,1.535),(1.15,.06,.07),R,.012)
+   for x in [-.93,-.66,-.39]:box('Awning stripe',(x,y,1.578),(.12,.06,.012),W,.002)
+ elif k==7:
+  for y in [-.8,.8]:box('Ski highlight',(-.05,y,.196),(2.85,.06,.012),W,.003)
+  cone('Engine inner lip',(-1.819,0,.85),.27,.27,.014,O,12,'X')
+
 def kart(k):
  reset()
  if k!=7:wheels(k==5)
@@ -137,6 +221,7 @@ def kart(k):
   for y in [-.8,.8]:
    box('Ski',(0,y,.1),(3.45,.22,.18),B);bar('Ski curl',(1.6,y,.1),(1.8,y,.37),.11,B);bar('Ski strut',(-.7,y,.18),(-.7,y,.8),.06,C);bar('Ski strut',(.7,y,.18),(.7,y,.8),.06,C)
  for y in [-.48,.48]:box('Headlight',(1.56,y,.86),(.06,.23,.13),Y,.02)
+ trim(k)
  export('kart_'+str(k),3500 if k==3 else 3000)
 
 def glyph(n,segments,p,size,m,axis='X',flip=False):
@@ -218,6 +303,10 @@ def items():
 
 if __name__=='__main__':
  import sys
+ if '--karts' in sys.argv:
+  with open(ART+'/validation.json') as f:reports=[r for r in json.load(f) if not r['name'] in ['kart_'+str(k) for k in range(8)]]
+  for k in range(8):kart(k)
+  sys.exit(0)
  if '--items' not in sys.argv:
   for k in range(8):kart(k)
  else:
