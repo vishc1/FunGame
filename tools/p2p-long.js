@@ -7,7 +7,7 @@ const cache = path.join(os.homedir(), 'Library/Caches/ms-playwright'); const dir
 const exe = path.join(cache, dir, 'chrome-headless-shell-mac-arm64/chrome-headless-shell'); // the window-less test browser: no Dock icon, no windows
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
-  const browsers = [], open = async () => { const b = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] }); browsers.push(b); const p = await (await b.newContext({ viewport: { width: 900, height: 600 } })).newPage(); await p.goto(BASE + '/' + Q); return p; };
+  const browsers = [], open = async () => { const b = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--disable-features=WebRtcHideLocalIpsWithMdns'] /* real local IPs: two browsers on one Mac can only reach each other over WebRTC when mDNS works, and it does not always */ }); browsers.push(b); const p = await (await b.newContext({ viewport: { width: 900, height: 600 } })).newPage(); await p.goto(BASE + '/' + Q); return p; };
   const host = await open(), guest = await open();
   await host.fill('#name', 'Host'); await host.click('#createBtn'); await host.waitForSelector('#lobby:not(.hidden)', { timeout: 20000 }); const code = (await host.textContent('#roomCode')).trim();
   await guest.fill('#name', 'Guest'); await guest.fill('#code', code); await guest.click('#joinBtn'); await guest.waitForSelector('#lobby:not(.hidden)', { timeout: 25000 });

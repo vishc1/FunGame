@@ -18,7 +18,7 @@ let pass = 0, fail = 0; const check = (n, ok, x = '') => { ok ? pass++ : fail++;
   for (const game of ['memekarts', 'blasters']) {
     // two completely separate browser processes, like two people on two computers
     const browsers = [], pages = [];
-    for (let i = 0; i < 2; i++) { const b = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] }); browsers.push(b); const page = await (await b.newContext({ viewport: { width: 1000, height: 700 } })).newPage(); page.on('pageerror', (e) => errors.push(`[${game} p${i}] ${e.message}`)); await page.goto(`${BASE}/?bltest=1&game=${game}${process.env.P2P ? '&p2p=1' : ''}`); pages.push(page); }
+    for (let i = 0; i < 2; i++) { const b = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--disable-features=WebRtcHideLocalIpsWithMdns'] /* real local IPs: two browsers on one Mac can only reach each other over WebRTC when mDNS works, and it does not always */ }); browsers.push(b); const page = await (await b.newContext({ viewport: { width: 1000, height: 700 } })).newPage(); page.on('pageerror', (e) => errors.push(`[${game} p${i}] ${e.message}`)); await page.goto(`${BASE}/?bltest=1&game=${game}${process.env.P2P ? '&p2p=1' : ''}`); pages.push(page); }
     const [A, Bp] = pages;
     await A.fill('#name', 'Alice'); await A.click('#createBtn'); await A.waitForSelector('#lobby:not(.hidden)'); const code = (await A.textContent('#roomCode')).trim();
     await Bp.fill('#name', 'Bob'); await Bp.fill('#code', code); await Bp.click('#joinBtn'); await Bp.waitForSelector('#lobby:not(.hidden)');

@@ -8,7 +8,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const OUT = path.jo
 let pass = 0, fail = 0; const check = (n, ok, x = '') => { ok ? pass++ : fail++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x ? '  ' + x : ''}`); };
 (async () => {
   const srv = process.env.BASE_URL ? { kill() {} } : spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT }, stdio: ['ignore', 'pipe', 'pipe'] }); await sleep(800);
-  const browser = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+  const browser = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--disable-features=WebRtcHideLocalIpsWithMdns'] /* real local IPs: two browsers on one Mac can only reach each other over WebRTC when mDNS works, and it does not always */ });
   const phone = devices['iPhone 13'], errors = [];
   const open = async (landscape, url) => { const ctx = await browser.newContext({ ...phone, viewport: landscape ? { width: 844, height: 390 } : { width: 390, height: 844 } }); const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); }); await page.goto(BASE + url); return page; };
   // home, portrait
