@@ -1,0 +1,92 @@
+{
+  "tower": {
+    "triangles": 754,
+    "budget": 800,
+    "min": [
+      -5.0,
+      -5.0,
+      0.0
+    ],
+    "max": [
+      5.0,
+      5.0,
+      10.0
+    ],
+    "materials": [
+      "Beacon ivory",
+      "Coral enamel",
+      "Court teal",
+      "Podium concrete",
+      "Safety lemon"
+    ],
+    "nominal_size": [
+      10,
+      10,
+      10
+    ],
+    "flat_top": true,
+    "full_footprint": true,
+    "visible_detail_above": 4.8,
+    "theme": "stadium"
+  },
+  "tower_neon": {
+    "triangles": 770,
+    "budget": 800,
+    "min": [
+      -5.0,
+      -5.0,
+      0.0
+    ],
+    "max": [
+      5.0,
+      5.0,
+      10.0
+    ],
+    "materials": [
+      "Cyan enamel",
+      "Midnight alloy",
+      "Penthouse magenta",
+      "Roof slate",
+      "Window glow"
+    ],
+    "nominal_size": [
+      10,
+      10,
+      10
+    ],
+    "flat_top": true,
+    "full_footprint": true,
+    "visible_detail_above": 4.8,
+    "theme": "neon"
+  },
+  "tower_canyon": {
+    "triangles": 770,
+    "budget": 800,
+    "min": [
+      -5.0,
+      -5.0,
+      0.0
+    ],
+    "max": [
+      5.0,
+      5.0,
+      10.0
+    ],
+    "materials": [
+      "Chalk cream",
+      "Clay orange",
+      "Mesa sand",
+      "Red sandstone",
+      "Weathered sandstone"
+    ],
+    "nominal_size": [
+      10,
+      10,
+      10
+    ],
+    "flat_top": true,
+    "full_footprint": true,
+    "visible_detail_above": 4.8,
+    "theme": "canyon"
+  }
+}

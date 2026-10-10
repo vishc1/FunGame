@@ -111,6 +111,11 @@ try {
         const cx=d.x+d.w/2-map.w/2,cz=d.y+d.h/2-map.h/2;
         const g=decks.find(o=>Math.abs(o.position.x-cx)<.01&&Math.abs(o.position.z-cz)<.01);
         if(!g?.userData.glb)throw Error('Deck is a placeholder');
+        if(d.z){
+          const signature={stadium:'Beacon ivory',neon:'Penthouse magenta',canyon:'Weathered sandstone'}[id];
+          let summit=false;g.traverse(o=>{if(o.isMesh&&o.material.name===signature)summit=true;});
+          if(!summit)throw Error('Summit fell back to the old deck model');
+        }
         const bb=new T.Box3().setFromObject(g),sz=bb.getSize(new T.Vector3());
         if(Math.abs(sz.x-d.w)>.01||Math.abs(sz.z-d.h)>.01||Math.abs(sz.y-(d.z||48))>.01||Math.abs(bb.min.y)>.01)throw Error('Deck collision bounds mismatch'); /* a deck is 48 high; a second tier (d.z) is 100 and still starts on the floor */
         for(const u of [-.49,0,.49])for(const v of [-.49,0,.49]){
@@ -192,7 +197,7 @@ try {
     console.log(`Landmark animation, reduced motion ${reduce}: ${JSON.stringify(angles)}`);
   }
   assert.deepEqual([...new Set(errors)], []);
-  console.log('Twelve environment/height GLBs grounded and within budget; three maps, solid flat decks, exact ramp/obstacle footprints and slopes, safe scenery, moving landmarks, no browser errors: PASS');
+  console.log('Fifteen environment/height GLBs grounded and within budget; three maps with custom summits, solid flat decks, exact ramp/obstacle footprints and slopes, safe scenery, moving landmarks, no browser errors: PASS');
 } catch (error) {
   console.error('Browser errors:', errors);
   throw error;

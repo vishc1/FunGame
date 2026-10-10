@@ -2,9 +2,14 @@
   {
     "name": "deck",
     "triangles": 402,
-    "size": [
+    "authoredSize": [
       20,
       3.200000047683716,
+      16
+    ],
+    "testedSize": [
+      20,
+      4.8,
       16
     ],
     "surfaceSamples": 121
@@ -12,9 +17,14 @@
   {
     "name": "deck_neon",
     "triangles": 482,
-    "size": [
+    "authoredSize": [
       30,
       3.200000047683716,
+      22
+    ],
+    "testedSize": [
+      30,
+      4.8,
       22
     ],
     "surfaceSamples": 121
@@ -22,9 +32,14 @@
   {
     "name": "deck_canyon",
     "triangles": 210,
-    "size": [
+    "authoredSize": [
       22,
       3.200000047683716,
+      12
+    ],
+    "testedSize": [
+      22,
+      4.8,
       12
     ],
     "surfaceSamples": 121
@@ -32,30 +47,90 @@
   {
     "name": "ramp",
     "triangles": 62,
-    "size": [
+    "authoredSize": [
       10,
       3.200000047683716,
       8.399999618530273
+    ],
+    "testedSize": [
+      10,
+      5.2,
+      8.4
     ],
     "surfaceSamples": 121
   },
   {
     "name": "ramp_neon",
     "triangles": 62,
-    "size": [
+    "authoredSize": [
       10,
       3.200000047683716,
       8.399999618530273
+    ],
+    "testedSize": [
+      10,
+      5.2,
+      8.4
     ],
     "surfaceSamples": 121
   },
   {
     "name": "ramp_canyon",
     "triangles": 62,
-    "size": [
+    "authoredSize": [
       10,
       3.200000047683716,
       8.399999618530273
+    ],
+    "testedSize": [
+      10,
+      5.2,
+      8.4
+    ],
+    "surfaceSamples": 121
+  },
+  {
+    "name": "tower",
+    "triangles": 754,
+    "authoredSize": [
+      10,
+      10,
+      10
+    ],
+    "testedSize": [
+      10,
+      10,
+      10
+    ],
+    "surfaceSamples": 121
+  },
+  {
+    "name": "tower_neon",
+    "triangles": 770,
+    "authoredSize": [
+      10,
+      10,
+      10
+    ],
+    "testedSize": [
+      10,
+      10,
+      10
+    ],
+    "surfaceSamples": 121
+  },
+  {
+    "name": "tower_canyon",
+    "triangles": 770,
+    "authoredSize": [
+      10,
+      10,
+      10
+    ],
+    "testedSize": [
+      10,
+      10,
+      10
     ],
     "surfaceSamples": 121
   }

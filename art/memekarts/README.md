@@ -177,3 +177,45 @@ Rebuild just the karts, keeping the other asset records:
 Updated sources are `kart_0.blend` through `kart_7.blend`. `validation.json` contains current counts and bounds. `../graphics/model-polish/kart-after.png` shows the exported models with player colours. The windowless runtime audit verifies all eight custom karts in one match, grounded models, wheel origins and live wheel rotation.
 
 The all-game suite, 19-item logic check, final eight-kart runtime audit and 25-second gameplay check pass. Full results, including the shooter hit-test retry and preserved concurrent game-code edits, are in `../graphics/model-polish/README.md`. No game code, GitHub state or deployment was changed by this art pass.
+
+## Sky towers, 2026-10-09
+
+Three new summit models are in `public/models/`. Stadium has a radio-lattice facade and a flush beacon target. Neon has lit penthouse windows and a magenta lightning roof sign. Canyon has uneven sandstone strata and a pale summit rim. The beacon and sign are surface designs: nothing projects above the driveable roof or outside the collision box.
+
+| Export | Triangles | Budget |
+| --- | ---: | ---: |
+| `tower.glb` | 754 | 800 |
+| `tower_neon.glb` | 770 | 800 |
+| `tower_canyon.glb` | 770 | 800 |
+
+Each model is authored as a 10 × 10 × 10 m closed cuboid, with its origin at the bottom centre. The loader stretches the horizontal dimensions to each summit's footprint. Facade detail starts at 4.8 m, above the portion hidden by the first deck. All materials use plain Principled BSDF shaders; the exports have no textures, lights, cameras, rigs or baked animation. Each GLB has five material meshes. Colour boundaries are tessellated into the surfaces, with no overlapping decals or roof obstacles.
+
+Editable sources are `tower.blend`, `tower_neon.blend` and `tower_canyon.blend`. `tower-validation.json` records bounds, materials and triangle counts. Rebuild all three with:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/memekarts/build_towers.py
+```
+
+The build script reuses `build_height.py` and the shared Blender export helpers in `../blasters/build_assets.py`.
+
+### Existing decks and ramps
+
+Inspected all three decks stretched to 4.8 m and all three ramps at a 5.2 m rise. The side bands, window panels and uphill arrows remain readable; the roofs and slopes stay flat. No re-export was needed. Existing counts remain 402 / 482 / 210 triangles for Stadium / Neon / Canyon decks, and 62 triangles for each ramp. The three towers add 2,294 triangles; the 39 kart/item/environment exports now total 33,780.
+
+`height-catalog.png` shows the nine exports at their tested heights. `height-browser-validation.json` records 121 roof/slope ray samples for each asset, plus cuboid side checks. The live environment check verifies every deck and ramp at its map coordinates and checks tower-specific materials to reject an accidental fallback to the old deck models. The game-code owner's `d.z || 48`, per-ramp `z0` / `z1` rise and y = 140 ray origins remain intact.
+
+### Validation
+
+All requested checks passed:
+
+- `node tools/fullrun.js memekarts`: all eight scenarios.
+- `node tools/mapcheck.js`: all three maps.
+- `node tools/kart-height.js`: deck and tower climbs, drops, pickups and level-separated item interactions.
+- `node tools/kart-ramp.js stadium 5`, `neon 9` and `canyon 5`: each reached height 100 and returned to floor height 0, with zero page errors.
+- `node tools/solo.js memekarts 25`: completed in-game with zero errors.
+- `node art/check-environment.mjs`: all 15 environment/height exports, custom summits on all three maps, exact collision surfaces, landmark animation and reduced motion.
+- `node art/check-memekarts.mjs`: map selection, guest permissions, fullscreen, mobile sizing, touch driving, solo entry and kart animation at 30 / 60 / 120 fps; zero browser errors.
+
+Browser checks used the windowless headless-shell launcher. The art checks used `TEST_URL=http://127.0.0.1:3095`, with a local server started through `PORT=3095 npm --ignore-scripts start`. This skips the manifest-writing prestart hook and leaves the existing port-3000 server alone. Ramp screenshots are in `tools/shots/ramp_<map>_*.png`; live overview captures are `../environment-<map>-overview.png`.
+
+Protected game-file SHA-256 hashes match the starting baseline. No game-code changes or loader fixes were needed. GitHub and deployment were not touched. The temporary port-3095 preview server was stopped after validation; the existing port-3000 server was left running.
