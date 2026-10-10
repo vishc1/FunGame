@@ -46,7 +46,7 @@
   },
   {
     "name": "ramp",
-    "triangles": 62,
+    "triangles": 174,
     "authoredSize": [
       10,
       3.200000047683716,
@@ -61,7 +61,7 @@
   },
   {
     "name": "ramp_neon",
-    "triangles": 62,
+    "triangles": 174,
     "authoredSize": [
       10,
       3.200000047683716,
@@ -76,7 +76,7 @@
   },
   {
     "name": "ramp_canyon",
-    "triangles": 62,
+    "triangles": 174,
     "authoredSize": [
       10,
       3.200000047683716,

@@ -1,0 +1,278 @@
+[
+  {
+    "name": "ramp",
+    "triangles": 174,
+    "badEdges": 0,
+    "inward": 0,
+    "volume": 134.40002188909062,
+    "vertices": 89,
+    "edges": 261,
+    "materials": {
+      "Podium concrete": {
+        "color": [
+          0.12999999523162842,
+          0.23999999463558197,
+          0.2800000011920929
+        ],
+        "roughness": 0.5199999809265137,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Coral enamel": {
+        "color": [
+          0.949999988079071,
+          0.11999999731779099,
+          0.06499999761581421
+        ],
+        "roughness": 0.5199999809265137,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Safety lemon": {
+        "color": [
+          1,
+          0.6899999976158142,
+          0.019999999552965164
+        ],
+        "roughness": 0.5199999809265137,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Ivory paint": {
+        "color": [
+          0.9599999785423279,
+          0.9399999976158142,
+          0.7900000214576721
+        ],
+        "roughness": 0.5199999809265137,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Runway enamel": {
+        "color": [
+          0.949999988079071,
+          0.18000000715255737,
+          0.04500000178813934
+        ],
+        "roughness": 0.30000001192092896,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      }
+    },
+    "exteriorSamples": 405
+  },
+  {
+    "name": "ramp_neon",
+    "triangles": 174,
+    "badEdges": 0,
+    "inward": 0,
+    "volume": 134.40002188909062,
+    "vertices": 89,
+    "edges": 261,
+    "materials": {
+      "Midnight alloy": {
+        "color": [
+          0.02500000037252903,
+          0.04500000178813934,
+          0.10000000149011612
+        ],
+        "roughness": 0.5199999809265137,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Raspberry enamel": {
+        "color": [
+          0.949999988079071,
+          0.02500000037252903,
+          0.3799999952316284
+        ],
+        "roughness": 0.5199999809265137,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Cyan enamel": {
+        "color": [
+          0.05999999865889549,
+          0.800000011920929,
+          0.949999988079071
+        ],
+        "roughness": 0.5199999809265137,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Window glow": {
+        "color": [
+          0.15000000596046448,
+          0.8500000238418579,
+          1
+        ],
+        "roughness": 0.5199999809265137,
+        "metalness": 0,
+        "emissive": [
+          0.0675000008940696,
+          0.38250000059604616,
+          0.44999998807907104
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Runway enamel": {
+        "color": [
+          0.949999988079071,
+          0.02500000037252903,
+          0.3799999952316284
+        ],
+        "roughness": 0.30000001192092896,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      }
+    },
+    "exteriorSamples": 405
+  },
+  {
+    "name": "ramp_canyon",
+    "triangles": 174,
+    "badEdges": 0,
+    "inward": 0,
+    "volume": 134.40002188909062,
+    "vertices": 89,
+    "edges": 261,
+    "materials": {
+      "Red sandstone": {
+        "color": [
+          0.47999998927116394,
+          0.18000000715255737,
+          0.07500000298023224
+        ],
+        "roughness": 0.800000011920929,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Clay orange": {
+        "color": [
+          0.8199999928474426,
+          0.30000001192092896,
+          0.08500000089406967
+        ],
+        "roughness": 0.800000011920929,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Chalk cream": {
+        "color": [
+          0.9800000190734863,
+          0.8299999833106995,
+          0.5199999809265137
+        ],
+        "roughness": 0.800000011920929,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Turquoise paint": {
+        "color": [
+          0.03999999910593033,
+          0.5799999833106995,
+          0.5199999809265137
+        ],
+        "roughness": 0.800000011920929,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      },
+      "Runway enamel": {
+        "color": [
+          0.949999988079071,
+          0.18000000715255737,
+          0.04500000178813934
+        ],
+        "roughness": 0.30000001192092896,
+        "metalness": 0,
+        "emissive": [
+          0,
+          0,
+          0
+        ],
+        "emissiveIntensity": 1,
+        "opacity": 1
+      }
+    },
+    "exteriorSamples": 405
+  }
+]

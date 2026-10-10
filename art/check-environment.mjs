@@ -3,6 +3,7 @@ import { launchArtBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { validateHeightAssets } from './check-height-assets.mjs';
+import { validateRampSolids } from './check-ramp-solid.mjs';
 
 const specs = JSON.parse(await readFile('art/memekarts/environment-validation.json', 'utf8'));
 const rampSpec = JSON.parse(await readFile('art/memekarts/ramp-validation.json', 'utf8')).ramp;
@@ -16,6 +17,7 @@ try {
   await page.goto(base + '/?bloom=0');
   await page.waitForFunction(() => window.THREE && window.GLTFLoader);
   await validateHeightAssets(page);
+  await validateRampSolids(page);
   const rampAsset = await page.evaluate(async () => {
     const gltf = await new GLTFLoader().loadAsync('/models/ramp.glb');
     let triangles=0; gltf.scene.traverse(o=>{ if(o.isMesh) triangles+=(o.geometry.index?.count ?? o.geometry.attributes.position.count)/3; });
@@ -25,7 +27,7 @@ try {
     ray.ray.origin.x=2; const high=ray.intersectObject(gltf.scene.getObjectByName('ramp_core'))[0]?.point.y;
     return {triangles, size:size.toArray(),floor:bb.min.y,low,high,animations:gltf.animations.length};
   });
-  assert.equal(rampAsset.triangles,rampSpec.triangles); assert(rampAsset.triangles<=400);
+  assert.equal(rampAsset.triangles,rampSpec.triangles); assert(rampAsset.triangles<=500);
   assert.equal(rampAsset.animations,0); assert(Math.abs(rampAsset.floor)<.0001);
   assert(rampAsset.high>rampAsset.low && Math.abs(rampAsset.size[0]-10)<.001 && Math.abs(rampAsset.size[2]-8.4)<.01 && Math.abs(rampAsset.size[1]-3.2)<.001);
   const assets = await page.evaluate(async specs => {

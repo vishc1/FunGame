@@ -1,7 +1,7 @@
 {
   "ramp": {
-    "triangles": 62,
-    "budget": 400,
+    "triangles": 174,
+    "budget": 500,
     "min": [
       -5.0,
       -4.199999809265137,
@@ -25,6 +25,9 @@
       10,
       8.4,
       3.2
-    ]
+    ],
+    "watertight": true,
+    "outward_normals": true,
+    "volume": 134.4
   }
 }

@@ -219,3 +219,36 @@ All requested checks passed:
 Browser checks used the windowless headless-shell launcher. The art checks used `TEST_URL=http://127.0.0.1:3095`, with a local server started through `PORT=3095 npm --ignore-scripts start`. This skips the manifest-writing prestart hook and leaves the existing port-3000 server alone. Ramp screenshots are in `tools/shots/ramp_<map>_*.png`; live overview captures are `../environment-<map>-overview.png`.
 
 Protected game-file SHA-256 hashes match the starting baseline. No game-code changes or loader fixes were needed. GitHub and deployment were not touched. The temporary port-3095 preview server was stopped after validation; the existing port-3000 server was left running.
+
+## Closed ramp wedges, 2026-10-09
+
+Re-exported `ramp.glb`, `ramp_neon.glb` and `ramp_canyon.glb` as watertight wedges with outward-facing normals. Inspection found bottom and high-end faces in the previous exports, but the panels had disconnected seams and mismatched edge subdivisions. The build now shares vertices across those seams and splits every adjoining edge consistently. The underside and high-end faces form part of the closed shell.
+
+| Export | Triangles | Budget |
+| --- | ---: | ---: |
+| `ramp.glb` | 174 | 500 |
+| `ramp_neon.glb` | 174 | 500 |
+| `ramp_canyon.glb` | 174 | 500 |
+
+The authored bounds remain 10 × 8.4 × 3.2 m, with the origin at the bottom centre and the runway rising toward Blender +X. `ramp_core`, the five material names per ramp, their colours and finishes, and the uphill arrow layout are preserved. Only material back-face culling changed: the GLBs now use single-sided surfaces. No renderer change is needed; the game owner's existing double-sided override was left untouched.
+
+Updated editable sources are `ramp.blend`, `ramp_neon.blend` and `ramp_canyon.blend`. `build_height.py` contains the seam-welding step and Blender manifold/volume assertions. Rebuild only the three ramps with:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/memekarts/build_ramp.py
+```
+
+`../check-ramp-solid.mjs` checks the actual GLBs after coordinate-welding the normal/material splits required by glTF. Each ramp has 89 geometric vertices, 261 edges, zero open or inconsistently wound edges, and a positive enclosed volume of 134.4 m³. It also checks vertex normals and casts 405 front-face-only rays across the slope, underside, high end and both sides. A before/after comparison confirmed unchanged material finishes and surface colour regions at those samples. Results are in `ramp-solid-validation.json`; `ramp-solid-catalog.png` shows the top, underside and back faces.
+
+The solid-ramp audit now runs inside `node art/check-environment.mjs`. The game-code owner's deck heights, per-ramp rises and y = 140 ray origins are unchanged. This adds 336 triangles across the three ramps; all 39 kart/item/environment exports total 34,116 triangles.
+
+### Checks
+
+All requested checks passed using the windowless browser:
+
+- `node tools/kart-ramp.js stadium 4 && node tools/kart-ramp.js neon 8 && node tools/kart-ramp.js canyon 4`: all three climbs and returns to the floor passed, with zero page errors. Each run continued from its first ramp up to the 100-unit summit.
+- `node tools/solo.js memekarts 25`: completed in-game, zero errors.
+- `node art/check-environment.mjs`: all three maps, exact height/collision checks, landmark animation and reduced motion; zero browser errors. The new watertightness audit passed, including the before/after comparison supplied through `RAMP_BASELINE_DIR`.
+- `node art/check-memekarts.mjs`: map selection, fullscreen, mobile sizing, touch input and animation at 30 / 60 / 120 fps; zero browser errors.
+
+The art checks used the existing local port-3000 server; it was left running. Protected game-file SHA-256 hashes match the starting baseline. No game code, GitHub state or deployment was changed.
