@@ -768,7 +768,7 @@ registerGame('memekarts', (G) => {
       ctx.restore();
     }
     // minimap
-    const mx = 16, my = W<700?90:70, ms = (W<700?117:153)/MW;
+    const mx = 16, my = W<700?90:70, ms = (W<700?117:176)/MW; /* a little bigger, and it carries the match numbers underneath */
     rr(mx - 4, my - 4, MW * ms + 8, MH * ms + 8, 8, 'rgba(0,0,0,.5)', 'rgba(255,255,255,.25)');
     for (const z of map.zones || []) { ctx.fillStyle = 'rgba(140,90,40,.75)'; ctx.fillRect(mx + z.x * ms, my + z.y * ms, z.w * ms, z.h * ms); }
     for (const d of map.decks || []) { ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(mx + d.x * ms, my + d.y * ms, d.w * ms, d.h * ms); }
@@ -779,7 +779,13 @@ registerGame('memekarts', (G) => {
     ctx.fillStyle = 'rgba(255,255,255,.28)'; for (const o of OBST) ctx.fillRect(mx + o.x * ms, my + o.y * ms, o.w * ms, o.h * ms);
     s.boxes.forEach((on, i) => { if (on) { ctx.fillStyle = '#ffd84d'; ctx.fillRect(mx + BOXES[i][0] * ms - 2, my + BOXES[i][1] * ms - 2, 4, 4); } });
     for (const e of s.ents) if (e.k === 'blue' || e.k === 'red') G.circle(mx + e.x * ms, my + e.y * ms, 2, e.k === 'blue' ? '#6ea0ff' : '#ff6a6a');
-    for (const k of s.karts) { if (k.dead || (k.ghost && k.id !== G.me)) continue; const p = G.player(k.id), x = mx + k.x * ms, y = my + k.y * ms; G.circle(x, y, k.id === G.me ? 4.5 : 3.5, p.color, k.id === G.me ? '#fff' : null); if (k.id === G.me) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(k.a) * 9, y + Math.sin(k.a) * 9); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke(); } }
+    for (const k of s.karts) { if (k.dead || (k.ghost && k.id !== G.me)) continue; const p = G.player(k.id), x = mx + k.x * ms, y = my + k.y * ms; G.circle(x, y, k.id === G.me ? 4.5 : 3.5, p.color, k.id === G.me ? '#fff' : null); if (k.id === G.me) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(k.a) * 10, y + Math.sin(k.a) * 10); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, 8 + Math.sin(time * 5) * 1.5, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.stroke(); G.text('YOU', x, y - 13, { size: 9, weight: 800, color: '#fff' }); } }
+    { /* who is in, who is still racing, where you stand */
+      const total = s.karts.length, racing = s.karts.filter((k) => !k.dead).length, order = s.karts.slice().sort((a, b) => b.kills - a.kills), rank = order.findIndex((k) => k.id === G.me) + 1, iy = my + MH * ms + 16;
+      rr(mx - 4, iy - 10, MW * ms + 8, 34, 8, 'rgba(0,0,0,.5)', 'rgba(255,255,255,.2)');
+      G.text(`${total} players  ·  ${racing} racing  ·  ${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')} left`, mx + (MW * ms) / 2, iy, { size: 10.5, color: '#fff', stroke: false });
+      if (me) G.text(`You: ${me.kills} tags  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') + ' of ' + total : ''}  ·  ${map.name}`, mx + (MW * ms) / 2, iy + 14, { size: 10, color: '#ffd84d', stroke: false });
+    }
     // item slot + hearts
     if (me) {
       rr(W / 2 - 150, H - 70, 300, 56, 14, 'rgba(0,0,0,.6)', 'rgba(255,255,255,.2)');

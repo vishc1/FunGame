@@ -79,7 +79,8 @@ registerGame('blasters', (G) => {
     hold($('.bl-scores'), () => { showScores = true; }, () => { showScores = false; });
   }
   let hurtFlash = 0, hitMark = 0, hitKill = 0, shake = 0, card = null, muted = ls('mk_mute', '0') === '1';
-  const feed = [], banners = [], dmgNums = [], hurtDirs = [];
+  const TELE_COLS = ['#35e6ff', '#c77dff', '#ffd84d']; // teleporter pair colours, shared by the world and the minimap
+  const feed = [], banners = [], dmgNums = [], hurtDirs = [], recentShot = {}; // id -> time of their last shot: enemies who fire show up on the minimap for a moment
   const banner = (text, color = '#ffd84d', t = 2) => { banners.unshift({ text, color, t, d: t }); if (banners.length > 3) banners.length = 3; };
   const showCard = (name, tip, color = '#ffd84d') => { card = { name, tip, color, t: 6 }; }; // the big pickup card: what you just got and what it does
   const mySt = () => s && s.ps.find((p) => p.id === G.me);
@@ -697,6 +698,30 @@ registerGame('blasters', (G) => {
     if (showScores || over) scoreboard();
     if (showGuide) guide();
     if (!locker) txt(`Level ${levelOf(xp)}  •  ${CHAR_NAMES[charIdx]}  •  ${SKINS[skinIdx].name}  (L)`, 20, 52, { size: 11.5, align: 'left', color: '#ffd84d' });
+    // minimap: a top-down of the arena in the top-left corner. You are the white arrow; teammates always show, enemies only when close or when they just fired.
+    if (!locker && !showGuide) {
+      const S = MAP.size, mw = 168, mx = 16, my = 70, k = mw / (S * 2), X = (x) => mx + (x + S) * k, Z = (z) => my + (z + S) * k;
+      rr(mx - 4, my - 4, mw + 8, mw + 8, 8, 'rgba(0,0,0,.55)', 'rgba(255,255,255,.25)');
+      ctx.save(); ctx.beginPath(); ctx.rect(mx, my, mw, mw); ctx.clip();
+      ctx.fillStyle = (MAP.theme || {}).floor || '#7fb77e'; ctx.globalAlpha = 0.35; ctx.fillRect(mx, my, mw, mw); ctx.globalAlpha = 1;
+      if (MAP.train) { ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(mx, Z(MAP.train.z)); ctx.lineTo(mx + mw, Z(MAP.train.z)); ctx.stroke(); ctx.setLineDash([]); }
+      for (const b of MAP.boxes) { if (b.t === 'wall' || b.t === 'step') continue; const h = Math.min(1, b.y1 / 7.2); ctx.fillStyle = b.c ? b.c : `rgba(40,30,20,${0.3 + h * 0.55})`; ctx.fillRect(X(b.x0), Z(b.z0), (b.x1 - b.x0) * k, (b.z1 - b.z0) * k); }
+      for (const r of MAP.ramps) { ctx.fillStyle = r.kind === 'launch' ? '#ff8a3d' : '#d9b27a'; ctx.fillRect(X(r.x0), Z(r.z0), (r.x1 - r.x0) * k, (r.z1 - r.z0) * k); }
+      for (const p of MAP.pads) { ctx.fillStyle = p.big ? '#ff7a3d' : '#35e6ff'; ctx.beginPath(); ctx.arc(X(p.x), Z(p.z), 2.5, 0, 7); ctx.fill(); }
+      MAP.teles.forEach((pair, i) => pair.forEach((e) => { ctx.strokeStyle = TELE_COLS[i % TELE_COLS.length]; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(e.x), Z(e.z), 3, 0, 7); ctx.stroke(); }));
+      { const pp = MAP.pickups.find((p) => p.kind === 'power'); if (pp) txt(s.pw.up ? '★' : '☆', X(pp.x), Z(pp.z), { size: 11, color: s.pw.up ? '#ffd84d' : 'rgba(255,255,255,.6)', stroke: false }); }
+      if (s.tr) { ctx.fillStyle = '#e23b3b'; ctx.fillRect(X(s.tr[0] - (s.tr[1] > 0 ? MAP.train.len : 0)), Z(MAP.train.z) - 2, MAP.train.len * k, 4); }
+      for (const p of s.ps) { if (p.id === G.me || p.dead) continue; const mate = s.tm && st && p.tm === st.tm, d = Math.hypot(p.x - body.x, p.z - body.z); if (!mate && !(d < 14 || time - (recentShot[p.id] || -9) < 2.5) || p.pw === 'shadow' || (p.pw === 'ghost' && !mate)) continue;
+        const col = mate ? TEAM[p.tm].color : s.tm ? TEAM[p.tm].color : '#ff5d5d'; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(p.x), Z(p.z), mate ? 3.5 : 3, 0, 7); ctx.fill(); if (!mate) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke(); } }
+      if (st && !st.dead) { const x = X(body.x), z = Z(body.z); ctx.save(); ctx.translate(x, z); ctx.rotate(-me.yaw); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(5, 5); ctx.lineTo(0, 2.5); ctx.lineTo(-5, 5); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.beginPath(); ctx.arc(x, z, 9 + Math.sin(time * 5) * 1.5, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+      ctx.restore();
+      txt('N', mx + mw - 8, my + 9, { size: 9, weight: 800, color: 'rgba(255,255,255,.7)', stroke: false });
+      // the numbers: who is in, who is still standing, where you are in the race
+      const total = s.ps.length, alive = s.ps.filter((p) => !p.dead).length, order = s.ps.slice().sort((a, b) => b.k - a.k || b.sc - a.sc), rank = order.findIndex((p) => p.id === G.me) + 1, iy = my + mw + 18;
+      rr(mx - 4, iy - 11, mw + 44, 36, 8, 'rgba(0,0,0,.55)', 'rgba(255,255,255,.2)');
+      txt(`${total} players  ·  ${alive} standing`, mx + mw / 2 + 18, iy, { size: 11, weight: 700, color: '#fff', stroke: false });
+      txt(s.tm ? `Red ${s.tk[0]}  ·  Blue ${s.tk[1]}  ·  ${MAP.name}` : `You ${st ? st.k : 0} tags  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') : '-'} of ${total}  ·  ${MAP.name}`, mx + mw / 2, iy + 14, { size: 10, color: '#ffd84d', stroke: false });
+    }
   }
   let deathBy = '';
   function scoreboard() {
@@ -744,7 +769,7 @@ registerGame('blasters', (G) => {
       const mine = e.id === G.me;
       if (e.type === 'spawn' && mine) { Object.assign(body, B.newBody(e.x, e.y, e.z)); if (!e.keep) { me.yaw = e.yaw; me.pitch = 0; me.w = 0; me.mag = WEAPONS[0].mag; me.reloadEnd = 0; me.nextFire = 0; me.burstLeft = 0; me.eye = P.EYE; } }
       else if (e.type === 'shot' && mine) myShots++;
-      else if (e.type === 'shot' && !mine) { const v = T && T.ready && T.view(e.id); if (v) { v.recoil = 1; const d = Math.hypot(v.x - body.x, v.z - body.z), vol = Math.max(0.08, 1 - d / 50); play(WEAPONS[e.w].id, vol); if (e.o && e.e) T.tracer([e.o[0], e.o[1] - 0.25, e.o[2]], e.e, 0xfff0c0); } }
+      else if (e.type === 'shot' && !mine) { recentShot[e.id] = time; const v = T && T.ready && T.view(e.id); if (v) { v.recoil = 1; const d = Math.hypot(v.x - body.x, v.z - body.z), vol = Math.max(0.08, 1 - d / 50); play(WEAPONS[e.w].id, vol); if (e.o && e.e) T.tracer([e.o[0], e.o[1] - 0.25, e.o[2]], e.e, 0xfff0c0); } }
       else if (e.type === 'dmg') { hitMark = 0.16; if (e.kill) hitKill = 0.4; play(e.head ? 'head' : 'hit'); dmgNums.push({ x: e.x, y: e.y, z: e.z, n: e.n, head: e.head, kill: e.kill, t: 0.9, ox: (Math.random() - 0.5) * 30 }); if (dmgNums.length > 14) dmgNums.shift(); }
       else if (e.type === 'hurt') { hurtFlash = Math.min(0.7, 0.25 + e.n / 120); hurtDirs.push({ x: e.x, z: e.z, t: 1 }); if (hurtDirs.length > 4) hurtDirs.shift(); play('hurt'); if (!reducedMotion) shake = Math.max(shake, 0.25); }
       else if (e.type === 'kill') {
