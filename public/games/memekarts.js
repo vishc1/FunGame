@@ -11,6 +11,7 @@ registerGame('memekarts', (G) => {
   const { ctx, canvas } = G;
   let W = G.W, H = G.H;
   let map = window.MEMEKARTS_MAPS[0], OBST = map.obstacles, BOXES = map.boxes;
+  const onGfx = () => { if (T && T.applyGfx) T.applyGfx(); }; window.addEventListener('fg-gfx', onGfx); /* graphics changed in the header or on the home page */
   const touchKeys=new Set();
   const touchControls=document.createElement('div');touchControls.className='kart-touch-controls';
   touchControls.innerHTML='<div class="touch-drive"><button data-drive="w" aria-label="Accelerate">▲</button><button data-drive="a" aria-label="Steer left">◀</button><button data-drive="s" aria-label="Reverse">▼</button><button data-drive="d" aria-label="Steer right">▶</button></div><button class="touch-fire" aria-label="Fire weapon">FIRE</button>';
@@ -86,17 +87,19 @@ registerGame('memekarts', (G) => {
     const prev = { bg: canvas.style.background, pos: canvas.style.position };
     canvas.style.background = 'transparent'; canvas.style.position = 'relative';
     const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true, powerPreference: 'high-performance' }); window.__fgRenderer = renderer; /* for tools/perf.js: renderer.info shows what accumulates */
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const GFX = () => (window.FG_GFX ? window.FG_GFX.cfg() : { pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5), shadows: true, shadowSize: 2048, bloom: true, scenery: true }); /* the player's graphics choice, public/gfx.js */
+    renderer.setPixelRatio(GFX().pixelRatio);
+    renderer.shadowMap.enabled = GFX().shadows; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
     const scene = new THREE.Scene();
+ window.__fgScene = scene; /* for tools/zfight.js */
     const pmrem = new THREE.PMREMGenerator(renderer);
     const studio = window.RoomEnvironment ? new window.RoomEnvironment() : null;
     const environment = studio ? pmrem.fromScene(studio, .06) : null;
     if (environment) { scene.environment = environment.texture; scene.environmentIntensity = .42; }
     if (studio) studio.dispose();
     pmrem.dispose();
-    const camera = new THREE.PerspectiveCamera(62, 1.5, 1, 6000);
+    const camera = new THREE.PerspectiveCamera(62, 1.5, 4, 6000); /* near 4, not 1: the chase camera never gets closer than that, and the far mountains get 4x the depth precision (no flicker) */
     /* Bloom: bright things (item boxes, flames, explosions, neon) glow. Rendered in HDR, so only values above 1 bloom.
        Add ?bloom=0 to the URL to turn it off, ?bloom=1 to force it on. Otherwise it switches itself off if frames get slow. */
     const bloomPref = new URLSearchParams(location.search).get('bloom');
@@ -108,15 +111,16 @@ registerGame('memekarts', (G) => {
       composer.dispose();
       composer = null;
     }
-    try {
+    function makeComposer() { try {
       const PP = window.THREE_PP;
-      if (PP && bloomPref !== '0') {
+      if (PP && !composer && bloomPref !== '0' && (bloomPref === '1' || GFX().bloom)) {
         composer = new PP.EffectComposer(renderer, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }));
         composer.addPass(new PP.RenderPass(scene, camera));
         composer.addPass(new PP.UnrealBloomPass(new THREE.Vector2(256, 256), 0.14, 0.3, 1.25)); /* strength, radius, threshold: kept subtle, the neon map has very bright walls */
         composer.addPass(new PP.OutputPass());
       }
-    } catch (e) { console.warn('bloom unavailable', e); disposeComposer(); }
+    } catch (e) { console.warn('bloom unavailable', e); disposeComposer(); } }
+    makeComposer();
     camera.position.set(0, 420, 420); camera.lookAt(0, 0, 0);
     const look = new THREE.Vector3(0, 0, 0);
     let fw = 0, fh = 0, fl = -1, ft = -1, camA = 0, shake = 0, worldBuilt = false, sunLight = null;
@@ -172,7 +176,7 @@ registerGame('memekarts', (G) => {
       scene.fog = new THREE.Fog(map.fog, Math.max(750, MW * 0.8), 2600 + MW);
       scene.add(new THREE.HemisphereLight(night ? 0x97baff : 0xe0f0ff, new THREE.Color(map.ground), night ? .85 : .8));
       const sun = new THREE.DirectionalLight(map.sun, night ? 1.9 : 2.8);
-      sun.position.set(-320, 430, 240); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+      sun.position.set(-320, 430, 240); sun.castShadow = true; sun.shadow.mapSize.set(GFX().shadowSize, GFX().shadowSize);
       sun.shadow.radius = 3;
       Object.assign(sun.shadow.camera, { left: -540, right: 540, top: 540, bottom: -540, near: 50, far: 1700 }); sunLight = sun; scene.add(sun.target); /* the shadow box follows the camera, see updateCamera */ sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.3;
       scene.add(sun);
@@ -222,8 +226,8 @@ registerGame('memekarts', (G) => {
         const wallMat=M3(night?'#273954':desert?'#ac6747':'#44777b'), rail=glow(map.accent,night?1.7:.35);
         const wx = OX - 14, wz = OZ - 14; /* centre lines of the border walls */
         scene.add(box(MW-16,24,12,wallMat,0,12,-wz),box(MW-16,24,12,wallMat,0,12,wz),box(12,24,MH-40,wallMat,-wx,12,0),box(12,24,MH-40,wallMat,wx,12,0));
-        for(const z of [-wz,wz])scene.add(box(MW-16,2,13,rail,0,23.3,z)); /* 0.3 above the wall top: at exactly the same height the two surfaces flicker through each other */
-        for(const x of [-wx,wx])scene.add(box(13,2,MH-40,rail,x,23.3,0));
+        for(const z of [-wz,wz])scene.add(box(MW-17,2,13,rail,0,23.3,z)); /* 1 shorter than the wall so their end faces do not share a plane */ /* 0.3 above the wall top: at exactly the same height the two surfaces flicker through each other */
+        for(const x of [-wx,wx])scene.add(box(13,2,MH-41,rail,x,23.3,0));
         const curbGeo=new THREE.BoxGeometry(18,1.2,7), curbMat=M3('#f6eedd');
         const curbs=new THREE.InstancedMesh(curbGeo,curbMat,Math.ceil((MW+MH)*2/27)+16), curbPose=new THREE.Object3D();let ci=0;
         for(const z of [-(OZ-27),OZ-27])for(let x=-(OX-36);x<=OX-36;x+=27){curbPose.position.set(x,.6,z);curbPose.rotation.y=0;curbPose.updateMatrix();curbs.setMatrixAt(ci++,curbPose.matrix);}
@@ -248,14 +252,15 @@ registerGame('memekarts', (G) => {
         // tire stacks at the corners
         const tire = M3('#1b1c20', { roughness: 0.9 });
         for (const [cx, cz] of [[-(OX+2), -(OZ+2)], [OX+2, -(OZ+2)], [-(OX+2), OZ+2], [OX+2, OZ+2]]) for (let i = 0; i < 3; i++) /* just outside the wall corners so karts can't drive into them */ { const t = mesh(new THREE.TorusGeometry(9, 4, 8, 14), i === 1 ? M3('#e9e9e9') : tire, cx, 4 + i * 8, cz); t.rotation.x = Math.PI / 2; scene.add(t); }
-        // scenery: trees, grandstands, mountains, balloons
+        // scenery: trees, grandstands, mountains, balloons (hidden on Low graphics)
+        const sceneryFrom = scene.children.length;
         const trunk = M3('#7a5230'), leafs = ['#2f8f46', '#3fae55', '#27803d', '#58b85f'].map((c) => M3(c));
         for (let i = 0; i < 95; i++) {
           const a = Math.random() * Math.PI * 2, r = Math.max(OX, OZ) + 110 + Math.random() * 900, x = Math.cos(a) * r * 1.25, z = Math.sin(a) * r;
           if (Math.abs(x) < OX + 70 && Math.abs(z) < OZ + 80) continue;
           // Keep the close landmark strip readable; scenery beyond it supplies the skyline.
           if (Math.abs(x) < OX + 235 && Math.abs(z) < OZ + 180) continue;
-          if(night){const height=70+(i%7)*32;scene.add(box(45,height,50,M3('#23334d'),x,height/2,z),box(46,2,51,glow(i%2?'#68efff':'#ff75c5',1.6),x,height,z));continue;}
+          if(night){const height=70+(i%7)*32+(i%5)*1.7; /* the small per-building offset keeps neighbouring roofs out of one plane */scene.add(box(45,height,50,M3('#23334d'),x,height/2,z),box(46,2,51,glow(i%2?'#68efff':'#ff75c5',1.6),x,height,z));continue;}
           if(desert){const stone=M3(i%2?'#b66d47':'#d59865');scene.add(cyl(20+(i%4)*8,35+(i%4)*8,70+(i%5)*20,stone,x,25+(i%5)*10,z,6));continue;}
           const sc = 0.8 + Math.random() * 1.4, lm = leafs[i % 4];
           const t = asset('tree', 50 * sc); if (t) { t.traverse((m) => { if (m.isMesh && /mint|leaf|pine|green/i.test(m.material.name || '')) m.material.color.multiplyScalar(0.42 + (i % 4) * 0.06); }); t.position.set(x, 0, z); t.rotation.y = a; scene.add(t); continue; } /* the model's foliage is very bright: deepen it and vary it per tree */
@@ -265,7 +270,9 @@ registerGame('memekarts', (G) => {
         for (const zs of [-1, 1]) for (let r = 0; r < 4; r++) scene.add(box(MW - 200, 14, 26, M3(seatCols[r]), 0, 7 + r * 14, zs * (OZ + 80 + r * 26)));
         for (const zs of [-1, 1]) for (let i = 0; i < Math.min(130, Math.round(90 * MW / 900)); i++) scene.add(sph(4.5, M3(`hsl(${Math.random() * 360},70%,60%)`), -(MW - 220) / 2 + Math.random() * (MW - 220), 20 + Math.floor(Math.random() * 4) * 14 + 4, zs * (OZ + 80 + Math.floor(Math.random() * 4) * 26), 6));
         const rock = M3(desert?'#bc795c':night?'#243351':'#849c91', { roughness: 1 }), snow = M3(desert?'#dfab7c':night?'#42517a':'#dde4d7');
-        if(!night)for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 + Math.random() * 0.2, r = 2300 + Math.random() * 500, hgt = 250 + Math.random() * 330, x = Math.cos(a) * r, z = Math.sin(a) * r; const m = mesh(new THREE.ConeGeometry(520 + Math.random() * 260, hgt, 6), rock, x, hgt / 2 - 20, z); m.castShadow = false; const cp = mesh(new THREE.ConeGeometry(170, hgt * 0.3, 6), snow, x, hgt * 0.85 - 20, z); cp.castShadow = false; scene.add(m, cp); }
+        if(!night)for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2 + Math.random() * 0.2, r = 2300 + Math.random() * 500, hgt = 250 + Math.random() * 330, x = Math.cos(a) * r, z = Math.sin(a) * r; const R0 = 520 + Math.random() * 260, m = mesh(new THREE.ConeGeometry(R0, hgt, 6), rock, x, hgt / 2 - 20, z); m.castShadow = false; const cp = mesh(new THREE.ConeGeometry(R0 * 0.3 * 1.12, hgt * 0.3 * 1.12, 6), snow, x, hgt - 20 - hgt * 0.3 * 1.12 / 2 + hgt * 0.02, z); cp.castShadow = false; scene.add(m, cp); } /* the snow cap is a slightly larger copy of the peak, so it sits clearly outside the rock instead of on the same surface (that was the flicker) */
+        for (let i = sceneryFrom; i < scene.children.length; i++) scene.children[i].userData.scenery = true;
+        for (const o of scene.children) if (o.userData.scenery) o.visible = GFX().scenery;
       }
       buildLandmarks();
       // Trackside signs sit beyond the collision walls.
@@ -345,7 +352,7 @@ registerGame('memekarts', (G) => {
           const horiz = y0 === y1, lo = horiz ? x0 : y0, hi = horiz ? x1 : y1; let cuts = [];
           for (const rp of map.ramps || []) { const touch = horiz ? ((rp.dir === 'S' && Math.abs(rp.y + rp.h - y0) < 2) || (rp.dir === 'N' && Math.abs(rp.y - y0) < 2)) && rp.x < hi && rp.x + rp.w > lo : ((rp.dir === 'E' && Math.abs(rp.x + rp.w - x0) < 2) || (rp.dir === 'W' && Math.abs(rp.x - x0) < 2)) && rp.y < hi && rp.y + rp.h > lo; if (touch) cuts.push(horiz ? [rp.x, rp.x + rp.w] : [rp.y, rp.y + rp.h]); }
           cuts.sort((p, q) => p[0] - q[0]); let at = lo; const segs = []; for (const [c0, c1] of cuts) { if (c0 > at) segs.push([at, c0]); at = Math.max(at, c1); } if (at < hi) segs.push([at, hi]);
-          for (const [s0, s1] of segs) { const len = s1 - s0, mid = (s0 + s1) / 2; const rim = horiz ? box(len, 2.4, 3, glow(hot, night ? 1.8 : 0.9), mid - OX, DZ + 1.2, y0 - OZ) : box(3, 2.4, len, glow(hot, night ? 1.8 : 0.9), x0 - OX, DZ + 1.2, mid - OZ); rim.castShadow = false; scene.add(rim); }
+          for (const [s0, s1] of segs) { const len = s1 - s0, mid = (s0 + s1) / 2; const rim = horiz ? box(len, 2.4, 3, glow(hot, night ? 1.8 : 0.9), mid - OX, DZ + 1.2, y0 - OZ) : box(3, 2.2, len, glow(hot, night ? 1.8 : 0.9), x0 - OX, DZ + 1.1, mid - OZ); rim.castShadow = false; scene.add(rim); }
         }
       }
     }
@@ -747,6 +754,13 @@ registerGame('memekarts', (G) => {
           if (bloomPref !== '1' && frameCount < 240) { frameCount++; if (dt > 0.04) slowFrames++; if (frameCount === 240 && slowFrames > 150) disposeComposer(); }
         } else renderer.render(scene, camera);
       },
+      applyGfx() { /* the player changed graphics mid-game */
+        const c = GFX(); renderer.setPixelRatio(c.pixelRatio); fw = -1;
+        if (renderer.shadowMap.enabled !== c.shadows) { renderer.shadowMap.enabled = c.shadows; scene.traverse((o) => { if (o.material) for (const mm of Array.isArray(o.material) ? o.material : [o.material]) mm.needsUpdate = true; }); }
+        if (sunLight && sunLight.shadow.mapSize.x !== c.shadowSize) { sunLight.shadow.mapSize.set(c.shadowSize, c.shadowSize); if (sunLight.shadow.map) { sunLight.shadow.map.dispose(); sunLight.shadow.map = null; } }
+        for (const o of scene.children) if (o.userData.scenery) o.visible = c.scenery;
+        if (c.bloom || bloomPref === '1') { makeComposer(); fw = -1; } else if (bloomPref !== '1') disposeComposer();
+      },
       dispose() {
         scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); const m = o.material; if (m) for (const mm of Array.isArray(m) ? m : [m]) { if (mm.map) mm.map.dispose(); if(mm.bumpMap)mm.bumpMap.dispose(); mm.dispose(); } });
         if(environment)environment.dispose();if(scene.background?.isTexture)scene.background.dispose();
@@ -887,6 +901,6 @@ registerGame('memekarts', (G) => {
       if (T) { try { T.update(dt); if (T.ready) { const mk = s && s.karts.find((q) => q.id === G.me); T.aim(chargeAt != null && mk && mk.weapon === 'pie' && !mk.dead ? mk : null, chargeNow()); if (chargeAt != null && !(mk && mk.weapon === 'pie')) chargeAt = null; } } catch (e) { failed = e.message; console.error(e); T.dispose(); T = null; } }
       hud(dt);
     },
-    destroy() { if (T) T.dispose(); T = null;touchControls.remove();touchKeys.clear(); },
+    destroy() { window.removeEventListener('fg-gfx', onGfx); if (T) T.dispose(); T = null;touchControls.remove();touchKeys.clear(); },
   };
 });

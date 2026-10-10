@@ -11,7 +11,7 @@
 const B = require('../../public/games/blasters.shared.js');
 const { WEAPONS, MELEE, LOADOUT, POWERS, P } = B;
 const NONE = () => WEAPONS.map((w, i) => i === 0); // which blasters a fresh player owns: only the sidearm
-const MATCH = 300, KILL_GOAL = 20, RESPAWN = 2.5, POWER_EVERY = 40, POWER_WARN = 6, DROP_LIFE = 14;
+const MATCH = 180, NEXT_IN = 6, KILL_GOAL = 20, RESPAWN = 2.5, POWER_EVERY = 40, POWER_WARN = 6, DROP_LIFE = 14;
 const r2 = (v) => Math.round(v * 100) / 100;
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 
@@ -24,6 +24,8 @@ module.exports = {
   create(api) {
     const MAP = B.mapById(api.memory.blastersMap) || B.MAP; // picked in the lobby; everything below is per-map
     // Team mode (lobby switch): two teams, no friendly fire, each team spawns on its own side, first team to the goal wins.
+    const LOOP = api.memory.blastersRounds !== 'one'; // back-to-back rounds on the same map (lobby option), until the host ends the game
+    let round = 1;
     const TEAMS = api.memory.blastersMode === 'teams', TEAM_NAMES = ['Red', 'Blue'], tk = [0, 0];
     const TEAM_GOAL = Math.max(20, 8 * Math.ceil(api.players().length / 2));
     const players = new Map();
@@ -112,6 +114,14 @@ module.exports = {
         if (amt >= 1) hurt(v, amt, ownerId, def.name, false, { x, z });
       }
     }
+    // the next round, same map and same players: scores reset, everyone respawns, pickups and the train start over
+    function newRound() {
+      round++; over = false; t = 0; left = fast ? (typeof fast === 'number' ? fast : 20) : MATCH; firstBlood = false; tk[0] = tk[1] = 0;
+      drops.length = 0; rockets.length = 0; for (const k of pick) { k.t = k.def.kind === 'power' ? POWER_EVERY * 0.5 : 0; k.kind = null; }
+      train.wait = TR.every * 0.5; train.x = null; train.warned = false;
+      for (const p of players.values()) { Object.assign(p, { kills: 0, deaths: 0, score: 0, streak: 0, best: 0, heads: 0, dmg: 0, rares: 0, lastKiller: null, multi: 0, lastKillT: -99 }); spawn(p); }
+      api.emit('g:event', { type: 'round', round });
+    }
     function finish() {
       if (over) return; over = true;
       const list = [...players.values()].sort((a, b) => b.kills - a.kills || b.score - a.score);
@@ -122,13 +132,13 @@ module.exports = {
       if (TEAMS) { // winning team: everyone on it gets a bonus, and the match summary is about the teams
         const wt = tk[0] === tk[1] ? -1 : tk[0] > tk[1] ? 0 : 1;
         for (const p of list) if (p.team === wt) pts[p.id] += 3;
-        api.emit('g:event', { type: 'over', winner: list[0] ? list[0].id : null, team: wt, tk, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills, tm: p.team })) });
-        api.after(5000, () => api.end(pts, wt < 0 ? `It's a draw, ${tk[0]} tags each.` : `${TEAM_NAMES[wt]} team wins ${tk[wt]} to ${tk[1 - wt]}.${list[0] ? ` Top tagger: ${nm(list[0])} with ${list[0].kills}.` : ''}`));
+        api.emit('g:event', { type: 'over', next: LOOP ? NEXT_IN : 0, round, winner: list[0] ? list[0].id : null, team: wt, tk, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills, tm: p.team })) });
+        api.after(NEXT_IN * 1000, () => LOOP && players.size >= 2 ? newRound() : api.end(pts, wt < 0 ? `It's a draw, ${tk[0]} tags each.` : `${TEAM_NAMES[wt]} team wins ${tk[wt]} to ${tk[1 - wt]}.${list[0] ? ` Top tagger: ${nm(list[0])} with ${list[0].kills}.` : ''}`));
         return;
       }
-      api.emit('g:event', { type: 'over', winner: list[0] ? list[0].id : null, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills })) });
+      api.emit('g:event', { type: 'over', next: LOOP ? NEXT_IN : 0, round, winner: list[0] ? list[0].id : null, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills })) });
       const w = list[0];
-      api.after(5000, () => api.end(pts, w ? `${nm(w)} wins with ${w.kills} tags.${awards.length ? ' ' + awards.map(([n, id, d]) => `${n}: ${(api.player(id) || { name: '?' }).name} (${d})`).join('. ') + '.' : ''}` : 'Nobody played.'));
+      api.after(NEXT_IN * 1000, () => LOOP && players.size >= 2 ? newRound() : api.end(pts, w ? `${nm(w)} wins with ${w.kills} tags.${awards.length ? ' ' + awards.map(([n, id, d]) => `${n}: ${(api.player(id) || { name: '?' }).name} (${d})`).join('. ') + '.' : ''}` : 'Nobody played.'));
     }
 
     return {

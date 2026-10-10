@@ -50,4 +50,13 @@ w = world(); w.put('a', -3, 0, 25.5); w.put('b', 7, 0, 25.5); w.game.onInput('a'
 w.game.onInput('a', { type: 'fire', w: 8, o: [-3, 1.62, 25.5], d: [1, -0.05, 0] }); let hit = false; for (let i = 0; i < 40 && !hit; i++) { w.tick(); hit = w.ev.some((e) => e.type === 'kill' && e.v === 'b'); }
 ok('a direct cannonball tags a full-health player in one hit', hit, 'b hp=' + w.me('b').hp);
 ok('the cannon holds one ball at a time', w.me('a').m === 0);
+// back-to-back rounds: a round ends, the winner is shown, and the next round starts on the same map with scores reset
+{ const players = ['a', 'b'].map((id) => ({ id, name: id, color: '#fff' })), ev = [], timers = []; let st = null, ended = false;
+  const api = { memory: { __fast: 4, blastersMap: 'cove' }, room: { bots: new Map([['x', 1]]) }, players: () => players, player: (id) => players.find((p) => p.id === id),
+    emit(e, d) { if (e === 'g:event') ev.push(d); if (e === 'g:state') st = d; }, to() {}, after(ms, fn) { timers.push({ at: vt + ms / 1000, fn }); }, every() {}, clear() {}, end() { ended = true; } };
+  let vt = 0; const game = g.create(api); const run = (secs) => { for (let i = 0; i < secs * 30; i++) { vt += 1 / 30; game.tick(1 / 30); for (const t of timers.splice(0)) { if (t.at <= vt) t.fn(); else timers.push(t); } } };
+  run(3); game.onInput('a', { type: 'p', x: 10, y: 0, z: -28, yaw: 0, pitch: 0, cr: 0 }); game.onInput('b', { type: 'p', x: 12, y: 0, z: -28, yaw: 0, pitch: 0, cr: 0 }); run(0.1); game.onInput('a', { type: 'fire', w: 0, hits: [{ id: 'b', n: 1, h: 0 }] }); run(0.3);
+  run(3); const over = ev.find((e) => e.type === 'over'); ok('a round ends on time and names a winner, with the next round announced', over && over.next > 0 && over.winner === 'a', JSON.stringify(over && { next: over.next, winner: over.winner }));
+  run(7); const rd = ev.find((e) => e.type === 'round'); ok('the next round starts by itself on the same map', !!rd && rd.round === 2 && !ended && st.map === 'cove', `round ${rd && rd.round}, ended ${ended}, map ${st && st.map}`);
+  ok('...with everyone back to zero tags and full health', st.ps.every((p) => p.k === 0 && p.hp === 100)); }
 console.log(bad ? `${bad} PROBLEMS` : 'blasters rules ok'); process.exit(bad ? 1 : 0);

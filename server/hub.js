@@ -58,6 +58,7 @@ module.exports = function attachHub(io, opts) {
         mapId: this.memory.memekartsMap || 'stadium',
         blastersMap: this.memory.blastersMap || BL_MAPS[0].id,
         blastersMode: this.memory.blastersMode || 'ffa',
+        blastersRounds: this.memory.blastersRounds || 'loop',
         results: this.results,
         players: [...this.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color, score: p.score, connected: p.connected, bot: !!p.bot })),
       };
@@ -273,8 +274,8 @@ module.exports = function attachHub(io, opts) {
     // Toy Box Blasters: free-for-all or teams (host only, in the lobby)
     on('pickMode', ({ mode } = {}) => {
       const room = roomOf();
-      if (!room || room.hostId !== socket.data.pid || room.phase === 'playing' || !['ffa', 'teams'].includes(mode)) return;
-      room.memory.blastersMode = mode;
+      if (!room || room.hostId !== socket.data.pid || room.phase === 'playing' || !['ffa', 'teams', 'loop', 'one'].includes(mode)) return;
+      if (mode === 'loop' || mode === 'one') room.memory.blastersRounds = mode; else room.memory.blastersMode = mode;
       room.broadcast();
     });
 

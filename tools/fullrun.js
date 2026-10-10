@@ -16,7 +16,7 @@ function run(def, n, opts = {}) {
   const brains = new Map(players.map((p) => [p.id, { id: p.id, mem: {} }]));
   let last = null; const per = {}; let maxBytes = 0, states = 0, err = null, nan = null;
   const api = {
-    memory: def.id==='memekarts'&&process.env.MAP ? {memekartsMap:process.env.MAP} : {}, room: { bots: new Map() },
+    memory: def.id==='memekarts'&&process.env.MAP ? {memekartsMap:process.env.MAP} : def.id==='blasters' ? {blastersRounds:'one'} : {}, /* blasters: the One match option, so it ends; back-to-back rounds are checked in tools/blasters-rules.js */ room: { bots: new Map() },
     players: () => players.slice(), player: (id) => players.find((p) => p.id === id) || null,
     emit(ev, d) { if (ev === 'g:state') { last = d; states++; if (states % 20 === 0) { maxBytes = Math.max(maxBytes, JSON.stringify(d).length); nan = nan || badNumber(d); } } },
     to(pid, ev, d) { if (ev === 'g:state') { per[pid] = d; states++; if (states % 40 === 0) { maxBytes = Math.max(maxBytes, JSON.stringify(d).length); nan = nan || badNumber(d); } } },

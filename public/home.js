@@ -32,4 +32,8 @@
   for (const b of document.querySelectorAll('#gamePick [data-game]')) b.onclick = () => select(b.dataset.game, true);
   let saved = 'memekarts'; try { saved = localStorage.getItem('fg_game') || 'memekarts'; } catch (e) { /* ignore */ }
   select(new URLSearchParams(location.search).get('game') || saved, false);
+  // shooter maps on the home page: the choice goes to the room when you press Play now or Play with friends
+  function blCards() { const el = $('#homeBlMaps'); if (!el || !window.blMapCard || !window.BLASTERS) return; el.innerHTML = window.BLASTERS.MAPS.map((m) => window.blMapCard(m, m.id === (window.selectedBlMap || 'fort'))).join(''); for (const b of el.querySelectorAll('[data-map]')) b.onclick = () => { window.selectedBlMap = b.dataset.map; try { localStorage.setItem('fg_blmap', b.dataset.map); } catch (e) { /* ignore */ } blCards(); }; }
+  try { window.selectedBlMap = localStorage.getItem('fg_blmap') || 'fort'; } catch (e) { window.selectedBlMap = 'fort'; }
+  window.addEventListener('load', blCards);
 })();

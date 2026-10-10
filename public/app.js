@@ -78,7 +78,7 @@
   nameEl.value = localStorage.getItem('fg_name') || '';
   const myName = () => { const n = nameEl.value.trim() || 'Player' + Math.floor(Math.random() * 90 + 10); localStorage.setItem('fg_name', n); return n; };
   // The home page has two primary games; window.selectedGame is the one whose tab is open (see home.js).
-  const pickHomeGame = () => { const g = window.selectedGame === 'blasters' ? 'blasters' : 'memekarts'; socket.emit('pick', { gameId: g }); if (g === 'memekarts') socket.emit('pickMap', { mapId: window.selectedKartMap || 'stadium' }); return g; };
+  const pickHomeGame = () => { const g = window.selectedGame === 'blasters' ? 'blasters' : 'memekarts'; socket.emit('pick', { gameId: g }); if (g === 'memekarts') socket.emit('pickMap', { mapId: window.selectedKartMap || 'stadium' }); else socket.emit('pickMap', { mapId: window.selectedBlMap || 'fort' }); return g; };
   $('#createBtn').onclick = () => enter('create', { name: myName() }, pickHomeGame);
   $('#joinBtn').onclick = () => enter('join', { name: myName(), code: $('#code').value });
   $('#code').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#joinBtn').click(); });
@@ -121,6 +121,7 @@
   $('#endBtn').onclick = () => { if (room && room.hostId === myId && confirm('End this game for everyone?')) socket.emit('lobby'); };
 
   // a Toy Box Blasters map card: a top-down plan of the arena (taller things drawn darker), ramps orange, pads cyan
+  window.blMapCard = blMapCard; // the home page draws the same cards
   function blMapCard(m, selected = false, disabled = false) {
     const S = m.size, sc = 450 / S, X = (x) => 450 + x * sc, Z = (z) => 300 + z * sc, TH = m.theme || { floor: '#7fb77e' };
     const shade = (b) => { const h = Math.min(1, b.y1 / 7.2); return b.c || `rgba(40,30,20,${0.25 + h * 0.6})`; };
@@ -140,7 +141,7 @@
     for (const b of document.querySelectorAll('#gameSwitch [data-game]')) { b.classList.toggle('sel', b.dataset.game === room.gameId); b.disabled = !isHost; b.onclick = () => socket.emit('pick', { gameId: b.dataset.game }); }
     $('#arcade').classList.toggle('other', !kartGame && room.gameId !== 'blasters');
     $('#modePick').classList.toggle('hidden', !blGame);
-    for (const b of document.querySelectorAll('#modePick [data-mode]')) { b.classList.toggle('sel', b.dataset.mode === (room.blastersMode || 'ffa')); b.disabled = !isHost; b.onclick = () => socket.emit('pickMode', { mode: b.dataset.mode }); }
+    for (const b of document.querySelectorAll('#modePick [data-mode]')) { b.classList.toggle('sel', b.dataset.mode === (room.blastersMode || 'ffa') || b.dataset.mode === (room.blastersRounds || 'loop')); b.disabled = !isHost; b.onclick = () => socket.emit('pickMode', { mode: b.dataset.mode }); }
     $('#mapPicker').innerHTML = blGame ? window.BLASTERS.MAPS.map(m => blMapCard(m, m.id === room.blastersMap, !isHost)).join('') : window.MEMEKARTS_MAPS.map(m => window.kartMapCard(m, m.id === room.mapId, !isHost)).join('');
     for (const el of $('#mapPicker').querySelectorAll('[data-map]')) el.onclick = () => socket.emit('pickMap', { mapId: el.dataset.map });
     $('#playerList').innerHTML = room.players.map((p) => `<li><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.bot ? '<span class="botTag">BOT</span>' : ''}${p.id === room.hostId ? ' <span class="hint">(host)</span>' : ''}<span style="margin-left:auto" class="hint">${p.score}</span></li>`).join('');

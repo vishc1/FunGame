@@ -30,13 +30,14 @@
   </div>
   <div class="hero">
     <div class="hero-copy"><p class="eyebrow" id="heroEyebrow">YOUR FRIENDS. YOUR RIVALS.</p><h1 id="heroTitle">MEME<br><span>KARTS</span><i>✦</i></h1><p class="hero-description" id="heroDesc">Small karts. Big chaos.<br>Grab a ridiculous weapon. Ruin a friend's lap.</p>
-      <div class="play-card"><label for="name" id="nameLabel">YOUR DRIVER NAME</label><input id="name" maxlength="14" placeholder="Pick a name" autocomplete="nickname"><div class="row"><button id="soloBtn" class="primary">Play now <span>↗</span></button><button id="createBtn">Play with friends</button></div><div class="join-row"><input id="code" maxlength="4" placeholder="ROOM CODE" aria-label="Room code" autocomplete="off"><button id="joinBtn">Join room →</button></div></div>
+      <div class="play-card"><label for="name" id="nameLabel">YOUR DRIVER NAME</label><input id="name" maxlength="14" placeholder="Pick a name" autocomplete="nickname"><div class="row"><button id="soloBtn" class="primary">Play now <span>↗</span></button><button id="createBtn">Play with friends</button></div><div class="join-row"><input id="code" maxlength="4" placeholder="ROOM CODE" aria-label="Room code" autocomplete="off"><button id="joinBtn">Join room →</button></div>
+      <div id="gfxPick" class="gfx-pick"><span>Graphics</span><button data-gfx="low">Low</button><button data-gfx="medium">Medium</button><button data-gfx="high">High</button><small>Pick Low if the game lags.</small></div></div>
       <p class="hero-meta" id="heroMeta">2–8 drivers <span>•</span> 3 arenas <span>•</span> Absolutely no brakes*</p>
     </div>
     <div class="hero-art"><div class="hero-orbit"></div><canvas id="kartShowcase" aria-label="A rotating 3D Meme Karts racer"></canvas><div class="ride-badge" id="heroBadge"><span>MEET YOUR NEW BAD IDEA</span><b>The rocket sled.</b><small>One of eight ridiculous rides.</small></div><div class="hero-sticker" id="heroSticker">READY.<br>SET.<br>CHAOS.</div></div>
   </div>
   <section id="arenas" class="arena-section"><div class="section-heading"><div><p class="eyebrow">PICK YOUR PLAYGROUND</p><h2>Pick your next bad idea.</h2></div><span>Different routes. Same bad intentions.</span></div><div id="homeMaps" class="map-grid"></div></section>
-  <section id="toybox" class="arena-section hidden"><div class="section-heading"><div><p class="eyebrow">WHAT IS IN THE TOY BOX</p><h2>Grab it before they do.</h2></div><span>Everyone starts with a sidearm. The good stuff is on the map.</span></div>
+  <section id="toybox" class="arena-section hidden"><div class="section-heading"><div><p class="eyebrow">PICK YOUR ARENA</p><h2>Three maps. Pick one.</h2></div><span>Play now and Play with friends start on the map you pick here.</span></div><div id="homeBlMaps" class="map-grid" style="margin-bottom:40px"></div><div class="section-heading"><div><p class="eyebrow">WHAT IS IN THE TOY BOX</p><h2>Grab it before they do.</h2></div><span>Everyone starts with a sidearm. The good stuff is on the map.</span></div>
     <div class="toy-grid">
       <div class="toy-card"><b>Blasters to find</b><p>Scatter, Rapid, Burst, Long Shot, Boom Tube and more. Tagged players drop theirs.</p></div>
       <div class="toy-card"><b>Power-ups</b><p>Every 40 seconds one lands on the tower roof. Everyone knows. Everyone goes.</p></div>
@@ -63,7 +64,7 @@
       <div id="gameSwitch" class="game-pick in-lobby"><button data-game="memekarts"><small>KART BATTLE</small><b>Meme Karts</b></button><button data-game="blasters"><small>FIRST-PERSON SHOOTER</small><b>Toy Box Blasters</b></button></div>
       <div class="lobby-heading"><p class="eyebrow">GET THE CREW TOGETHER</p><h2>Choose your arena.</h2><p class="sub">The host picks the map. Everyone brings the chaos.</p></div>
       <div id="rotateHint" aria-hidden="true">Turn your phone sideways to play</div>
-      <div id="modePick" class="hidden"><button data-mode="ffa">Free for all</button><button data-mode="teams">Teams <small>Red vs Blue. Best for parties.</small></button></div>
+      <div id="modePick" class="hidden"><button data-mode="ffa">Free for all</button><button data-mode="teams">Teams <small>Red vs Blue. Best for parties.</small></button><button data-mode="loop">Back-to-back rounds <small>3 minutes each, then straight into the next.</small></button><button data-mode="one">One match <small>Back to the lobby after.</small></button></div>
       <div id="mapPicker" class="map-grid"></div>
       <button id="returnKarts" class="hidden">← Back to Meme Karts</button>
       <details id="arcade"><summary>More games (13 party games)</summary><div id="gameGrid"></div></details>
@@ -77,7 +78,7 @@
 <section id="game" class="screen hidden">
   <header>
     <div><b id="gameTitle"></b> <span id="gameHint" class="hint"></span></div>
-    <div class="right"><button id="fullscreenBtn" class="small" title="Fullscreen (F)">⛶ Fullscreen</button><button id="endBtn" class="small" title="Host only: ends the game for everyone">End game</button><button id="quitBtn" class="small" title="Leave this room">Leave</button></div>
+    <div class="right"><button id="gfxBtn" class="small" title="Lower it if the game lags">Graphics: High</button><button id="fullscreenBtn" class="small" title="Fullscreen (F)">⛶ Fullscreen</button><button id="endBtn" class="small" title="Host only: ends the game for everyone">End game</button><button id="quitBtn" class="small" title="Leave this room">Leave</button></div>
   </header>
   <div id="stage">
     <canvas id="canvas" width="900" height="600"></canvas>
@@ -113,6 +114,7 @@
   window.dispatchEvent(new Event('three-ready'));
 </script>
 <script src="config.js"></script>
+<script src="gfx.js"></script>
 <script src="vendor/socket.io.min.js"></script>
 <script src="p2p.js"></script>
 <script src="memekarts-maps.js"></script>
