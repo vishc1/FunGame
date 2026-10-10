@@ -5,8 +5,7 @@
 // BLENDER MODELS: .glb files in public/models/ named fps_* replace the placeholders built below. See fps3d.md.
 registerGame('blasters', (G) => {
   const B = window.BLASTERS, { WEAPONS, MELEE, LOADOUT, POWERS, PICKUP_INFO, P } = B;
-  const lockerBtn = document.createElement('button'); lockerBtn.className = 'small'; lockerBtn.id = 'lockerBtn'; lockerBtn.textContent = '🎨 Figure & skin (L)'; lockerBtn.title = 'Pick your figure, skin and starter blaster';
-  { const right = document.querySelector('#game header .right'); if (right) right.insertBefore(lockerBtn, right.firstChild); }
+  const lockerBtn = document.createElement('button'); lockerBtn.className = 'small'; lockerBtn.id = 'lockerBtn'; lockerBtn.textContent = '⚙ Settings (L)'; lockerBtn.title = 'Mouse sensitivity and field of view';
   lockerBtn.onclick = (e) => { e.stopPropagation(); setLocker(!locker); };
   const onGfx = () => { if (T && T.applyGfx) T.applyGfx(); }; window.addEventListener('fg-gfx', onGfx); /* graphics changed in the header or on the home page */
   let MAP = B.MAP; // the room's map; every snapshot names it (s.map) and the world is built for it
@@ -586,12 +585,9 @@ registerGame('blasters', (G) => {
     .tbb-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:10px;color:#8b91a5;font-size:12px}`; document.head.appendChild(st); }
   function drawLocker() {
     const col = G.player(G.me).color, lvl = levelOf(xp), nFig = unlocked();
-    G.ui.innerHTML = `<div class="tbb-locker" style="--pc:${col}"><h3>Locker</h3><div style="color:#8b91a5;font-size:12px">Level ${lvl} &nbsp;•&nbsp; pick any figure and any skin, it changes for everyone right away</div>
-      <h4>Figure</h4><div class="tbb-grid">${CHAR_NAMES.map((n, i) => `<button class="tbb-card ${i === charIdx ? 'sel' : ''} ${i < nFig ? '' : 'lock'}" data-fig="${i}"><div class="tbb-thumb" style="background-position:${[1.5, 33.8, 66.2, 98.5][i % 4]}% ${i < 4 ? 11.5 : 100}%"></div>${n}<small>${i < nFig ? '&nbsp;' : 'Level ' + Math.max(2, (i - 1) * 2)}</small></button>`).join('')}</div>
-      <h4>Skin</h4><div class="tbb-grid tbb-skins">${SKINS.map((k, i) => `<button class="tbb-card ${i === skinIdx ? 'sel' : ''} ${skinOpen(i) ? '' : 'lock'}" data-skin="${i}"><div class="tbb-sw" style="background:${k.css}"></div>${k.name}<small>${skinOpen(i) ? '&nbsp;' : 'Level ' + k.lvl}</small></button>`).join('')}</div>
-      <h4>Loadout: starter blaster</h4><div class="tbb-grid tbb-lo">${LOADOUT.map((w) => `<button class="tbb-card ${w === loadout ? 'sel' : ''}" data-lo="${w}">${w === 0 ? 'Sidearm only' : WEAPONS[w].name}<small>${w === 0 ? 'the classic' : 'half the spare darts'}</small></button>`).join('')}</div>
+    G.ui.innerHTML = `<div class="tbb-locker" style="--pc:${col}"><h3>Settings</h3><div style="color:#8b91a5;font-size:12px">Level ${lvl} &nbsp;•&nbsp; your figure, skin and starter blaster are picked before the game, on the home page or in the lobby</div>
       <h4>Settings</h4><div class="tbb-set"><label>Mouse sensitivity <b id="tbbSensV">${sensMul.toFixed(2)}</b><input id="tbbSens" type="range" min="0.2" max="3" step="0.05" value="${sensMul}"></label><label>Field of view <b id="tbbFovV">${baseFov}</b><input id="tbbFov" type="range" min="60" max="105" step="1" value="${baseFov}"></label></div>
-      <div class="tbb-foot"><span>Skins change your figure's colours. The big blasters are only found on the map.</span><button id="tbbClose" class="primary">Done (L)</button></div></div>`;
+      <div class="tbb-foot"><span>The big blasters are only found on the map.</span><button id="tbbClose" class="primary">Done (L)</button></div></div>`;
     for (const b of G.ui.querySelectorAll('[data-fig]')) b.onclick = () => { const i = +b.dataset.fig; if (i >= unlocked()) return G.toast('Reach level ' + Math.max(2, (i - 1) * 2) + ' to unlock ' + CHAR_NAMES[i]); charIdx = i; lset('tbb_char', i); hello(); drawLocker(); if (T) T.preview(charIdx, skinIdx); };
     for (const b of G.ui.querySelectorAll('[data-lo]')) b.onclick = () => { loadout = +b.dataset.lo; lset('tbb_lo', loadout); hello(); drawLocker(); G.toast(loadout ? `You will start each life with the ${WEAPONS[loadout].name}` : 'You will start with just the Dart Blaster'); };
     for (const b of G.ui.querySelectorAll('[data-skin]')) b.onclick = () => { const i = +b.dataset.skin; if (!skinOpen(i)) return G.toast('Reach level ' + SKINS[i].lvl + ' to unlock ' + SKINS[i].name); skinIdx = i; lset('tbb_skin', i); hello(); drawLocker(); if (T) T.preview(charIdx, skinIdx); };
@@ -601,7 +597,7 @@ registerGame('blasters', (G) => {
   }
   function setLocker(on) {
     if (on === locker || (on && over)) return; locker = on;
-    if (on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); softLock = TOUCH; locked = TOUCH; firing = false; zooming = false; drawLocker(); if (T && T.ready) T.preview(charIdx, skinIdx); }
+    if (on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); softLock = TOUCH; locked = TOUCH; firing = false; zooming = false; drawLocker(); }
     else { G.clearUI(); if (T) T.preview(null); }
   }
 
@@ -729,10 +725,10 @@ registerGame('blasters', (G) => {
     // death screen
     if (st && st.dead && !over) { ctx.fillStyle = 'rgba(10,0,0,.4)'; ctx.fillRect(0, 0, W, H); txt(deathBy || 'Tagged out!', cx, cy - 40, { size: 30, color: '#ff6b6b', weight: 900 }); txt(`Back in ${Math.max(0, st.dead).toFixed(1)}s`, cx, cy, { size: 18 }); txt(`${CHAR_NAMES[charIdx]} in ${SKINS[skinIdx].name}   •   press L for the locker`, cx, cy + 34, { size: 13, color: '#cfd6e4' }); }
     // not captured yet
-    if (!locked && me.alive && !over && !showGuide && !locker) { ctx.fillStyle = 'rgba(5,8,14,.6)'; ctx.fillRect(0, 0, W, H); txt('Click to play', cx, cy - 46, { size: 36, weight: 900, color: '#ffd84d' }); ['WASD move   •   Space jump (twice)   •   Shift dash   •   C crouch, tap while running to slide', 'Click fire   •   Right-click aim   •   E foam sword   •   Q drop blaster   •   R reload   •   1-9 or wheel: switch', 'Tab scores   •   H guide   •   L locker, skins and settings   •   M mute   •   Esc frees the mouse', ...(testRoom() ? ['Test room: [ and ] hand you each blaster in turn'] : [])].forEach((l, i) => txt(l, cx, cy + 4 + i * 24, { size: 14, color: '#e8eaf0' })); }
+    if (!locked && me.alive && !over && !showGuide && !locker) { ctx.fillStyle = 'rgba(5,8,14,.6)'; ctx.fillRect(0, 0, W, H); txt('Click to play', cx, cy - 46, { size: 36, weight: 900, color: '#ffd84d' }); ['WASD move   •   Space jump (twice)   •   Shift dash   •   C crouch, tap while running to slide', 'Click fire   •   Right-click aim   •   E foam sword   •   Q drop blaster   •   R reload   •   1-9 or wheel: switch', 'Tab scores   •   H guide   •   L settings   •   M mute   •   Esc frees the mouse', ...(testRoom() ? ['Test room: [ and ] hand you each blaster in turn'] : [])].forEach((l, i) => txt(l, cx, cy + 4 + i * 24, { size: 14, color: '#e8eaf0' })); }
     if (showScores || over) scoreboard();
     if (showGuide) guide();
-    if (!locker) txt(`Level ${levelOf(xp)}  •  ${CHAR_NAMES[charIdx]}  •  ${SKINS[skinIdx].name}  (L)`, 20, 52, { size: 11.5, align: 'left', color: '#ffd84d' });
+    if (!locker) txt(`Level ${levelOf(xp)}  •  ${CHAR_NAMES[charIdx]}  •  ${SKINS[skinIdx].name}`, 20, 52, { size: 11.5, align: 'left', color: '#ffd84d' });
     // minimap: a top-down of the arena in the top-left corner. You are the white arrow; teammates always show, enemies only when close or when they just fired.
     if (!locker && !showGuide) {
       const S = MAP.size, mw = 168, mx = 16, my = 70, k = mw / (S * 2), X = (x) => mx + (x + S) * k, Z = (z) => my + (z + S) * k;

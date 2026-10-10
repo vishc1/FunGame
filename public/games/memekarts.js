@@ -260,7 +260,7 @@ registerGame('memekarts', (G) => {
           if (Math.abs(x) < OX + 70 && Math.abs(z) < OZ + 80) continue;
           // Keep the close landmark strip readable; scenery beyond it supplies the skyline.
           if (Math.abs(x) < OX + 235 && Math.abs(z) < OZ + 180) continue;
-          if(night){const height=70+(i%7)*32+(i%5)*1.7; /* the small per-building offset keeps neighbouring roofs out of one plane */scene.add(box(45,height,50,M3('#23334d'),x,height/2,z),box(46,2,51,glow(i%2?'#68efff':'#ff75c5',1.6),x,height,z));continue;}
+          if(night){const height=70+(i%7)*32+(i%5)*1.7+Math.random()*2.5; /* the small per-building offset keeps neighbouring roofs out of one plane */scene.add(box(45,height,50,M3('#23334d'),x,height/2,z),box(46,2,51,glow(i%2?'#68efff':'#ff75c5',1.6),x,height,z));continue;}
           if(desert){const stone=M3(i%2?'#b66d47':'#d59865');scene.add(cyl(20+(i%4)*8,35+(i%4)*8,70+(i%5)*20,stone,x,25+(i%5)*10,z,6));continue;}
           const sc = 0.8 + Math.random() * 1.4, lm = leafs[i % 4];
           const t = asset('tree', 50 * sc); if (t) { t.traverse((m) => { if (m.isMesh && /mint|leaf|pine|green/i.test(m.material.name || '')) m.material.color.multiplyScalar(0.42 + (i % 4) * 0.06); }); t.position.set(x, 0, z); t.rotation.y = a; scene.add(t); continue; } /* the model's foliage is very bright: deepen it and vary it per tree */
@@ -351,6 +351,7 @@ registerGame('memekarts', (G) => {
         for (const [x0, y0, x1, y1] of edges) {
           const horiz = y0 === y1, lo = horiz ? x0 : y0, hi = horiz ? x1 : y1; let cuts = [];
           for (const rp of map.ramps || []) { const touch = horiz ? ((rp.dir === 'S' && Math.abs(rp.y + rp.h - y0) < 2) || (rp.dir === 'N' && Math.abs(rp.y - y0) < 2)) && rp.x < hi && rp.x + rp.w > lo : ((rp.dir === 'E' && Math.abs(rp.x + rp.w - x0) < 2) || (rp.dir === 'W' && Math.abs(rp.x - x0) < 2)) && rp.y < hi && rp.y + rp.h > lo; if (touch) cuts.push(horiz ? [rp.x, rp.x + rp.w] : [rp.y, rp.y + rp.h]); }
+          for (const o of map.decks || []) { if (o === d || window.MEMEKARTS_MAPS.deckZ(o) !== DZ) continue; /* where another deck at the same height continues past this edge, there is no drop: no rim, and no two rims in one plane */ if (horiz ? (o.y <= y0 + 1 && o.y + o.h >= y0 - 1) : (o.x <= x0 + 1 && o.x + o.w >= x0 - 1)) { const a0 = Math.max(lo, horiz ? o.x : o.y), a1 = Math.min(hi, horiz ? o.x + o.w : o.y + o.h); if (a1 > a0) cuts.push([a0, a1]); } }
           cuts.sort((p, q) => p[0] - q[0]); let at = lo; const segs = []; for (const [c0, c1] of cuts) { if (c0 > at) segs.push([at, c0]); at = Math.max(at, c1); } if (at < hi) segs.push([at, hi]);
           for (const [s0, s1] of segs) { const len = s1 - s0, mid = (s0 + s1) / 2; const rim = horiz ? box(len, 2.4, 3, glow(hot, night ? 1.8 : 0.9), mid - OX, DZ + 1.2, y0 - OZ) : box(3, 2.2, len, glow(hot, night ? 1.8 : 0.9), x0 - OX, DZ + 1.1, mid - OZ); rim.castShadow = false; scene.add(rim); }
         }

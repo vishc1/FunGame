@@ -34,15 +34,32 @@
       <div id="gfxPick" class="gfx-pick"><span>Graphics</span><button data-gfx="low">Low</button><button data-gfx="medium">Medium</button><button data-gfx="high">High</button><small>Pick Low if the game lags.</small></div></div>
       <p class="hero-meta" id="heroMeta">2–8 drivers <span>•</span> 3 arenas <span>•</span> Absolutely no brakes*</p>
     </div>
-    <div class="hero-art"><div class="hero-orbit"></div><canvas id="kartShowcase" aria-label="A rotating 3D Meme Karts racer"></canvas><div class="ride-badge" id="heroBadge"><span>MEET YOUR NEW BAD IDEA</span><b>The rocket sled.</b><small>One of eight ridiculous rides.</small></div><div class="hero-sticker" id="heroSticker">READY.<br>SET.<br>CHAOS.</div></div>
+    <div class="hero-art"><div class="hero-orbit"></div><canvas id="kartShowcase" aria-label="A rotating 3D Meme Karts racer"></canvas><div id="toyPick" class="toy-pick" data-toypicker="full"></div><div class="ride-badge" id="heroBadge"><span>MEET YOUR NEW BAD IDEA</span><b>The rocket sled.</b><small>One of eight ridiculous rides.</small></div><div class="hero-sticker" id="heroSticker">READY.<br>SET.<br>CHAOS.</div></div>
   </div>
+  <section id="action" class="action-section">
+    <div class="ribbon" data-for="memekarts"><span class="ribbon-run"><b>19</b> items <i>✦</i> <b class="n-karts">3</b> arenas <i>✦</i> <b>10 m</b> sky towers <i>✦</i> <b>8</b> drivers <i>✦</i> a pie you aim <i>✦</i> no downloads <i>✦</i> <b>19</b> items <i>✦</i> <b class="n-karts">3</b> arenas <i>✦</i> <b>10 m</b> sky towers <i>✦</i> <b>8</b> drivers <i>✦</i> <b>19</b> items <i>✦</i> <b class="n-karts">3</b> arenas <i>✦</i> <b>10 m</b> sky towers <i>✦</i> <b>8</b> drivers <i>✦</i> a pie you aim <i>✦</i> no downloads <i>✦</i> <b>19</b> items <i>✦</i> <b class="n-karts">3</b> arenas <i>✦</i> <b>10 m</b> sky towers <i>✦</i> <b>8</b> drivers</span></div>
+    <div class="ribbon" data-for="blasters"><span class="ribbon-run"><b>9</b> blasters <i>✦</i> <b class="n-bl">3</b> maps <i>✦</i> Red vs Blue <i>✦</i> <b>5</b> rare power-ups <i>✦</i> a toy cannon <i>✦</i> <b>12</b> players <i>✦</i> <b>9</b> blasters <i>✦</i> <b class="n-bl">3</b> maps <i>✦</i> Red vs Blue <i>✦</i> <b>5</b> rare power-ups <i>✦</i> <b>9</b> blasters <i>✦</i> <b class="n-bl">3</b> maps <i>✦</i> Red vs Blue <i>✦</i> <b>5</b> rare power-ups <i>✦</i> a toy cannon <i>✦</i> <b>12</b> players <i>✦</i> <b>9</b> blasters <i>✦</i> <b class="n-bl">3</b> maps <i>✦</i> Red vs Blue <i>✦</i> <b>5</b> rare power-ups</span></div>
+    <div class="section-heading"><div><p class="eyebrow">SEE IT IN ACTION</p><h2>Real screenshots. Real chaos.</h2></div><span>Every one of these is a live match with bots.</span></div>
+    <div class="shots" data-for="memekarts">
+      <figure><img src="img/shots/karts_tower.jpg" alt="A kart climbing the sky tower ramp" loading="lazy"><figcaption><b>Sky towers</b>Two ramps up to a 10 m summit, and an item box at the top.</figcaption></figure>
+      <figure><img src="img/shots/karts_pie.jpg" alt="Aiming a cream pie" loading="lazy"><figcaption><b>Aim the pie</b>Hold SPACE, watch the arc, let go. Cream on their screen.</figcaption></figure>
+      <figure><img src="img/shots/karts_neon.jpg" alt="Driving through Neon Overdrive" loading="lazy"><figcaption><b>Neon Overdrive</b>Rooftops, portals and drones in a city at night.</figcaption></figure>
+      <figure><img src="img/shots/karts_canyon.jpg" alt="Climbing the canyon mesa" loading="lazy"><figcaption><b>Canyon Rush</b>Boulders, quicksand and one long climb.</figcaption></figure>
+    </div>
+    <div class="shots" data-for="blasters">
+      <figure><img src="img/shots/bl_cove.jpg" alt="The beached pirate ship in Pirate Cove" loading="lazy"><figcaption><b>Pirate Cove</b>Storm a beached pirate ship. The power-up is on the stern.</figcaption></figure>
+      <figure><img src="img/shots/bl_deck.jpg" alt="On the deck of the pirate ship" loading="lazy"><figcaption><b>Hold the deck</b>Stairs, jump pads and a crow's nest with a teleporter.</figcaption></figure>
+      <figure><img src="img/shots/bl_towers.jpg" alt="Block Towers at sunset" loading="lazy"><figcaption><b>Block Towers</b>Climb a pyramid, grab the Long Shot, own the catwalk.</figcaption></figure>
+      <figure><img src="img/shots/bl_fort.jpg" alt="Fort Cardboard" loading="lazy"><figcaption><b>Fort Cardboard</b>A tunnel, two galleries and a toy train down the middle.</figcaption></figure>
+    </div>
+  </section>
   <section id="arenas" class="arena-section"><div class="section-heading"><div><p class="eyebrow">PICK YOUR PLAYGROUND</p><h2>Pick your next bad idea.</h2></div><span>Different routes. Same bad intentions.</span></div><div id="homeMaps" class="map-grid"></div></section>
   <section id="toybox" class="arena-section hidden"><div class="section-heading"><div><p class="eyebrow">PICK YOUR ARENA</p><h2>Three maps. Pick one.</h2></div><span>Play now and Play with friends start on the map you pick here.</span></div><div id="homeBlMaps" class="map-grid" style="margin-bottom:40px"></div><div class="section-heading"><div><p class="eyebrow">WHAT IS IN THE TOY BOX</p><h2>Grab it before they do.</h2></div><span>Everyone starts with a sidearm. The good stuff is on the map.</span></div>
     <div class="toy-grid">
       <div class="toy-card"><b>Blasters to find</b><p>Scatter, Rapid, Burst, Long Shot, Boom Tube and more. Tagged players drop theirs.</p></div>
       <div class="toy-card"><b>Power-ups</b><p>Every 40 seconds one lands on the tower roof. Everyone knows. Everyone goes.</p></div>
       <div class="toy-card"><b>A map that fights back</b><p>Ramps, launch ramps, jump pads, teleporters, and a toy train on a schedule.</p></div>
-      <div class="toy-card"><b>Figures and skins</b><p>Eight toy figures and nine finishes, from Pastel to Gold to Rainbow. Level up to unlock.</p></div>
+      <div class="toy-card"><b>Figures and skins</b><p>Eight toy figures and nine finishes, from Pastel to Gold to Rainbow. All open: pick yours right here before you play.</p></div>
     </div></section>
   <section class="how-to" id="howTo"><b>THE RULES ARE SIMPLE.</b><span><kbd>W A S D</kbd> Drive</span><span><kbd>?</kbd> Grab an item</span><span><kbd>SPACE</kbd> Make it personal</span><small>* Okay, S reverses.</small></section>
   <footer><b id="footName" style="font-weight:inherit">MEME KARTS</b> <span>Made for the group chat.</span></footer>
@@ -65,6 +82,7 @@
       <div class="lobby-heading"><p class="eyebrow">GET THE CREW TOGETHER</p><h2>Choose your arena.</h2><p class="sub">The host picks the map. Everyone brings the chaos.</p></div>
       <div id="rotateHint" aria-hidden="true">Turn your phone sideways to play</div>
       <div id="modePick" class="hidden"><button data-mode="ffa">Free for all</button><button data-mode="teams">Teams <small>Red vs Blue. Best for parties.</small></button><button data-mode="loop">Back-to-back rounds <small>3 minutes each, then straight into the next.</small></button><button data-mode="one">One match <small>Back to the lobby after.</small></button></div>
+      <div id="lobbyToy" class="toy-pick lobby-toy hidden"><p class="eyebrow">YOUR TOY FOR THIS GAME</p><div data-toypicker="compact"></div></div>
       <div id="mapPicker" class="map-grid"></div>
       <button id="returnKarts" class="hidden">← Back to Meme Karts</button>
       <details id="arcade"><summary>More games (13 party games)</summary><div id="gameGrid"></div></details>
@@ -115,6 +133,7 @@
 </script>
 <script src="config.js"></script>
 <script src="gfx.js"></script>
+<script src="toy-picker.js"></script>
 <script src="vendor/socket.io.min.js"></script>
 <script src="p2p.js"></script>
 <script src="memekarts-maps.js"></script>

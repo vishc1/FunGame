@@ -36,12 +36,17 @@
     });
     // Toy Box Blasters showcase: a figure holding a blaster, shown instead of the kart when that game's tab is selected
     const toy = new T.Group(); toy.visible = false; toy.scale.setScalar(1.5); scene.add(toy); const toyPaint = [];
-    new window.GLTFLoader().load('/models/fps_char_4.glb', gltf => { const f = gltf.scene; f.rotation.y = Math.PI; f.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (o.material.name === 'Paint') toyPaint.push(o.material); } }); toy.add(f); });
+    // the figure and skin chosen in the picker below it (public/toy-picker.js); swapping figures loads that model
+    let fig = null, figCh = -1; const figCache = {};
+    function showFig(ch) { if (ch === figCh) return; figCh = ch; const put = (f) => { if (figCh !== ch) return; if (fig) toy.remove(fig); fig = f; toy.add(f); toyPaint.length = 0; f.traverse(o => { if (o.isMesh && o.material.name === 'Paint') toyPaint.push(o.material); }); };
+      if (figCache[ch]) return put(figCache[ch]);
+      new window.GLTFLoader().load('/models/fps_char_' + ch + '.glb', gltf => { const f = gltf.scene; f.rotation.y = Math.PI; f.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; o.material = o.material.clone(); } }); figCache[ch] = f; put(f); }); }
+    showFig(window.TOY ? window.TOY.state().ch : 4); if (window.TOY) window.TOY.onChange((st) => showFig(st.ch));
     new window.GLTFLoader().load('/models/fps_w_scatter.glb', gltf => { const w = gltf.scene; w.position.set(.33, 1.2 + .17 - .27, -.40); w.traverse(o => { if (o.isMesh) o.castShadow = true; }); toy.add(w); });
     const observer = new ResizeObserver(() => {const r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix();}); observer.observe(canvas);
     let previous=0;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-    function frame(now){ requestAnimationFrame(frame);const dt=Math.min(.05,(now-previous)/1000);previous=now;if(document.hidden || document.querySelector('#home').classList.contains('hidden')) return;const toyOn=window.selectedGame==='blasters';if(kart)kart.visible=!toyOn;toy.visible=toyOn;if(kart&&!reduced) kart.rotation.y+=dt*.18;if(!reduced)toy.rotation.y+=dt*.35;for(const m of toyPaint)m.color.setHSL((now*.00006)%1,.75,.55);renderer.render(scene,camera); }
+    function frame(now){ requestAnimationFrame(frame);const dt=Math.min(.05,(now-previous)/1000);previous=now;if(document.hidden || document.querySelector('#home').classList.contains('hidden')) return;const toyOn=window.selectedGame==='blasters';if(kart)kart.visible=!toyOn;toy.visible=toyOn;if(kart&&!reduced) kart.rotation.y+=dt*.18;if(!reduced)toy.rotation.y+=dt*.35;if(window.TOY)window.TOY.paint(toyPaint,'#ff794f',window.TOY.state().sk,now/1000,T.Color);renderer.render(scene,camera); }
     requestAnimationFrame(frame);
   }
   window.addEventListener('three-ready', showcase); showcase();

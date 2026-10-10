@@ -5,7 +5,7 @@ const { chromium } = require('playwright-core'); const { spawn } = require('chil
 const PORT = 9700 + Math.floor(Math.random() * 200), BASE = `http://localhost:${PORT}`;
 const cache = path.join(os.homedir(), 'Library/Caches/ms-playwright'); const dir = fs.readdirSync(cache).filter((d) => /^chromium_headless_shell-\d+$/.test(d)).sort().pop();
 const exe = path.join(cache, dir, 'chrome-headless-shell-mac-arm64/chrome-headless-shell'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const JOBS = [['memekarts', 'stadium', 0.05], ['memekarts', 'neon', 0.05], ['memekarts', 'canyon', 0.05], ['blasters', 'fort', 0.004], ['blasters', 'towers', 0.004], ['blasters', 'cove', 0.004]];
+const JOBS = [...require('../public/memekarts-maps.js').map((m) => ['memekarts', m.id, 0.05]), ['blasters', 'fort', 0.004], ['blasters', 'towers', 0.004], ['blasters', 'cove', 0.004]];
 (async () => {
   const srv = spawn('node', ['server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT }, stdio: ['ignore', 'pipe', 'pipe'] }); await sleep(900);
   const b = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] }); let total = 0;

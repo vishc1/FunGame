@@ -140,7 +140,7 @@
     $('#returnKarts').classList.add('hidden'); // replaced by the two-game switch above the lobby heading
     for (const b of document.querySelectorAll('#gameSwitch [data-game]')) { b.classList.toggle('sel', b.dataset.game === room.gameId); b.disabled = !isHost; b.onclick = () => socket.emit('pick', { gameId: b.dataset.game }); }
     $('#arcade').classList.toggle('other', !kartGame && room.gameId !== 'blasters');
-    $('#modePick').classList.toggle('hidden', !blGame);
+    $('#modePick').classList.toggle('hidden', !blGame); $('#lobbyToy').classList.toggle('hidden', !blGame); /* figure and skin are picked here and on the home page, before the game */
     for (const b of document.querySelectorAll('#modePick [data-mode]')) { b.classList.toggle('sel', b.dataset.mode === (room.blastersMode || 'ffa') || b.dataset.mode === (room.blastersRounds || 'loop')); b.disabled = !isHost; b.onclick = () => socket.emit('pickMode', { mode: b.dataset.mode }); }
     $('#mapPicker').innerHTML = blGame ? window.BLASTERS.MAPS.map(m => blMapCard(m, m.id === room.blastersMap, !isHost)).join('') : window.MEMEKARTS_MAPS.map(m => window.kartMapCard(m, m.id === room.mapId, !isHost)).join('');
     for (const el of $('#mapPicker').querySelectorAll('[data-map]')) el.onclick = () => socket.emit('pickMap', { mapId: el.dataset.map });
