@@ -85,7 +85,7 @@ registerGame('memekarts', (G) => {
     canvas.parentNode.insertBefore(gl, canvas);
     const prev = { bg: canvas.style.background, pos: canvas.style.position };
     canvas.style.background = 'transparent'; canvas.style.position = 'relative';
-    const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true, powerPreference: 'high-performance' });
+    const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true, powerPreference: 'high-performance' }); window.__fgRenderer = renderer; /* for tools/perf.js: renderer.info shows what accumulates */
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .95;
@@ -155,6 +155,8 @@ registerGame('memekarts', (G) => {
     // ---- world ----
     function buildWorld() {
       worldBuilt = true;
+      /* warm-up: one of every item model is built now and its shaders compiled, so the first shell of the match does not hitch */
+      try { const warm = []; for (const k of Object.keys(ENT)) { const g = ENT[k](); g.position.set(0, -600, 0); scene.add(g); warm.push([k, g]); } renderer.compile(scene, camera); for (const [k, g] of warm) { g.visible = false; (entPool[k] = entPool[k] || []).push(g); } } catch (e) { console.warn('warm-up skipped', e); }
       const night = map.theme === 'neon', desert = map.theme === 'canyon';
       scene.background = tex(16, 256, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, map.sky); g.addColorStop(1, map.fog); c.fillStyle = g; c.fillRect(0, 0, w, h); });
       scene.fog = new THREE.Fog(map.fog, Math.max(750, MW * 0.8), 2600 + MW);
@@ -328,7 +330,7 @@ registerGame('memekarts', (G) => {
         const horiz = rp.dir === 'E' || rp.dir === 'W', len = horiz ? rp.w : rp.h, wid = horiz ? rp.h : rp.w, g = new THREE.Group();
         const [Z0, Z1] = window.MEMEKARTS_MAPS.rampZ(rp), RH = Z1 - Z0; /* this ramp's rise; a tower's second ramp starts on the first deck */
         const custom = asset(map.theme === 'neon' ? 'ramp_neon' : map.theme === 'canyon' ? 'ramp_canyon' : 'ramp', 60) || asset('ramp', 60); /* optional model: rises toward +X in Blender; stretched to the footprint */
-        if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RH / sz.y, wid / sz.z);
+        if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RH / sz.y, wid / sz.z); custom.traverse((m) => { if (m.isMesh) m.material.side = THREE.DoubleSide; }); /* solid from every angle */
           custom.traverse((m) => { if (m.isMesh && /ink|dark|runway/i.test((m.material.name || '') + m.name)) m.material.color.set(map.theme === 'neon' ? '#ff3fd0' : '#ff8a1f'); }); /* the runway is painted a loud colour: a dark ramp reads as a floor marking */
           g.add(custom); }
         else {
@@ -619,12 +621,12 @@ registerGame('memekarts', (G) => {
       pie: () => asset('pie', 18) || (() => { const g = new THREE.Group(); g.add(cyl(8, 6.5, 3.5, M3('#d8a861', { roughness: 0.6 }), 0, 1.75, 0, 16)); const cream = sph(7.5, M3('#fff6e6', { roughness: 0.35 }), 0, 4, 0, 14); cream.scale.y = 0.55; g.add(cream, sph(1.6, M3('#e0312f', { roughness: 0.3 }), 1.5, 8.2, -1, 8)); return g; })(),
       fake: () => asset('fake_box', 24) || (() => { const g = itemBox('#ffb833', '¿'); g.userData.box = true; return g; })(),
     };
-    const ents = new Map(); let aimLine = null, aimRing = null;
+    const ents = new Map(), entPool = {}; let aimLine = null, aimRing = null; /* entity models are pooled: a shell that is gone is hidden and reused for the next one, so nothing is rebuilt or leaked mid-match */
     function updateEnts(dt) {
       const seen = new Set();
       for (const e of s.ents) {
         seen.add(e.id); let v = ents.get(e.id);
-        if (!v) { const g = (ENT[e.k] || ENT.egg)(); v = { g, x: e.x, y: e.y, k: e.k }; ents.set(e.id, v); scene.add(g); }
+        if (!v) { const k = ENT[e.k] ? e.k : 'egg', g = (entPool[k] || []).pop() || ENT[k](); g.visible = true; if (!g.parent) scene.add(g); v = { g, x: e.x, y: e.y, k }; ents.set(e.id, v); }
         const f = 1 - Math.exp(-28 * dt); v.x += (e.x - v.x) * f; v.y += (e.y - v.y) * f;
         const g = v.g, X = v.x - OX, Z = v.y - OZ;
         v.el = (v.el ?? (e.el || 0)) + ((e.el || 0) - (v.el ?? 0)) * Math.min(1, dt * 18);
@@ -638,7 +640,7 @@ registerGame('memekarts', (G) => {
         if (e.k === 'blue' && Math.random() < 0.7) spark(X, 22, Z, (Math.random() - 0.5) * 20, -10, (Math.random() - 0.5) * 20, '#6ea0ff', 0.4, 0);
         if (e.k === 'red' && Math.random() < 0.4) spark(X, 5, Z, 0, 12, 0, '#ff6a6a', 0.3, 0);
       }
-      for (const [id, v] of ents) if (!seen.has(id)) { scene.remove(v.g); ents.delete(id); }
+      for (const [id, v] of ents) if (!seen.has(id)) { v.g.visible = false; (entPool[v.k] = entPool[v.k] || []).push(v.g); ents.delete(id); }
     }
 
     function fit() {
@@ -665,6 +667,7 @@ registerGame('memekarts', (G) => {
         const squeeze = 1 - Math.min(1, Math.hypot(cx - X, cz - Z) / 84);
         camTarget.set(cx, 44 + squeeze * 70 + h * 0.7, cz); lookTarget.set(X + dx * 50 * (1 - squeeze * 0.6), 10 + h * 0.6, Z + dz * 50 * (1 - squeeze * 0.6));
         camera.position.lerp(camTarget, 1 - Math.exp(-9 * dt)); look.lerp(lookTarget, 1 - Math.exp(-12 * dt));
+        { const under = surfaceAt(camera.position.x + OX, camera.position.z + OZ) + 30; if (camera.position.y < under) camera.position.y = under; } /* never below the ramp or deck beneath the camera: otherwise you look through it */
         fov = (portrait?82:62) + Math.min(10, v.spd / 40) + (k.mush || k.star || k.bill || k.bst ? 12 : 0);
       } else {
         const big = Math.max(MW / 900, MH / 600); camTarget.set(Math.sin(time * 0.25) * 520 * big, 430 * big, Math.cos(time * 0.25) * 520 * big); lookTarget.set(0, 0, 0);

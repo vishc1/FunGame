@@ -115,7 +115,7 @@ registerGame('blasters', (G) => {
     canvas.parentNode.insertBefore(gl, canvas);
     const prev = { bg: canvas.style.background, pos: canvas.style.position, cur: canvas.style.cursor };
     canvas.style.background = 'transparent'; canvas.style.position = 'relative'; canvas.style.cursor = 'crosshair';
-    const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true, powerPreference: 'high-performance' });
+    const renderer = new THREE.WebGLRenderer({ canvas: gl, antialias: true, powerPreference: 'high-performance' }); window.__fgRenderer = renderer; /* for tools/perf.js: renderer.info shows what accumulates */
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.shadowMap.autoUpdate = false; // Update once for the world, never again for the weapon-only pass.
