@@ -252,3 +252,39 @@ All requested checks passed using the windowless browser:
 - `node art/check-memekarts.mjs`: map selection, fullscreen, mobile sizing, touch input and animation at 30 / 60 / 120 fps; zero browser errors.
 
 The art checks used the existing local port-3000 server; it was left running. Protected game-file SHA-256 hashes match the starting baseline. No game code, GitHub state or deployment was changed.
+
+## Pitfall Park and Skyway Circuit, 2026-10-10
+
+This round includes map and gameplay-code changes, as authorized by the user. No Blender models were rebuilt.
+
+- **Pitfall Park** (`pitfall`): a central pit with hazard stripes and −1 kill signs, a raised crossing, jump approaches and six ramps. The northwest tower and southeast deck provide additional item routes.
+- **Skyway Circuit** (`skyway`): an elevated loop around a central courtyard, ten ramp entrances, a northern summit and a corner-to-corner portal. Inner ramps let drivers leave the courtyard after dropping into it. Falls onto its ordinary floor are safe.
+
+Both maps are in the home and lobby pickers. Map-card previews and the minimap show the pit footprint beneath its safe crossing. The home page now reports five arenas.
+
+### Pit rules
+
+The server owns fall detection and scoring. Falling into the pit subtracts exactly one kill and adds one death; no opponent receives a kill. Kill counts can go negative. After a short visible drop and a three-second respawn delay, the kart returns to a safe spawn with full health and two seconds of protection. Power-ups cannot bypass the penalty. Items and the kill streak are cleared, and the falling kart cannot fire. Overall party points remain at least zero.
+
+Airborne karts may cross the opening and land on the raised crossing. Decks and ramps above a pit supply their normal ground height. The road and the landscape underneath it both have a geometric opening, so the falling kart is visible inside the pit. Bot ground routes exclude pit cells. Ground projectiles disappear into the pit; flying items may cross it.
+
+Map data and the shared height query are in `public/memekarts-maps.js`; scoring and respawn logic are in `server/games/memekarts.js`. `public/games/memekarts.js` draws the pit and its penalty feedback. Existing models, their build sources and the three original layouts are unchanged. The local host-worker bundle was rebuilt for browser-hosted games; nothing was published or sent to GitHub.
+
+### Tests and previews
+
+Passed checks:
+
+- `node tools/mapcheck.js`: all five layouts, including pit-safe spawns, pickups and reachable routes.
+- `node tools/kart-height.js`: all five maps. Its crossing timeout now accommodates Skyway's longer elevated roads.
+- `node tools/kart-pits.js`: scoring from positive, zero and negative counts; one penalty per fall; power-ups; safe respawns; jumping; bridge travel; falling from the bridge; firing restrictions; nonnegative party points.
+- `node tools/fullrun.js memekarts`, plus `MAP=pitfall` and `MAP=skyway`: eight scenarios each, including joins, leaves and malformed input.
+- `node tools/kart-items-check.js`: all 19 items.
+- `node tools/kartsim.js pitfall` and `skyway`: bot matches cycling every item.
+- `TEST_URL=http://127.0.0.1:3097 node art/check-new-kart-maps.mjs`: both rendered layouts, uncovered pit geometry, the safe crossing and a real-browser fall, score reduction and respawn.
+- `MAP=pitfall node tools/solo.js memekarts 25` and `MAP=skyway node tools/solo.js memekarts 25`: zero browser errors.
+- `TEST_URL=http://127.0.0.1:3097 node art/check-memekarts.mjs`: all five map selections, guest permissions, fullscreen, mobile, touch driving and animation at 30 / 60 / 120 fps.
+- `node tools/kart-ramp.js pitfall 0` and `skyway 0`: both climbed to height 48 and returned to the floor with zero page errors.
+- `TEST_URL=http://127.0.0.1:3097 node art/check-environment.mjs`: existing environment assets and all three original maps passed, including landmark animation and reduced motion.
+- `node tools/home.js`: 12 checks passed, including the five-map picker, both primary games and the phone layout.
+
+Preview images: `pitfall-overview.png`, `skyway-overview.png`, `pitfall-falling.png` and `pitfall-penalty.png`. The local preview server is on port 3097; the pre-existing port-3000 server was not restarted. All browser checks use the windowless launcher.

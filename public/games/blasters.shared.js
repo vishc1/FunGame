@@ -104,7 +104,7 @@
       stairs(4.5 * sx, cz, [sx, 0], 3, 2.4, 6, 5.5);   // ground -> base top (runs from x = +-4.5 to the base edge at +-10)
       stairs(10 * sx, cz, [sx, 0], 3, 4.8, 12, 2);      // base top -> middle
       stairs(12 * sx, cz, [sx, 0], 3, 7.2, 18, 2);      // middle -> summit
-      box(cx + sx * 6.8, cz, 0.4, 14, 2.4, 3.3, 'rail'); box(cx, cz + sx * 6.8, 14, 0.4, 2.4, 3.3, 'rail'); // parapets on the two outer edges of the base
+      box(cx + sx * 6.8, cz, 0.4, 14, 2.4, 3.3, 'rail'); box(cx - sx * 0.2, cz + sx * 6.8, 13.6, 0.4, 2.4, 3.3, 'rail'); // parapets on the two outer edges of the base, meeting at the corner without overlapping
     }
     // the cross: two beams over the middle at 2.6-3.2 with a 6 m pad where they meet; the train fits underneath
     box(0, 0, 2.6, 22, 2.6, 3.2, 'beam'); box(0, 0, 22, 2.6, 2.6, 3.2, 'beam'); box(0, 0, 6, 6, 2.6, 3.2, 'beam');
@@ -151,7 +151,59 @@
     const spawns = [...rot4(28, -6), ...rot4(28, 8), ...rot2(-27, -3)].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) }));
     return { pads, pickups, spawns, ramps, teles, train, powerSpot: 'the catwalk' };
   });
-  const MAPS = [FORT, TOWERS], MAP = FORT; // MAP: the default map, and what older callers that do not pass a map get
+  // "Pirate Cove": a sunny beach with a toy pirate ship beached in the middle. Climb the hull from the sand, the stairs to the
+  // main deck, then the stern castle; a jump pad from the beach drops you straight onto the deck. A lighthouse in one corner
+  // (big pad up) and a sandcastle fort in the other are the sniper and cannon spots; teleporters link the crow's nest and the
+  // lighthouse, and the toy train runs along the shore road. Vertical, central, and every spot has two ways in.
+  const COVE = build('cove', 'Pirate Cove', 'Fight over a beached pirate ship, a lighthouse and a sandcastle', 34, { floor: '#e9d9a9', floor2: '#e0cf9b', line: '#ffffff', sky: ['#4fa8ff', '#aee0ff', '#fff6e0'], sun: '#fff0d0', sunPos: [30, 50, -20], hemi: ['#e8f4ff', '#c9b27f'], clouds: '#ffffff' }, ({ box, stairs, rot2, rot4 }) => {
+    const WOOD = '#8a5a34', DECK = '#c9a06a', SAND = '#f0e2b4', STONE = '#d8d8d0';
+    // the ship, long along z: hull with a 2 m walkway all round at 2.4, main deck at 4.8, bow platform at 6, stern castle at 7.2
+    box(0, 0, 14, 36, 0, 2.4, 'block', WOOD); box(0, 0, 10, 26, 2.4, 4.8, 'block', DECK);
+    box(0, -14, 6, 6, 4.8, 6.0, 'block', DECK);                                   // bow platform
+    box(0, 13, 10, 8, 4.8, 7.2, 'block', WOOD);                                   // stern castle
+    for (const z of [-4, 4]) { box(0, z, 1, 1, 4.8, 12, 'pillar'); }               // masts
+    box(0, -4, 4, 4, 12, 12.6, 'beam');                                            // crow's nest
+    for (const sx of [-1, 1]) { box(sx * 4.8, 5, 0.4, 6, 4.8, 5.4, 'rail'); box(sx * 4.8, 13, 0.4, 8, 7.2, 7.8, 'rail'); } // deck rails, clear of the stair entries
+    stairs(-10.5, 0, [1, 0], 4, 2.4, 6, 3.5); stairs(10.5, 0, [-1, 0], 4, 2.4, 6, 3.5);  // sand -> hull walkway, both sides midship
+    stairs(-6, -9, [0, 1], 2, 4.8, 12, 5); stairs(6, 9, [0, -1], 2, 4.8, 12, 5);    // walkway -> main deck: stairs run along the walkway up to the deck's side, one each side
+    stairs(0, 5, [0, 1], 3, 7.2, 18, 4);                                           // main deck -> stern castle
+    // lighthouse (north-east) and sandcastle fort (south-west)
+    box(24, -24, 6, 6, 0, 8, 'block', STONE); box(24, -24, 7, 7, 8, 8.4, 'beam');  // lighthouse with a gallery on top
+    box(-24, 24, 8, 8, 0, 3.2, 'block', SAND); stairs(-24, 16.5, [0, 1], 3, 3.2, 8, 3.5); // sandcastle with stairs from the north
+    for (const [x, z] of [[-27, 27], [-21, 27], [-27, 21], [-21, 21]]) box(x, z, 1, 1, 3.2, 4.4, 'pillar'); // sandcastle turrets
+    // beach huts and palms in the other corners, crates along the shore
+    for (const [sx, sz] of rot2(1, 1)) { box(24 * sx, 24 * sz, 5, 4, 0, 2.6, 'crate'); box(19 * sx, 27 * sz, 2.2, 2.2, 0, 1.5, 'crate'); box(28 * sx, 18 * sz, 1, 1, 0, 6, 'pillar'); }
+    for (const [x, z] of [[-14, -22], [14, 22], [-14, 12], [14, -12]]) box(x, z, 2.2, 2.2, 0, 1.5, 'crate');
+    for (const [x, z] of [[-20, -8], [20, 8]]) box(x, z, 0.7, 6, 0, 1.2, 'lowwall');
+    const ramps = [
+      { x0: -1.5, x1: 1.5, z0: -26, z1: -18, ax: 'z', dir: 1, y0: 0, y1: 2.4, kind: 'walk' },   // bow: sand up onto the hull walkway
+      { x0: -1.5, x1: 1.5, z0: 18, z1: 26, ax: 'z', dir: -1, y0: 0, y1: 2.4, kind: 'walk' },   // stern: the same
+      { x0: -12, x1: -8, z0: 6.5, z1: 9.5, ax: 'x', dir: 1, y0: 0, y1: 2.1, kind: 'launch' },   // kickers beside the ship: jump off the lip onto the hull walkway
+      { x0: 8, x1: 12, z0: -9.5, z1: -6.5, ax: 'x', dir: -1, y0: 0, y1: 2.1, kind: 'launch' },
+    ];
+    const teles = [
+      [{ x: 0, y: 12.6, z: -3 }, { x: 26, y: 8.4, z: -26 }],      // crow's nest <-> lighthouse gallery
+      [{ x: -29, y: 0, z: -29 }, { x: 29, y: 0, z: 29 }],         // north-west beach <-> south-east beach
+    ];
+    const train = { z: 29, half: 0.95, h: 2.1, len: 8.2, speed: 26, every: 26, warn: 3, dmg: 80 };
+    // jump pads: from the beach onto the main deck (both sides), and up to the lighthouse gallery
+    const pads = [{ x: -15, y: 0, z: -6, r: 1.3, v: [12.5, 15.5, 0], big: true }, { x: 15, y: 0, z: 6, r: 1.3, v: [-12.5, 15.5, 0], big: true }, { x: 24, y: 0, z: -15, r: 1.3, v: [0, 21.5, -8], big: true }];
+    const pickups = [
+      { kind: 'power', x: 0, y: 7.2, z: 13 },                                                  // stern castle
+      { kind: 'mega', x: 0, y: 4.8, z: 0, respawn: 35 },                                       // middle of the main deck
+      { kind: 'weapon', w: 3, x: 24, y: 8.4, z: -24, respawn: 20 }, { kind: 'weapon', w: 8, x: -24, y: 3.2, z: 24, respawn: 30 }, // lighthouse: Long Shot; sandcastle: cannon
+      { kind: 'weapon', w: 4, x: 0, y: 6.0, z: -14, respawn: 25 }, { kind: 'weapon', w: 6, x: 0, y: 12.6, z: -5.3, respawn: 18 },   // bow: Boom Tube; crow's nest: Splash Lobber
+      { kind: 'weapon', w: 7, x: 6, y: 2.4, z: 8, respawn: 15 }, { kind: 'weapon', w: 1, x: -6, y: 2.4, z: -8, respawn: 12 },     // hull walkway
+      { kind: 'weapon', w: 2, x: 24, y: 2.6, z: 24, respawn: 12 }, { kind: 'weapon', w: 5, x: -24, y: 2.6, z: -24, respawn: 15 },  // hut roofs
+      { kind: 'weapon', w: 1, x: 0, y: 0, z: -30, respawn: 12 }, { kind: 'weapon', w: 2, x: -8, y: 0, z: 26, respawn: 12 },
+      ...rot4(12, -16).map(([x, z]) => ({ kind: 'health', x, y: 0, z, respawn: 10 })),
+      ...rot4(30, -10).map(([x, z]) => ({ kind: 'health', x, y: 0, z, respawn: 10 })),
+      { kind: 'armor', x: 0, y: 7.2, z: 16, respawn: 25 }, { kind: 'armor', x: -24, y: 0, z: 10, respawn: 25 }, { kind: 'armor', x: 24, y: 0, z: -10, respawn: 25 },
+    ];
+    const spawns = [...rot4(31, -4), ...rot4(31, 12), ...rot2(-20, -31), ...rot2(8, -31)].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) }));
+    return { pads, pickups, spawns, ramps, teles, train, powerSpot: 'the stern castle' };
+  });
+  const MAPS = [FORT, TOWERS, COVE], MAP = FORT; // MAP: the default map, and what older callers that do not pass a map get
   const mapById = (id) => MAPS.find((m) => m.id === id) || null;
 
   // ------------------------------------------------------------------ weapons, power-ups

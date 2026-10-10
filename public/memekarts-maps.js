@@ -13,6 +13,7 @@
 //   Height is real in the simulation: `maps.surface(map, x, y)` gives the ground height at a point (server, bots and renderer all use it).
 //   portals   [[{x,y},{x,y}], ...]                      warp pairs: drive into one, come out of the other
 //   zones     [{x, y, w, h, kind:'mud'}]                slow ground: a shortcut that costs you speed
+//   pits      [{x, y, w, h}]                           open drops; decks/ramps above a pit remain safe. A fall costs one kill.
 //   movers    [{kind:'boulder'|'drone', path:[[x,y],[x,y]], speed, r}]   hazards that travel back and forth and hurt on contact
 // `node tools/mapcheck.js` verifies that nothing overlaps an obstacle and every spawn, box and pad is reachable.
 (function (root) {
@@ -81,16 +82,36 @@
       movers: [{kind:'boulder',path:[[80,420],[1720,420]],speed:170,r:22},{kind:'boulder',path:[[1720,770],[80,770]],speed:140,r:22}],
       pads: jump([650,440],[1380,750],[110,420],[1690,770]),
       spawns: [[90,90],[1710,90],[90,1110],[1710,1110],[580,100],[1340,1120],[90,620],[1740,480]] },
+    { id:'pitfall', name:'Pitfall Park', tag:'Mind the gap · falling costs 1 kill', theme:'stadium', accent:'#ffc857', sky:'#91cfe9', fog:'#e5d8c1', ground:'#668960', floor:'#405762', cap:'#ffad54', sun:'#ffe1b0',
+      w:W, h:H,
+      pits:[b(650,380,500,440)],
+      obstacles:[...quad(200,340,180,45),...quad(140,140,70,70)],
+      decks:[b(530,550,740,100),b(260,120,200,140),tier2(260,120,80,140),b(1300,870,220,150)],
+      ramps:[ramp(530,600,'E'),ramp(1270,600,'W'),ramp(460,190,'W'),ramp(340,190,'W',DECK_Z,TOWER_Z),ramp(1300,945,'E'),ramp(1520,945,'W')],
+      boxes:[[730,600],[1070,600],[300,190],[1410,945],[900,220],[900,980],[480,440],[1320,440],[480,780],[1320,740],[90,600],[1710,600],[100,1100],[1700,1100]],
+      pads:[...boost([450,80],[1350,80],[450,1120],[1350,1120]),...jump([900,300],[900,900])],
+      spawns:[[90,90],[1710,90],[90,1110],[1710,1110],[90,600],[1710,600],[600,100],[1200,1100]] },
+
+    { id:'skyway', name:'Skyway Circuit', tag:'Elevated loop · bridges and shortcut ramps', theme:'neon', accent:'#a1faff', sky:'#283a68', fog:'#738bb3', ground:'#34466b', floor:'#263e59', cap:'#74edee', sun:'#ffe6ce',
+      w:W, h:H,
+      obstacles:[b(800,520,200,160),...quad(160,440,70,70)],
+      decks:[b(440,220,920,180),b(440,800,920,180),b(440,400,180,400),b(1180,400,180,400),b(770,70,260,120),tier2(770,70,80,120)],
+      ramps:[ramp(440,310,'E'),ramp(1360,310,'W'),ramp(440,890,'E'),ramp(1360,890,'W'),ramp(440,600,'E'),ramp(1360,600,'W'),ramp(1030,130,'W'),ramp(850,130,'W',DECK_Z,TOWER_Z),ramp(620,600,'W'),ramp(1180,600,'E')],
+      boxes:[[650,310],[1150,310],[650,890],[1150,890],[530,600],[1270,600],[810,130],[740,600],[1060,600],[900,750],[900,450],[90,600],[1710,600],[900,1090]],
+      pads:boost([220,600],[1580,600],[560,1100],[1240,1100]),
+      portals:[[{x:120,y:110},{x:1680,y:1090}]],
+      spawns:[[90,200],[1710,200],[90,1000],[1710,1000],[90,600],[1710,600],[550,100],[1250,1100]] },
   ];
   // Ground height at a point: 0 on the floor, the deck's height on a deck (the highest one where tiers stack), in between on a ramp.
   maps.DECK_Z = DECK_Z; maps.TOWER_Z = TOWER_Z;
   maps.deckZ = (d) => d.z || DECK_Z; maps.rampZ = (r) => [r.z0 || 0, r.z1 || DECK_Z];
   maps.surface = (m, x, y) => {
-    let h = 0;
+    let h = (m.pits || []).some(p => x > p.x && x < p.x+p.w && y > p.y && y < p.y+p.h) ? -180 : 0;
     for (const d of m.decks || []) if (x >= d.x && x <= d.x + d.w && y >= d.y && y <= d.y + d.h) h = Math.max(h, d.z || DECK_Z);
     for (const r of m.ramps || []) { if (x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h) continue; const p = r.dir === 'E' ? (x - r.x) / r.w : r.dir === 'W' ? (r.x + r.w - x) / r.w : r.dir === 'S' ? (y - r.y) / r.h : (r.y + r.h - y) / r.h; const z0 = r.z0 || 0, z1 = r.z1 || DECK_Z; h = Math.max(h, z0 + p * (z1 - z0)); }
     return h;
   };
+  maps.isPit = (m,x,y) => maps.surface(m,x,y) < 0;
   if (typeof module !== 'undefined' && module.exports) module.exports = maps;
   else root.MEMEKARTS_MAPS = maps;
 })(typeof window !== 'undefined' ? window : globalThis);

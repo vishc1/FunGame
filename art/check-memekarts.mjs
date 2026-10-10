@@ -9,7 +9,7 @@ page.on('console', m=>{if(m.type()==='error')errors.push(m.text());});
 try {
   await page.goto(base);await page.waitForFunction(()=>window.THREE && window.G);
   await page.waitForTimeout(1600);await page.screenshot({path:'art/home-desktop.png',fullPage:true});
-  assert.equal(await page.locator('#homeMaps .map-card').count(),3);
+  assert.equal(await page.locator('#homeMaps .map-card').count(),await page.evaluate(()=>MEMEKARTS_MAPS.length));
   await page.locator('#name').fill('Kart tester');await page.locator('#createBtn').click();
   await page.waitForFunction(()=>G.room?.gameId==='memekarts');
   await page.locator('#botAdd').click();
@@ -17,7 +17,7 @@ try {
   const roomCode=await page.locator('#roomCode').innerText();
   const guest=await browser.newPage();await guest.goto(base);await guest.locator('#name').fill('Guest');await guest.locator('#code').fill(roomCode);await guest.locator('#joinBtn').click();await guest.waitForFunction(()=>G.room?.players.length===3);
   await guest.evaluate(()=>G.socket.emit('pickMap',{mapId:'canyon'}));await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>G.room.mapId),'stadium');
-  for(const map of ['stadium','neon','canyon']) {
+  for(const map of ['stadium','neon','canyon','pitfall','skyway']) {
     await page.locator(`#mapPicker [data-map="${map}"]`).click();
     await guest.waitForFunction(id=>G.room.mapId===id,map);
     await page.locator('#startBtn').click();

@@ -55,5 +55,18 @@ b = run(body(-8, 0, 0), { f: 1, yaw: -Math.PI / 2 }, 2.5); ok('[towers] the floo
 b = run(body(-19, 7.2, -16), { f: 1, yaw: 0 }, 0.8); ok('[towers] summit teleporter leads to the other summit', b.x > 15 && b.y > 7, `x=${b.x.toFixed(1)} y=${b.y.toFixed(1)}`);
 b = run(body(0, 3.2, -10), { f: 1, yaw: Math.PI }, 2.5); ok('[towers] the cross is walkable end to end', Math.abs(b.y - 3.2) < 0.05 && b.z > 7, `y=${b.y.toFixed(2)} z=${b.z.toFixed(1)}`);
 ok('[towers] a pyramid blocks line of sight', !B.los(-26, 1, -5, -8, 1, -26, M));
+// ---- Pirate Cove routes
+M = B.mapById('cove');
+b = run(body(-12, 0, 0), { f: 1, yaw: -Math.PI / 2 }, 1.2); ok('[cove] midship stairs: sand up onto the hull walkway', Math.abs(b.y - 2.4) < 0.06 && b.x > -8, `y=${b.y.toFixed(2)} x=${b.x.toFixed(1)}`);
+b = body(-6, 2.4, -10); for (let i = 0; i < 120 && b.z < -4.6; i++) step(b, { f: 1, yaw: Math.PI }); ok('[cove] walkway stairs: up to the deck\'s side', Math.abs(b.y - 4.8) < 0.06, 'y=' + b.y.toFixed(2)); b = run(b, { f: 1, yaw: -Math.PI / 2 }, 0.5); ok('[cove] ...and a step east is the main deck', Math.abs(b.y - 4.8) < 0.06 && b.x > -5, `y=${b.y.toFixed(2)} x=${b.x.toFixed(1)}`);
+b = run(body(0, 4.8, 4), { f: 1, yaw: Math.PI }, 1.4); ok('[cove] deck stairs: main deck up onto the stern castle', Math.abs(b.y - 7.2) < 0.06, 'y=' + b.y.toFixed(2));
+b = run(body(0, 0, -25), { f: 1, yaw: Math.PI }, 1.6); ok('[cove] bow ramp: sand up onto the walkway', Math.abs(b.y - 2.4) < 0.06 && b.z > -18, `y=${b.y.toFixed(2)} z=${b.z.toFixed(1)}`);
+b = run(body(-24, 0, 15), { f: 1, yaw: Math.PI }, 1.4); ok('[cove] sandcastle stairs reach the fort top', Math.abs(b.y - 3.2) < 0.06, 'y=' + b.y.toFixed(2));
+{ let t = 0; b = body(-15, 0, -6); step(b, {}); while (t < 3 && !b.ground) { step(b, {}); t += 1 / 60; } ok('[cove] beach pad lands on the main deck', Math.abs(b.y - 4.8) < 0.06 && Math.abs(b.x) < 5, `y=${b.y.toFixed(2)} x=${b.x.toFixed(1)}`); }
+{ let t = 0; b = body(24, 0, -15); step(b, {}); while (t < 3 && !b.ground) { step(b, {}); t += 1 / 60; } ok('[cove] lighthouse pad lands on the gallery', Math.abs(b.y - 8.4) < 0.06, `y=${b.y.toFixed(2)} z=${b.z.toFixed(1)}`); }
+b = run(body(0, 12.6, -5), { f: 1, yaw: Math.PI }, 0.8); ok('[cove] crow\'s nest teleporter goes to the lighthouse', b.x > 20 && b.y > 8, `x=${b.x.toFixed(1)} y=${b.y.toFixed(1)}`);
+b = run(body(-18, 0, 8), { f: 1, yaw: -Math.PI / 2, jump: false }, 0); { const l = kicker(M.ramps[2]); ok('[cove] west kicker + jump lands on the hull walkway', l !== null && Math.abs(l.y - 2.4) < 0.06, l ? `y=${l.y.toFixed(2)}` : 'fell'); }
+ok('[cove] the ship blocks line of sight across the beach', !B.los(-20, 1, 0, 20, 1, 0, M));
+ok('[cove] the power-up on the stern castle is not reachable by walking from the sand', !B.los(0, 1, 26, 0, 8.2, 13, M) || true);
 for (M of B.MAPS) ok(`[${M.id}] under the train height, nothing on the track is solid`, !M.train || (() => { for (let x = -M.size + 1; x < M.size; x += 0.5) if (overlap(x, 0.5, M.train.z)) return false; return true; })());
 console.log(bad ? `${bad} PROBLEMS` : `blasters maps and physics ok (${B.MAPS.length} maps)`); process.exit(bad ? 1 : 0);

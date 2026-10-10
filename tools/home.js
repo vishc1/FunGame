@@ -17,7 +17,7 @@ let pass = 0, fail = 0; const check = (n, ok, x = '') => { ok ? pass++ : fail++;
 
   let page = await open();
   check('both games are on the home page', (await page.locator('#gamePick [data-game]').count()) === 2 && await page.locator('#gamePick [data-game="blasters"]').isVisible());
-  check('Meme Karts is selected by default, with its three arenas', (await page.evaluate(() => window.selectedGame)) === 'memekarts' && (await page.locator('#homeMaps .map-card').count()) === 3 && await page.locator('#arenas').isVisible());
+  check('Meme Karts is selected by default, with all five arenas', (await page.evaluate(() => window.selectedGame)) === 'memekarts' && (await page.locator('#homeMaps .map-card').count()) === 5 && await page.locator('#arenas').isVisible());
   await page.screenshot({ path: path.join(OUT, 'home_karts.png') });
   await page.click('#gamePick [data-game="blasters"]'); await sleep(1500);
   check('clicking Toy Box Blasters switches the hero', (await page.textContent('#heroTitle')).includes('BLASTERS') && await page.locator('#toybox').isVisible() && !(await page.locator('#arenas').isVisible()));

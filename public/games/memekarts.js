@@ -158,6 +158,16 @@ registerGame('memekarts', (G) => {
       /* warm-up: one of every item model is built now and its shaders compiled, so the first shell of the match does not hitch */
       try { const warm = []; for (const k of Object.keys(ENT)) { const g = ENT[k](); g.position.set(0, -600, 0); scene.add(g); warm.push([k, g]); } renderer.compile(scene, camera); for (const [k, g] of warm) { g.visible = false; (entPool[k] = entPool[k] || []).push(g); } } catch (e) { console.warn('warm-up skipped', e); }
       const night = map.theme === 'neon', desert = map.theme === 'canyon';
+      // Cut the same pit footprints out of both terrain layers. UVs preserve the
+      // existing road paint; a dark decal over an uncut floor would hide falls.
+      function groundGeometry(w,h) {
+        if(!map.pits?.length)return new THREE.PlaneGeometry(w,h);
+        const shape=new THREE.Shape();shape.moveTo(-w/2,-h/2);shape.lineTo(w/2,-h/2);shape.lineTo(w/2,h/2);shape.lineTo(-w/2,h/2);shape.closePath();
+        for(const p of map.pits){const hole=new THREE.Path(),x=p.x-OX,y=OZ-p.y;hole.moveTo(x,y);hole.lineTo(x+p.w,y);hole.lineTo(x+p.w,y-p.h);hole.lineTo(x,y-p.h);hole.closePath();shape.holes.push(hole);}
+        const geo=new THREE.ShapeGeometry(shape),pos=geo.attributes.position,uv=geo.attributes.uv;
+        for(let i=0;i<pos.count;i++)uv.setXY(i,(pos.getX(i)+w/2)/w,(pos.getY(i)+h/2)/h);
+        return geo;
+      }
       scene.background = tex(16, 256, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, map.sky); g.addColorStop(1, map.fog); c.fillStyle = g; c.fillRect(0, 0, w, h); });
       scene.fog = new THREE.Fog(map.fog, Math.max(750, MW * 0.8), 2600 + MW);
       scene.add(new THREE.HemisphereLight(night ? 0x97baff : 0xe0f0ff, new THREE.Color(map.ground), night ? .85 : .8));
@@ -174,7 +184,7 @@ registerGame('memekarts', (G) => {
         // grass
         const grass = tex(256, 256, (c, w, h) => { c.fillStyle = map.ground; c.fillRect(0, 0, w, h); for (let i = 0; i < 1800; i++) { c.fillStyle = i % 2 ? '#ffffff0b' : '#0000000b'; c.fillRect(Math.random() * w, Math.random() * h, 2, 3); } });
         grass.wrapS = grass.wrapT = THREE.RepeatWrapping; grass.repeat.set(40, 40);
-        const gp = mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshStandardMaterial({ map: grass, roughness: 1 }), 0, -0.6, 0); gp.rotation.x = -Math.PI / 2; gp.castShadow = false; scene.add(gp);
+        const gp = mesh(groundGeometry(6000, 6000), new THREE.MeshStandardMaterial({ map: grass, roughness: 1 }), 0, -0.6, 0); gp.name='arena_ground'; gp.rotation.x = -Math.PI / 2; gp.castShadow = false; scene.add(gp);
         // arena floor (asphalt with paint)
         const fw2 = (MW - 40) * 2, fh2 = (MH - 40) * 2, fk = Math.min(1, 2600 / fw2), farea = (fw2 * fh2) / (1720 * 1120); /* floor is painted at 2 px per unit, capped for big maps */
         const floor = tex(Math.round(fw2 * fk), Math.round(fh2 * fk), (c) => { c.scale(fk, fk); const w = fw2, h = fh2;
@@ -193,9 +203,22 @@ registerGame('memekarts', (G) => {
         });
         const roadGrain=tex(128,128,(c,w,h)=>{let seed=29;for(let y=0;y<h;y++)for(let x=0;x<w;x++){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const v=190+seed%65;c.fillStyle=`rgb(${v},${v},${v})`;c.fillRect(x,y,1,1);}});
         roadGrain.colorSpace=THREE.NoColorSpace;roadGrain.wrapS=roadGrain.wrapT=THREE.RepeatWrapping;roadGrain.repeat.set((MW-40)/70,(MH-40)/70);
-        const fp = mesh(new THREE.PlaneGeometry(MW - 40, MH - 40), new THREE.MeshStandardMaterial({ map: floor, bumpMap:roadGrain,bumpScale:night?.10:.22,roughness:night?.52:.88, metalness:night?.12:.02 })); fp.rotation.x = -Math.PI / 2; fp.castShadow = false; scene.add(fp);
+        const fp = mesh(groundGeometry(MW - 40, MH - 40), new THREE.MeshStandardMaterial({ map: floor, bumpMap:roadGrain,bumpScale:night?.10:.22,roughness:night?.52:.88, metalness:night?.12:.02 })); fp.name='arena_floor'; fp.rotation.x = -Math.PI / 2; fp.castShadow = false; scene.add(fp);
         // border walls with hazard stripes
         const stripe = (rep) => { const t = tex(128, 64, (c, w, h) => { c.fillStyle = '#ffd21f'; c.fillRect(0, 0, w, h); c.fillStyle = '#1c1c20'; for (let i = -2; i < 6; i++) { c.beginPath(); c.moveTo(i * 32, h); c.lineTo(i * 32 + 16, h); c.lineTo(i * 32 + 48, 0); c.lineTo(i * 32 + 32, 0); c.fill(); } }); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, 1); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }); };
+        for(const p of map.pits||[]){
+          const g=new THREE.Group(),x=p.x+p.w/2-OX,z=p.y+p.h/2-OZ;g.name='pit_well';g.userData.pit=p;
+          const wall=M3('#233240',{roughness:.95}),bottom=M3('#080e19',{roughness:1}),rim=stripe(10);
+          g.add(box(p.w,2,p.h,bottom,x,-181,z));
+          for(const s of [-1,1]){
+            g.add(box(p.w+8,180,4,wall,x,-90,z+s*(p.h/2+2)),box(4,180,p.h,wall,x+s*(p.w/2+2),-90,z));
+            g.add(box(p.w+20,.25,10,rim,x,.15,z+s*(p.h/2+5)),box(10,.25,p.h,rim,x+s*(p.w/2+5),.15,z));
+            g.add(box(p.w,2,1,glow('#ff693c',.8),x,-45,z+s*(p.h/2-1)));
+          }
+          const sign=tex(512,128,(c,w,h)=>{c.fillStyle='#172331';c.fillRect(0,0,w,h);c.fillStyle='#ffd21f';c.font='900 44px system-ui';c.textAlign='center';c.fillText('PIT  /  −1 KILL',w/2,80);});
+          for(const s of [-1,1]){const label=mesh(new THREE.PlaneGeometry(200,50),new THREE.MeshBasicMaterial({map:sign}),x,.3,z+s*(p.h/2+42));label.rotation.x=-Math.PI/2;if(s>0)label.rotation.z=Math.PI;g.add(label);}
+          scene.add(g);
+        }
         const wallMat=M3(night?'#273954':desert?'#ac6747':'#44777b'), rail=glow(map.accent,night?1.7:.35);
         const wx = OX - 14, wz = OZ - 14; /* centre lines of the border walls */
         scene.add(box(MW-16,24,12,wallMat,0,12,-wz),box(MW-16,24,12,wallMat,0,12,wz),box(12,24,MH-40,wallMat,-wx,12,0),box(12,24,MH-40,wallMat,wx,12,0));
@@ -563,10 +586,10 @@ registerGame('memekarts', (G) => {
         const fx = Math.cos(v.a) * 18, fy = Math.sin(v.a) * 18, slope = air > 0 ? 0 : Math.atan2(surfaceAt(v.x + fx, v.y + fy) - surfaceAt(v.x - fx, v.y - fy), 36);
         v.tilt = (v.tilt || 0) + ((Math.abs(slope) < 0.6 ? slope : 0) - (v.tilt || 0)) * Math.min(1, dt * 12); /* nose up going up a ramp, down coming off it */
         v.g.position.set(v.x - OX, v.h + (k.ghost ? 6 + Math.sin(time * 4) * 2 : 0), v.y - OZ);
-        v.g.rotation.z = reducedMotion ? 0 : v.tilt;
+        v.g.rotation.z = reducedMotion ? 0 : k.pit ? -.45 : v.tilt;
         v.g.rotation.y = -v.a;
         v.sc=damp(v.sc,k.small?.55:1,13,dt);v.g.scale.setScalar(v.sc);
-        u.contact.visible=!k.ghost&&Math.abs(v.tilt)<.05;u.contact.position.y=(.14-air-Math.max(0,v.el-surfaceAt(v.x,v.y)))/v.sc;u.contact.material.opacity=.3/(1+air/28);u.contact.scale.setScalar(1+air/150);
+        u.contact.visible=!k.ghost&&!k.pit&&Math.abs(v.tilt)<.05;u.contact.position.y=(.14-air-Math.max(0,v.el-surfaceAt(v.x,v.y)))/v.sc;u.contact.material.opacity=.3/(1+air/28);u.contact.scale.setScalar(1+air/150);
         const pitchTarget=v.airTime>0?Math.cos((1-v.airTime/1.2)*Math.PI)*.28:Math.max(-.09,Math.min(.09,(v.spd-oldSpeed)/Math.max(.001,dt)*.00015));
         v.pitch=damp(v.pitch,pitchTarget,9,dt);
         const landing=reducedMotion?0:Math.sin(v.landingAge*21)*Math.exp(-v.landingAge*8)*1.2;
@@ -754,7 +777,7 @@ registerGame('memekarts', (G) => {
     if (me && me.weapon === 'pie' && !me.dead) { const c = chargeNow(); if (chargeAt != null) { const bw = 220; rr(W / 2 - bw / 2, H - 196, bw, 14, 7, 'rgba(8,12,20,.7)', '#fff1d6'); rr(W / 2 - bw / 2 + 2, H - 194, (bw - 4) * c, 10, 5, '#fff1d6'); G.text(c >= 1 ? 'Full power. Let go to throw!' : 'Aiming... let go to throw', W / 2, H - 210, { size: 13, color: '#fff1d6', weight: 700 }); } else G.text(`Hold ${window.matchMedia('(pointer:coarse)').matches ? 'FIRE' : 'SPACE'} to aim the pie`, W / 2, H - 210, { size: 13, color: '#fff1d6' }); }
     if (hurt > 0) { hurt -= dt; const g = ctx.createRadialGradient(W / 2, H / 2, 200, W / 2, H / 2, 560); g.addColorStop(0, 'rgba(255,0,0,0)'); g.addColorStop(1, `rgba(255,0,0,${Math.max(0, hurt) * 0.9})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
     if (flash > 0) { flash -= dt; ctx.fillStyle = `rgba(255,255,220,${Math.max(0, flash) * 1.4})`; ctx.fillRect(0, 0, W, H); }
-    if (me && me.dead) { ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, W, H); G.text('WRECKED', W / 2, H / 2 - 20, { size: 54, color: '#ff5d5d' }); G.text('Respawning…', W / 2, H / 2 + 26, { size: 18, color: '#ddd' }); }
+    if (me && me.dead) { ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, W, H); G.text(me.pit?'PIT FALL · −1 KILL':'WRECKED', W / 2, H / 2 - 20, { size: W<700?28:44, color: '#ff5d5d' }); G.text('Respawning…', W / 2, H / 2 + 26, { size: 18, color: '#ddd' }); }
     // timer
     const timerY=W<700?52:28;
     rr(W / 2 - 46, timerY-18, 92, 34, 10, 'rgba(0,0,0,.55)'); G.text(`${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')}`, W / 2, timerY, { size: 20, color: s.t <= 10 ? '#ff6b6b' : '#fff', stroke: false });
@@ -775,6 +798,7 @@ registerGame('memekarts', (G) => {
     const mx = 16, my = W<700?90:70, ms = (W<700?117:176)/MW; /* a little bigger, and it carries the match numbers underneath */
     rr(mx - 4, my - 4, MW * ms + 8, MH * ms + 8, 8, 'rgba(0,0,0,.5)', 'rgba(255,255,255,.25)');
     for (const z of map.zones || []) { ctx.fillStyle = 'rgba(140,90,40,.75)'; ctx.fillRect(mx + z.x * ms, my + z.y * ms, z.w * ms, z.h * ms); }
+    for(const p of map.pits||[]){ctx.fillStyle='#080e19';ctx.fillRect(mx+p.x*ms,my+p.y*ms,p.w*ms,p.h*ms);ctx.strokeStyle='#ffb83f';ctx.lineWidth=2;ctx.strokeRect(mx+p.x*ms,my+p.y*ms,p.w*ms,p.h*ms);}
     for (const d of map.decks || []) { ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(mx + d.x * ms, my + d.y * ms, d.w * ms, d.h * ms); }
     for (const rp of map.ramps || []) { ctx.fillStyle = 'rgba(255,210,31,.55)'; ctx.fillRect(mx + rp.x * ms, my + rp.y * ms, rp.w * ms, rp.h * ms); const cx = mx + (rp.x + rp.w / 2) * ms, cy = my + (rp.y + rp.h / 2) * ms, a = rp.dir === 'E' ? 0 : rp.dir === 'S' ? Math.PI / 2 : rp.dir === 'W' ? Math.PI : -Math.PI / 2; ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(4.5, 0); ctx.lineTo(-3.5, -3.5); ctx.lineTo(-3.5, 3.5); ctx.closePath(); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.restore(); }
     for (const pd of map.pads || []) { ctx.fillStyle = pd.kind === 'boost' ? '#ff9f43' : '#5ee07a'; ctx.fillRect(mx + pd.x * ms - 2.5, my + pd.y * ms - 2.5, 5, 5); }
@@ -834,6 +858,7 @@ registerGame('memekarts', (G) => {
     state(ns) { s = ns;map=window.MEMEKARTS_MAPS.find(m=>m.id===ns.mapId)||window.MEMEKARTS_MAPS[0];OBST=map.obstacles;BOXES=map.boxes;MW=map.w||900;MH=map.h||600;OX=MW/2;OZ=MH/2; },
     event(e) {
       const mine = (id) => id === G.me;
+      if(e.type==='pit'){feed.unshift({text:`${nm(e.id)} fell into the pit (−1 kill)`,t:6});if(mine(e.id))banner('Pit fall: −1 kill','#ffc857',2.5);}
       if (e.type === 'kill' && e.killer && e.streak >= 3) banner(e.streak >= 5 ? `${nm(e.killer)} is UNSTOPPABLE (${e.streak} in a row)` : `${nm(e.killer)} is on a rampage (${e.streak} in a row)`, '#ff9f43', 2.5);
       if (e.type === 'kill') { feed.unshift({ text: e.killer ? `${nm(e.killer)} ⟶ ${nm(e.victim)}  (${e.weapon})` : (e.weapon === 'Boulder' ? `${nm(e.victim)} was flattened by a boulder` : e.weapon === 'Drone' ? `${nm(e.victim)} was zapped by a drone` : `${nm(e.victim)} blew up (${e.weapon})`), t: 6 }); T && T.ready && T.boom(e.x, e.y, 70); if (mine(e.killer)) banner(`You wrecked ${nm(e.victim)}!`, '#5ee07a'); }
       if (e.type === 'boom') T && T.ready && T.boom(e.x, e.y, e.r);

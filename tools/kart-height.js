@@ -29,7 +29,8 @@ for (const map of MAPS) {
     // a fast kart (mushroom) still climbs a ramp instead of bouncing off it
     const f = world(map.id); f.tp('b', 60, 60, 0); f.tp('a', r1.x + r1.w / 2 - dd[0] * 160, r1.y + r1.h / 2 - dd[1] * 160, Math.atan2(dd[1], dd[0])); f.game.onInput('a', { type: 'give', weapon: 'mush' }); f.game.onInput('a', { type: 'fire' }); let fh = 0; for (let i = 0; i < 40; i++) { f.drive('a', 1); fh = Math.max(fh, f.k('a').el); } ok(`${map.id}: a boosted kart climbs the ramp too`, fh >= MAPS.DECK_Z, 'highest ' + fh); }
   // keep going straight across the deck and off the far edge
-  let fell = false, low = 99; for (let i = 0; i < 90; i++) { w.drive('a', 1); const k = w.k('a'); low = Math.min(low, k.el); if (k.el === 0 && MAPS.surface(map, k.x, k.y) === 0) { fell = true; break; } }
+  const crossingTicks=Math.ceil(Math.max(map.w,map.h)/200*30); // allow long elevated roads, not only the original short decks
+  let fell = false, low = 99; for (let i = 0; i < crossingTicks; i++) { w.drive('a', 1); const k = w.k('a'); low = Math.min(low, k.el); if (k.el === 0 && MAPS.surface(map, k.x, k.y) === 0) { fell = true; break; } }
   ok(`${map.id}: comes back down to the floor (down a ramp or off the edge)`, fell, 'lowest height ' + low);
   // from the floor, a deck side is a wall
   const dk = map.decks[0]; w = world(map.id); w.tp('b', 60, 60, 0);

@@ -143,6 +143,12 @@ Everything is drawn by the game already (coloured blocks with studs on top). The
 
 The game now animates figures: they lean into their run, bob, tuck in the air, squash when they land, flinch when hit, kick when they fire and topple when they are out. All of that works on your figures as they are. Leg and arm swinging only works when limbs are separate meshes: if you want it, re-export each figure with meshes named `leg_l`, `leg_r`, `arm_l` (the free arm) with their origins at the hip and shoulder joints, keeping `head_core` and `right_hand`. The game will find them by name; a figure without them simply does not swing its limbs.
 
+## Third map: Pirate Cove (added 2026-10-10)
+
+A 68 × 68 m sunny beach. A toy pirate ship is beached in the middle, long along Blender Y: a wooden hull (2.4 m, with a 2 m walkway all round), a main deck at 4.8 m, a bow platform at 6 m, a stern castle at 7.2 m, two masts with a crow's nest at 12 m. Midship stairs climb the hull from the sand on both sides, stairs lead bow to deck and deck to castle, and walk ramps rise onto the walkway at bow and stern. A lighthouse (8 m, with a gallery on top) stands in the north-east corner, a sandcastle fort (3.2 m, turrets) in the south-west, beach huts and palms in the other two corners; the toy train runs along the south shore road.
+
+The game draws it from coloured blocks. The optional replacement is **`fps_arena_cove.glb`**, built like the other arenas from `node tools/blasters-map.js cove` (`art/blasters/map-cove.json`, Blender coordinates). Same rules: 1 unit = 1 m, origin at the centre on the floor, visible geometry matches the collision boxes (box type `block` carries a `color`), keep ramps, teleporters, pads and the track clear, max 60 000 triangles. Make it read as a toy: a plastic pirate ship with painted planks and a skull flag, a striped lighthouse, a bucket-shaped sandcastle.
+
 ## How to check your work
 
 ```bash

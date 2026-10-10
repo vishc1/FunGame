@@ -5,7 +5,8 @@ const R = 16, M = 20, CELL = 10;
 let bad = 0; const fail = (...a) => { bad++; console.log('  PROBLEM', ...a); };
 for (const m of maps) {
   const W = m.w || 900, H = m.h || 600;
-  const blocked = (x, y, pad) => x < M + pad || x > W - M - pad || y < M + pad || y > H - M - pad || m.obstacles.some((o) => x > o.x - pad && x < o.x + o.w + pad && y > o.y - pad && y < o.y + o.h + pad);
+  const blocked = (x, y, pad) => x < M + pad || x > W - M - pad || y < M + pad || y > H - M - pad || m.obstacles.some((o) => x > o.x - pad && x < o.x + o.w + pad && y > o.y - pad && y < o.y + o.h + pad) || maps.isPit(m,x,y);
+  for(const p of m.pits||[]) if(![p.x,p.y,p.w,p.h].every(Number.isFinite)||p.w<=0||p.h<=0||p.x<M||p.y<M||p.x+p.w>W-M||p.y+p.h>H-M) fail(m.id,'invalid pit bounds');
   const pts = [];
   m.boxes.forEach(([x, y]) => pts.push(['box', x, y, R + 8]));
   m.spawns.forEach(([x, y]) => pts.push(['spawn', x, y, R + 6]));
@@ -32,6 +33,7 @@ for (const m of maps) {
   for (const mv of m.movers || []) { const [a0, c0] = mv.path; for (let i = 0; i <= 80; i++) { const x = a0[0] + (c0[0] - a0[0]) * i / 80, y = a0[1] + (c0[1] - a0[1]) * i / 80; if ([[0, 0], [mv.r, 0], [-mv.r, 0], [0, mv.r], [0, -mv.r]].some(([ox, oy]) => surf(x + ox, y + oy) > 0)) { fail(m.id, mv.kind, 'path runs through a deck or ramp at', Math.round(x), Math.round(y)); break; } } }
   for (const z of m.zones || []) for (const rp of [...(m.ramps || []), ...(m.decks || [])]) if (z.x < rp.x + rp.w && z.x + z.w > rp.x && z.y < rp.y + rp.h && z.y + z.h > rp.y) fail(m.id, 'zone overlaps a deck or ramp', JSON.stringify(z));
   for (const [k, x, y, pad] of pts) if (blocked(x, y, pad)) fail(m.id, k, 'too close to a wall or obstacle at', x, y);
+  for(const [k,x,y,pad] of pts) if([[pad,0],[-pad,0],[0,pad],[0,-pad]].some(([dx,dy])=>maps.isPit(m,x+dx,y+dy))) fail(m.id,k,'too close to an unprotected pit edge',x,y);
   for (const mv of m.movers || []) { const [a, c] = mv.path; for (let i = 0; i <= 80; i++) { const x = a[0] + (c[0] - a[0]) * i / 80, y = a[1] + (c[1] - a[1]) * i / 80; if (blocked(x, y, mv.r - 2)) { fail(m.id, mv.kind, 'path blocked at', Math.round(x), Math.round(y)); break; } } }
   for (const o of m.obstacles) if (o.x < M || o.y < M || o.x + o.w > W - M || o.y + o.h > H - M) fail(m.id, 'obstacle outside the arena', JSON.stringify(o));
   for (const z of m.zones || []) for (const [x, y] of m.spawns) if (x > z.x && x < z.x + z.w && y > z.y && y < z.y + z.h) fail(m.id, 'spawn inside a zone', x, y);

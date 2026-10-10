@@ -20,7 +20,7 @@ module.exports = {
   name: 'Toy Box Blasters',
   tagline: 'First-person foam-dart arena. Nine blasters including a cannon, a foam sword, loadouts, crouch, slide and aim.',
   min: 2, max: 12, // 12 so a party can split into two teams of six
-  controls: 'Click the game to capture the mouse. WASD move, Space jump (twice), Shift dash, C crouch (tap while running to slide), click fire, right-click aim, E sword, G drop blaster, R reload, 1-9 or wheel switch, Tab scores, H guide, L locker and settings.',
+  controls: 'Click the game to capture the mouse. WASD move, Space jump (twice), Shift dash, C crouch (tap while running to slide), click fire, right-click aim, E sword, Q or G drop blaster, R reload, 1-9 or wheel switch, Tab scores, H guide, L locker and settings.',
   create(api) {
     const MAP = B.mapById(api.memory.blastersMap) || B.MAP; // picked in the lobby; everything below is per-map
     // Team mode (lobby switch): two teams, no friendly fire, each team spawns on its own side, first team to the goal wins.

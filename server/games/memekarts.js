@@ -173,7 +173,7 @@ const KINDS = {
   blue: { // flies over walls, hunts the kill leader, big bang on arrival
     update(e, g, dt) {
       if (!e.target || !g.karts.has(e.target) || g.karts.get(e.target).dead) {
-        let best = null, bk = -1, bd = 1e9;
+        let best = null, bk = -Infinity, bd = 1e9;
         for (const k of g.karts.values()) { if (k.dead || k.id === e.owner) continue; const d = Math.hypot(k.x - e.x, k.y - e.y); if (k.kills > bk || (k.kills === bk && d < bd)) { bk = k.kills; bd = d; best = k; } }
         e.target = best ? best.id : null;
       }
@@ -311,7 +311,7 @@ module.exports = {
       spawn(e) { e.age = 0; e.id = ++eid; if (e.life == null) e.life = 10; if (e.el == null) { const o = karts.get(e.owner); e.el = o ? o.el : surf(e.x, e.y); } ents.push(e); },
       behind(k, d) { return { x: k.x - Math.cos(k.a) * d, y: k.y - Math.sin(k.a) * d }; },
       damage(k, amt, by, weapon) {
-        if (k.dead || k.inv > 0 || k.star > 0 || k.bill > 0 || k.ghost > 0) return;
+        if (k.dead || k.pitFall || k.inv > 0 || k.star > 0 || k.bill > 0 || k.ghost > 0) return;
         if (k.egg > 0) { amt = Math.max(2, amt * 2); k.egg = 0; }
         k.hp -= amt;
         if (k.hp <= 0.001) {
@@ -327,7 +327,7 @@ module.exports = {
       if (over) return; over = true;
       const list = [...karts.values()].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
       const pts = {}; let rank = 0;
-      list.forEach((k, i) => { if (i > 0 && k.kills < list[i - 1].kills) rank = i; pts[k.id] = k.kills + Math.max(0, list.length - rank); });
+      list.forEach((k, i) => { if (i > 0 && k.kills < list[i - 1].kills) rank = i; pts[k.id] = Math.max(0, k.kills + Math.max(0, list.length - rank)); });
       const top = list[0] && api.player(list[0].id);
       api.emit('g:event', { type: 'over', winner: list[0] ? list[0].id : null });
       api.after(2500, () => api.end(pts, top ? `${top.name} topped the board with ${list[0].kills} kills. Points: kills + rank bonus.` : 'Nobody drove.'));
@@ -347,7 +347,7 @@ module.exports = {
           if (api.room && api.room.bots && api.room.bots.size && !k.dead && WEAPONS.some((w) => w.id === msg.weapon)) k.weapon = msg.weapon;
         }
         else if (msg.type === 'fire') {
-          if (k.dead || k.air || k.spin > 0 || k.egg > 0 || k.bill > 0 || !k.weapon) return;
+          if (k.dead || k.pitFall || k.air || k.spin > 0 || k.egg > 0 || k.bill > 0 || !k.weapon) return;
           const w = WEAPONS.find((w) => w.id === k.weapon); if (!w) { k.weapon = null; return; }
           k.weapon = null; w.fire(g, k, Number.isFinite(msg.charge) ? msg.charge : 1);
           api.emit('g:event', { type: 'fire', id: pid, weapon: w.id });
@@ -359,11 +359,21 @@ module.exports = {
         for (const k of karts.values()) {
           for (const f of ['egg', 'spin', 'mush', 'inv', 'padCd', 'ramCd', 'star', 'small', 'ink', 'pie', 'boost', 'hitCd', 'tpCd', 'hazCd']) if (k[f] > 0) k[f] = Math.max(0, k[f] - dt);
           if (k.ghost > 0) { k.ghost = Math.max(0, k.ghost - dt); if (k.ghost <= 0 && k.stolen) { if (!k.weapon) k.weapon = k.stolen; k.stolen = null; } }
-          if (k.dead > 0) { k.dead -= dt; if (k.dead <= 0) { const s = spawnPoint(); Object.assign(k, { dead: 0, x: s[0], y: s[1], el: 0, falling: false, vx: 0, vy: 0, hp: 3, egg: 0, air: 0, spin: 0, inv: 2, a: Math.atan2(CY - s[1], CX - s[0]) }); } continue; }
+          if (k.dead > 0) { k.dead -= dt; if (k.dead <= 0) { const s = spawnPoint(); Object.assign(k, { dead: 0, pitFall: false, pitOut: false, x: s[0], y: s[1], el: surf(s[0],s[1]), falling: false, vx: 0, vy: 0, hp: 3, egg: 0, air: 0, spin: 0, inv: 2, a: Math.atan2(CY - s[1], CX - s[0]) }); } continue; }
+          if (k.pitFall) {
+            k.el -= 240 * dt;
+            if (k.el <= -100) {
+              k.kills--; k.deaths++; k.dead=3; k.hp=0; k.pitOut=true;
+              k.weapon=null; k.stolen=null;
+              for(const f of ['mush','spin','small','ink','pie','egg','boost','streak','star','ghost','bill','air','inv']) k[f]=0;
+              api.emit('g:event',{type:'pit',id:k.id,x:Math.round(k.x),y:Math.round(k.y),kills:k.kills});
+            }
+            continue;
+          }
           if (k.air > 0) {
             k.air -= dt; k.x += k.avx * dt; k.y += k.avy * dt; k.x = clamp(k.x, M + R, W - M - R); k.y = clamp(k.y, M + R, H - M - R);
             if (k.air <= 0) {
-              k.air = 0; k.padCd = 0.8; k.el = surf(k.x, k.y); k.falling = false; // you can land on top of a deck
+              k.air = 0; k.padCd = 0.8; k.el = Math.max(0,surf(k.x, k.y)); k.falling = false; // a pit landing begins a fall, not a teleport to its bottom
               for (const o of [...karts.values()]) if (o !== k && !o.dead && !o.air && Math.abs(o.el - k.el) < 30 && Math.hypot(o.x - k.x, o.y - k.y) < 70) g.damage(o, 1, k.id, 'Launch pad');
               api.emit('g:event', { type: 'land', x: Math.round(k.x), y: Math.round(k.y) });
             }
@@ -385,7 +395,10 @@ module.exports = {
           stepCar(k, dt, { maxF: 300 * spd, maxR: 150, accel: 420 * (k.mush > 0 || k.star > 0 || k.boost > 0 ? 1.8 : 1), turn: 3.2 });
           hitWall(k, R, 0.4); terrain(k, px, py, dt, 0.3);
         }
-        const live = [...karts.values()].filter((k) => !k.dead && !k.air && !k.ghost && !k.bill);
+        for(const k of karts.values()) if(!k.dead&&!k.air&&!k.pitFall&&k.el<=0&&MAPS.isPit(map,k.x,k.y)) {
+          k.pitFall=true; k.vx=k.vy=0; k.inv=0;
+        }
+        const live = [...karts.values()].filter((k) => !k.dead && !k.pitFall && !k.air && !k.ghost && !k.bill);
         for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
           const a = live[i], b = live[j];
           if (Math.abs(a.el - b.el) < 22 && circleHit(a, b, R, R, 0.5)) { // karts on different levels pass over each other
@@ -433,6 +446,7 @@ module.exports = {
           let keep = true;
           if (e.life <= 0) { if (kind && kind.expire) kind.expire(e, g); keep = false; }
           else if (kind && kind.update) keep = kind.update(e, g, dt) !== false;
+          if (keep && !(e.fly > 0) && e.kind !== 'blue' && MAPS.isPit(map,e.x,e.y)) keep=false;
           if (!keep) ents.splice(i, 1);
         }
         api.emit('g:state', snap());
@@ -445,7 +459,7 @@ module.exports = {
         t: Math.ceil(t),
         mapId: map.id,
         haz: movers.length ? movers.map((m) => [Math.round(m.x), Math.round(m.y)]) : undefined, // live positions of the map's moving hazards
-        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1) })),
+        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1) })),
         ents: ents.filter((e) => e.kind !== 'burst' && e.kind !== 'gunfire').map((e) => ({ id: e.id, k: e.kind, x: Math.round(e.x), y: Math.round(e.y), el: Math.round(e.el || 0), z: Math.round(e.z || 0), a: +(e.a || 0).toFixed(2), o: e.owner, f: +e.life.toFixed(1) })),
         boxes: boxes.map((b) => (b.t > 0 ? 0 : 1)),
       };

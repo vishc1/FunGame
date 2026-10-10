@@ -39,7 +39,7 @@ function navGrid(map) {
   for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
     const x = cx * CELL + CELL / 2, y = cy * CELL + CELL / 2;
     if (x < 20 + pad || x > W - 20 - pad || y < 20 + pad || y > H - 20 - pad || map.obstacles.some((o) => x > o.x - pad && x < o.x + o.w + pad && y > o.y - pad && y < o.y + o.h + pad)
-      || [[0, 0], [pad, 0], [-pad, 0], [0, pad], [0, -pad]].some(([ox, oy]) => KMAPS.surface(map, x + ox, y + oy) > 0)) blocked[cy * cols + cx] = 1; // bots stay on the ground: decks and ramps are off limits
+      || [[0, 0], [pad, 0], [-pad, 0], [0, pad], [0, -pad]].some(([ox, oy]) => KMAPS.surface(map, x + ox, y + oy) !== 0)) blocked[cy * cols + cx] = 1; // ground routes avoid decks, ramps and pits
   }
   g = { cols, rows, blocked, prev: new Int32Array(cols * rows) }; NAV.set(map.id, g); return g;
 }
