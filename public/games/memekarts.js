@@ -313,8 +313,9 @@ registerGame('memekarts', (G) => {
         const blockM = [side, side, new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.8 }), side, side, side];
         const model = (d.z ? asset(night ? 'tower_neon' : desert ? 'tower_canyon' : 'tower', 100) : null) || asset(night ? 'deck_neon' : desert ? 'deck_canyon' : 'deck', 100) || asset('deck', 100); /* optional Blender deck (or tower summit), stretched to this footprint */
         const DZ = window.MEMEKARTS_MAPS.deckZ(d); /* a second tier is a deck stacked on a deck: its block runs from the floor to its own height */
-        if (model) { const bb = new THREE.Box3().setFromObject(model), sz = bb.getSize(new THREE.Vector3()); model.scale.set(d.w / sz.x, DZ / sz.y, d.h / sz.z); model.position.set(cx, 0, cz); model.name = 'deck'; scene.add(model); }
-        else { const blk = mesh(new THREE.BoxGeometry(d.w, DZ, d.h), blockM, cx, DZ / 2, cz); blk.name = 'deck'; scene.add(blk); }
+        const inset = d.z ? 1.2 : 0; /* a second tier shares side planes with the deck it stands in; a hair narrower, its buried walls stop flickering through the deck's */
+        if (model) { const bb = new THREE.Box3().setFromObject(model), sz = bb.getSize(new THREE.Vector3()); model.scale.set((d.w - inset) / sz.x, DZ / sz.y, (d.h - inset) / sz.z); model.position.set(cx, 0, cz); model.name = 'deck'; scene.add(model); }
+        else { const blk = mesh(new THREE.BoxGeometry(d.w - inset, DZ, d.h - inset), blockM, cx, DZ / 2, cz); blk.name = 'deck'; scene.add(blk); }
         /* glowing rim, with gaps where a ramp meets the deck */
         const edges = [[d.x, d.y, d.x + d.w, d.y], [d.x, d.y + d.h, d.x + d.w, d.y + d.h], [d.x, d.y, d.x, d.y + d.h], [d.x + d.w, d.y, d.x + d.w, d.y + d.h]];
         for (const [x0, y0, x1, y1] of edges) {

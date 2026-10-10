@@ -119,7 +119,8 @@ try {
           if(!summit)throw Error('Summit fell back to the old deck model');
         }
         const bb=new T.Box3().setFromObject(g),sz=bb.getSize(new T.Vector3());
-        if(Math.abs(sz.x-d.w)>.01||Math.abs(sz.z-d.h)>.01||Math.abs(sz.y-(d.z||48))>.01||Math.abs(bb.min.y)>.01)throw Error('Deck collision bounds mismatch'); /* a deck is 48 high; a second tier (d.z) is 100 and still starts on the floor */
+        const tol=d.z?1.3:.01; /* a second tier is drawn 1.2 units narrower than its collision so its buried walls do not z-fight the deck below (game-code owner) */
+        if(Math.abs(sz.x-d.w)>tol||Math.abs(sz.z-d.h)>tol||Math.abs(sz.y-(d.z||48))>.01||Math.abs(bb.min.y)>.01)throw Error('Deck collision bounds mismatch'); /* a deck is 48 high; a second tier (d.z) is 100 and still starts on the floor */
         for(const u of [-.49,0,.49])for(const v of [-.49,0,.49]){
           const ray=new T.Raycaster(new T.Vector3(cx+u*d.w,140,cz+v*d.h),new T.Vector3(0,-1,0));
           if(Math.abs((ray.intersectObject(g,true)[0]?.point.y??-999)-(d.z||48))>.01)throw Error('Deck top not solid/flat'); /* decks are 48 high now; a second tier (z) is 100 */
