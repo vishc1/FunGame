@@ -76,8 +76,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.screenshot({ path: path.join(OUT, 'bl_train.png') });
   // locker
   await page.keyboard.press('l'); await sleep(700); await page.screenshot({ path: path.join(OUT, 'bl_locker.png') });
-  await page.evaluate(() => { document.querySelector('[data-fig="4"]').click(); }); await sleep(300); await page.evaluate(() => { document.querySelector('[data-skin="6"]').click(); }); await sleep(900); await page.screenshot({ path: path.join(OUT, 'bl_locker_gold_wizard.png') });
-  await page.evaluate(() => { document.querySelector('[data-fig="3"]').click(); }); await sleep(200); await page.evaluate(() => { document.querySelector('[data-skin="8"]').click(); }); await sleep(900); await page.screenshot({ path: path.join(OUT, 'bl_locker_rainbow_robot.png') });
+  /* figure and skin are picked before the game now (tools/toy.js); the in-game menu is settings only */
+  /* figure and skin are picked before the game now (tools/toy.js); the in-game menu is settings only */
   await page.keyboard.press('l'); await sleep(300);
   await page.keyboard.down('Tab'); await sleep(400); await page.screenshot({ path: path.join(OUT, 'bl_scores.png') }); await page.keyboard.up('Tab');
   const fin = await page.evaluate(() => { const me = window.G.room && window.G.me; return { phase: window.G.room.phase, me: !!me }; });

@@ -99,6 +99,13 @@ button:focus-visible,a:focus-visible,summary:focus-visible { outline:3px solid #
 #home.blasters .shots[data-for="memekarts"], #home.blasters .ribbon[data-for="memekarts"] { display:none; }
 @media (max-width:900px) { .shots { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:560px) { .shots { grid-template-columns:1fr; } }
+.invite-card { display:grid;gap:6px;background:linear-gradient(160deg,#24412f,#16262b);border:2px solid #d9fa78;border-radius:16px;padding:16px;margin-bottom:18px;box-shadow:0 0 0 4px #d9fa7822; }
+.invite-card .eyebrow { margin:0;color:#d9fa78; }.invite-card small { color:#a9c1bd;font-size:11px; }
+#bigCode { font:900 46px/1 system-ui;letter-spacing:6px;color:#fff; }
+#inviteLink { font-size:11px;color:#d9fa78;word-break:break-all;background:#0004;padding:6px 8px;border-radius:6px; }
+.invite-btns { display:flex;gap:8px; }.invite-btns button { flex:1;padding:10px 8px;font-weight:900;font-size:13px; }
+.invite-help { line-height:1.4; }
+#lobby aside { width:280px!important; }
 .toy-pick { display:none; }
 #home.blasters .toy-pick { display:grid;gap:8px;position:absolute;left:50%;bottom:6%;transform:translateX(-50%);z-index:3;background:#0d1b22d9;border:1px solid #ffffff2a;border-radius:16px;padding:12px 14px;backdrop-filter:blur(10px);width:min(420px,92%); }
 #home.blasters #heroBadge { display:none; }

@@ -703,7 +703,22 @@ registerGame('blasters', (G) => {
     banners.forEach((b, i) => { const age = b.d - b.t, sc = reducedMotion ? 1 : 1 + Math.max(0, 0.25 - age) * 2; ctx.save(); ctx.globalAlpha = Math.min(1, b.t * 3); ctx.translate(cx, 168 + i * 36); ctx.scale(sc, sc); txt(b.text, 0, 0, { size: 28 - i * 5, color: b.color, weight: 900 }); ctx.restore(); });
     // kill feed
     for (let i = feed.length - 1; i >= 0; i--) { feed[i].t -= dt; if (feed[i].t <= 0) feed.splice(i, 1); }
-    feed.forEach((f, i) => txt(f.text, TOUCH ? W - 300 : W - 16, 88 + i * 22, { size: 15, align: 'right', color: f.mine ? '#ffd84d' : `rgba(255,255,255,${Math.min(1, f.t)})` }));
+    // kills leaderboard, top right: the top five by tags (you always shown), team colours in team mode
+    let feedY = 88;
+    if (!locker && !showGuide && !(showScores || over)) {
+      const order = s.ps.slice().sort((a, b) => b.k - a.k || b.sc - a.sc), mine = order.findIndex((p) => p.id === G.me), rows = order.slice(0, 5);
+      if (mine >= 5) rows.push(order[mine]);
+      const lw = 220, lx = (TOUCH ? W - 300 : W - 16) - lw, ly = 64, rh = 22, lh = 30 + rows.length * rh;
+      rr(lx, ly, lw, lh, 12, 'rgba(8,12,20,.72)', 'rgba(255,255,255,.18)');
+      txt('TAGS', lx + 14, ly + 15, { size: 10.5, weight: 900, align: 'left', color: '#8b91a5', stroke: false }); txt(`first to ${s.goal}`, lx + lw - 14, ly + 15, { size: 10, align: 'right', color: '#8b91a5', stroke: false });
+      rows.forEach((p, i) => { const y = ly + 34 + i * rh, rank = order.indexOf(p) + 1, pl = G.player(p.id) || { name: '?' }, me = p.id === G.me;
+        if (me) rr(lx + 6, y - 10, lw - 12, 20, 6, 'rgba(255,216,77,.16)');
+        txt(String(rank), lx + 20, y, { size: 12, weight: 800, color: rank === 1 ? '#ffd84d' : '#8b91a5', stroke: false });
+        G.circle(lx + 36, y, 5, colOf(p)); txt((me ? 'You' : pl.name).slice(0, 12) + (p.dead ? '  ✕' : ''), lx + 48, y, { size: 13, weight: me ? 900 : 600, align: 'left', color: me ? '#ffd84d' : '#fff', stroke: false });
+        txt(String(p.k), lx + lw - 16, y, { size: 14, weight: 900, align: 'right', color: '#fff', stroke: false }); });
+      feedY = ly + lh + 20;
+    }
+    feed.forEach((f, i) => txt(f.text, TOUCH ? W - 300 : W - 16, feedY + i * 22, { size: 15, align: 'right', color: f.mine ? '#ffd84d' : `rgba(255,255,255,${Math.min(1, f.t)})` }));
     // bottom panels. Big type: you must be able to read your health and what you are holding at a glance. Everything hangs off PANEL_TOP.
     if (st) {
       const PANEL_H = 106, PT = H - 16 - PANEL_H; // panel top

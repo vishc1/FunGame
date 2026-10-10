@@ -101,6 +101,8 @@
   $('#leaveBtn').onclick = () => { socket.emit('leave'); goHome(); };
   $('#quitBtn').onclick = () => { if (confirm('Leave this room? The game carries on without you.')) { socket.emit('leave'); goHome(); } };
   $('#copyBtn').onclick = () => { navigator.clipboard?.writeText(`${location.origin}/?room=${room.code}`); toast('Invite link copied'); };
+  $('#copyBig').onclick = () => { $('#copyBtn').onclick(); $('#copyBig').textContent = 'Copied ✓'; setTimeout(() => { $('#copyBig').textContent = 'Copy link'; }, 1600); };
+  $('#shareBig').onclick = () => { const url = `${location.origin}/?room=${room.code}`; if (navigator.share) navigator.share({ title: 'Join my game', text: `Join my game, room ${room.code}`, url }).catch(() => {}); else $('#copyBig').onclick(); };
   $('#startBtn').onclick = () => socket.emit('start');
   $('#soloBtn').onclick = () => enter('create', { name: myName() }, () => {
     const g = pickHomeGame();
@@ -132,7 +134,7 @@
     return `<button class="map-card ${m.id} ${selected ? 'selected' : ''}" data-map="${m.id}" ${disabled ? 'disabled' : ''} aria-pressed="${selected}"><div class="map-art"><svg viewBox="0 0 900 600" aria-hidden="true"><rect x="20" y="20" width="860" height="560" rx="30" fill="${TH.floor}" stroke="#c9a06a" stroke-width="12"/>${train}${boxes}${ramps}${pads}</svg><span>${selected ? '✓ SELECTED' : 'BATTLE ARENA'}</span></div><div class="map-copy"><b>${esc(m.name)}</b><small>${esc(m.tag)}</small></div></button>`;
   }
   function renderLobby() {
-    $('#roomCode').textContent = room.code;
+    $('#roomCode').textContent = room.code; $('#bigCode').textContent = room.code; $('#inviteLink').textContent = `${location.host}/?room=${room.code}`;
     const isHost = room.hostId === myId;
     const kartGame = room.gameId === 'memekarts', blGame = room.gameId === 'blasters';
     $('#mapPicker').classList.toggle('hidden', !kartGame && !blGame);
