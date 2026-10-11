@@ -175,7 +175,7 @@ const KINDS = {
       for (const k of g.karts.values()) {
         if (k.dead || k.air) continue;
         if (k.id === e.owner && e.age < 0.6) continue;
-        if (Math.hypot(k.x - e.x, k.y - e.y) < 26 && Math.abs(k.el - (e.el || 0)) < 24) { k.spin = 1.2; k.vx = 0; k.vy = 0; g.api.emit('g:event', { type: 'slip', id: k.id }); return false; }
+        if (Math.hypot(k.x - e.x, k.y - e.y) < 26 && Math.abs(k.el - (e.el || 0)) < 24) { k.spin = 1.2; k.vx = 0; k.vy = 0; g.api.emit('g:event', { type: 'slip', id: k.id }); g.damage(k, 1, e.owner === k.id ? null : e.owner, 'Banana'); return false; } /* a slip costs a heart */
       }
       return true;
     },

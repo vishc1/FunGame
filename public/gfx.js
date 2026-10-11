@@ -19,6 +19,24 @@
     set(v) { if (!LEVELS[v] || v === level) return; level = v; try { localStorage.setItem('fg_gfx', v); } catch (e) { /* ignore */ } window.dispatchEvent(new CustomEvent('fg-gfx', { detail: LEVELS[v] })); syncUI(); },
     next() { this.set(ORDER[(ORDER.indexOf(level) + 1) % ORDER.length]); },
   };
+  // One settings panel for the in-game Esc menu and the shooter's Settings (L): graphics, sound and, for the shooter, mouse and view.
+  // Same storage keys as the lobby, so a change anywhere is the same setting everywhere.
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }, lsSet = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* storage blocked */ } };
+  window.FG_SETTINGS = {
+    html(aim) {
+      const muted = lsGet('mk_mute', '0') === '1', sens = Math.max(0.2, Math.min(3, +lsGet('tbb_sens', 1) || 1)), fov = Math.max(60, Math.min(105, +lsGet('tbb_fov', 78) || 78));
+      return `<div class="fg-set"><div class="fg-set-row"><span>Graphics</span>${ORDER.map((v) => `<button type="button" class="chip${v === level ? ' sel' : ''}" data-set-gfx="${v}">${LEVELS[v].name}</button>`).join('')}</div>
+        <div class="fg-set-row"><span>Sound</span><button type="button" class="chip${muted ? '' : ' sel'}" data-set-snd="1">On</button><button type="button" class="chip${muted ? ' sel' : ''}" data-set-snd="0">Off</button></div>
+        ${aim ? `<label class="fg-set-slider">Mouse sensitivity <b data-set-v="sens">${sens.toFixed(2)}</b><input type="range" data-set="sens" min="0.2" max="3" step="0.05" value="${sens}"></label>
+        <label class="fg-set-slider">Field of view <b data-set-v="fov">${fov}</b><input type="range" data-set="fov" min="60" max="105" step="1" value="${fov}"></label>` : ''}<small>Pick Low graphics if the game lags. Saved in this browser.</small></div>`;
+    },
+    bind(root, hooks = {}) {
+      const redraw = () => { for (const b of root.querySelectorAll('[data-set-gfx]')) b.classList.toggle('sel', b.dataset.setGfx === level); const m = lsGet('mk_mute', '0') === '1'; for (const b of root.querySelectorAll('[data-set-snd]')) b.classList.toggle('sel', (b.dataset.setSnd === '1') !== m); };
+      for (const b of root.querySelectorAll('[data-set-gfx]')) b.onclick = (e) => { e.stopPropagation(); window.FG_GFX.set(b.dataset.setGfx); redraw(); };
+      for (const b of root.querySelectorAll('[data-set-snd]')) b.onclick = (e) => { e.stopPropagation(); const on = b.dataset.setSnd === '1'; lsSet('mk_mute', on ? '0' : '1'); window.dispatchEvent(new CustomEvent('fg-sound', { detail: { muted: !on } })); redraw(); };
+      for (const r of root.querySelectorAll('input[data-set]')) r.oninput = () => { const k = r.dataset.set, v = +r.value; lsSet(k === 'sens' ? 'tbb_sens' : 'tbb_fov', v); const out = root.querySelector(`[data-set-v="${k}"]`); if (out) out.textContent = k === 'sens' ? v.toFixed(2) : v; if (hooks[k]) hooks[k](v); };
+    },
+  };
   function syncUI() {
     for (const b of document.querySelectorAll('[data-gfx]')) { const on = b.dataset.gfx === level; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); }
     const btn = document.querySelector('#gfxBtn'); if (btn) btn.textContent = 'Graphics: ' + LEVELS[level].name;

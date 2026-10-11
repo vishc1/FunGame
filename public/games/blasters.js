@@ -5,7 +5,7 @@
 // BLENDER MODELS: .glb files in public/models/ named fps_* replace the placeholders built below. See fps3d.md.
 registerGame('blasters', (G) => {
   const B = window.BLASTERS, { WEAPONS, MELEE, LOADOUT, POWERS, PICKUP_INFO, P } = B;
-  const lockerBtn = document.createElement('button'); lockerBtn.className = 'small'; lockerBtn.id = 'lockerBtn'; lockerBtn.textContent = '⚙ Settings (L)'; lockerBtn.title = 'Mouse sensitivity and field of view';
+  const lockerBtn = document.createElement('button'); lockerBtn.className = 'small'; lockerBtn.id = 'lockerBtn'; lockerBtn.textContent = '⚙ Settings (L)'; lockerBtn.title = 'Graphics, sound, mouse sensitivity and field of view';
   lockerBtn.onclick = (e) => { e.stopPropagation(); setLocker(!locker); };
   const TEST_CAM = /[?&]bltest=1/.test(location.search); // window.__camOverride (tools/views.js) works only in test pages, never in a real match
   const onGfx = () => { if (T && T.applyGfx) T.applyGfx(); };
@@ -601,14 +601,13 @@ registerGame('blasters', (G) => {
   function drawLocker() {
     const col = G.player(G.me).color, lvl = levelOf(xp), nFig = unlocked();
     G.ui.innerHTML = `<div class="tbb-locker" style="--pc:${col}"><h3>Settings</h3><div style="color:#8b91a5;font-size:12px">Level ${lvl} &nbsp;•&nbsp; your figure, skin and starter blaster are picked before the game, on the home page or in the lobby</div>
-      <h4>Settings</h4><div class="tbb-set"><label>Mouse sensitivity <b id="tbbSensV">${sensMul.toFixed(2)}</b><input id="tbbSens" type="range" min="0.2" max="3" step="0.05" value="${sensMul}"></label><label>Field of view <b id="tbbFovV">${baseFov}</b><input id="tbbFov" type="range" min="60" max="105" step="1" value="${baseFov}"></label></div>
+      <h4>Settings</h4>${window.FG_SETTINGS ? window.FG_SETTINGS.html(true) : ''}
       <div class="tbb-foot"><span>The big blasters are only found on the map.</span><button id="tbbClose" class="primary">Done (L)</button></div></div>`;
     for (const b of G.ui.querySelectorAll('[data-fig]')) b.onclick = () => { const i = +b.dataset.fig; if (i >= unlocked()) return G.toast('Reach level ' + Math.max(2, (i - 1) * 2) + ' to unlock ' + CHAR_NAMES[i]); charIdx = i; lset('tbb_char', i); hello(); drawLocker(); if (T) T.preview(charIdx, skinIdx); };
     for (const b of G.ui.querySelectorAll('[data-lo]')) b.onclick = () => { loadout = +b.dataset.lo; lset('tbb_lo', loadout); hello(); drawLocker(); G.toast(loadout ? `You will start each life with the ${WEAPONS[loadout].name}` : 'You will start with just the Dart Blaster'); };
     for (const b of G.ui.querySelectorAll('[data-skin]')) b.onclick = () => { const i = +b.dataset.skin; if (!skinOpen(i)) return G.toast('Reach level ' + SKINS[i].lvl + ' to unlock ' + SKINS[i].name); skinIdx = i; lset('tbb_skin', i); hello(); drawLocker(); if (T) T.preview(charIdx, skinIdx); };
     G.ui.querySelector('#tbbClose').onclick = () => setLocker(false);
-    G.ui.querySelector('#tbbSens').oninput = (e) => { sensMul = +e.target.value; lset('tbb_sens', sensMul); G.ui.querySelector('#tbbSensV').textContent = sensMul.toFixed(2); };
-    G.ui.querySelector('#tbbFov').oninput = (e) => { baseFov = +e.target.value; lset('tbb_fov', baseFov); G.ui.querySelector('#tbbFovV').textContent = baseFov; };
+    if (window.FG_SETTINGS) window.FG_SETTINGS.bind(G.ui, { sens: (v) => { sensMul = v; }, fov: (v) => { baseFov = v; } });
   }
   function setLocker(on) {
     if (on === locker || (on && over)) return; locker = on;
@@ -629,7 +628,9 @@ registerGame('blasters', (G) => {
     G.ui.innerHTML = `<div class="tbb-locker" style="--pc:${G.player(G.me).color};max-width:440px;left:50%;transform:translate(-50%,-50%);top:50%"><h3>You stepped away</h3><div style="color:#8b91a5;font-size:13px">You are still in this match. Nobody can tag you while you are away, and your tags are kept.</div>
       <h4>Your toy</h4><div style="font-size:20px;font-weight:900">${CHAR_NAMES[charIdx]} <span style="color:#d9fa78">· ${SKINS[skinIdx].name}</span></div>
       <h4>This match</h4><div style="display:flex;gap:22px;font-size:15px"><div><b style="font-size:28px">${st ? st.k : 0}</b><br><small>tags</small></div><div><b style="font-size:28px">${rank || '-'}<small style="font-size:14px">/${order.length}</small></b><br><small>place</small></div><div><b style="font-size:28px">${st ? st.sc : 0}</b><br><small>score</small></div><div><b style="font-size:28px">${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')}</b><br><small>left</small></div></div>
+      <h4>Settings</h4>${window.FG_SETTINGS ? window.FG_SETTINGS.html(true) : ''}
       <div class="tbb-foot"><button id="awayLeave">Leave the room</button><button id="awayBack" class="primary">Back to the match</button></div></div>`;
+    if (window.FG_SETTINGS) window.FG_SETTINGS.bind(G.ui, { sens: (v) => { sensMul = v; }, fov: (v) => { baseFov = v; } });
     G.ui.querySelector('#awayBack').onclick = () => backFromAway(); G.ui.querySelector('#awayLeave').onclick = () => { const q = document.querySelector('#quitBtn'); if (q) q.click(); };
     if (T && T.ready) T.preview(charIdx, skinIdx);
   }
@@ -802,8 +803,10 @@ registerGame('blasters', (G) => {
       // the numbers: who is in, who is still standing, where you are in the race
       const total = s.ps.length, alive = s.ps.filter((p) => !p.dead).length, order = s.ps.slice().sort((a, b) => b.k - a.k || b.sc - a.sc), rank = order.findIndex((p) => p.id === G.me) + 1, iy = my + mw + 18;
       rr(mx - 4, iy - 11, mw + 44, 36, 8, 'rgba(0,0,0,.55)', 'rgba(255,255,255,.2)');
-      txt(`${total} players  ·  ${alive} standing`, mx + mw / 2 + 18, iy, { size: 11, weight: 700, color: '#fff', stroke: false });
-      txt(s.tm ? `Red ${s.tk[0]}  ·  Blue ${s.tk[1]}  ·  ${MAP.name}` : `You ${st ? st.k : 0} tags  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') : '-'} of ${total}  ·  ${MAP.name}`, mx + mw / 2, iy + 14, { size: 10, color: '#ffd84d', stroke: false });
+      const bw = mw + 44, cx = mx - 4 + bw / 2, fit = (t, size, w) => { ctx.font = `${w} ${size}px system-ui, sans-serif`; let sz = size; while (sz > 7 && ctx.measureText(t).width > bw - 12) { sz -= 0.5; ctx.font = `${w} ${sz}px system-ui, sans-serif`; } return sz; }; /* both lines centred in the box and shrunk to fit it */
+      const l1 = `${total} players  ·  ${alive} standing`, l2 = s.tm ? `Red ${s.tk[0]}  ·  Blue ${s.tk[1]}  ·  ${MAP.name}` : `You: ${st ? st.k : 0} tags  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') : '-'} of ${total}  ·  ${MAP.name}`;
+      txt(l1, cx, iy, { size: fit(l1, 11, 700), weight: 700, color: '#fff', stroke: false });
+      txt(l2, cx, iy + 14, { size: fit(l2, 10, 400), color: '#ffd84d', stroke: false });
     }
   }
   let deathBy = '';

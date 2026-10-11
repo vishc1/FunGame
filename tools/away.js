@@ -23,6 +23,12 @@ let pass = 0, fail = 0; const check = (n, ok, x = '') => { ok ? pass++ : fail++;
     check(`${game}: after 2 s the away screen shows`, !!(await p.$('#awayBack')));
     const awayState = await me(); check(`${game}: the server marks you away and keeps your score`, awayState.aw && awayState.k === before.k, JSON.stringify(awayState));
     await p.screenshot({ path: path.join(__dirname, 'shots', `away_${game}.png`) });
+    // the Esc menu has the settings: graphics and sound change right there, mid-match
+    const g0 = await p.evaluate(() => window.FG_GFX.level); await p.click('[data-set-gfx="low"]'); await p.click('[data-set-snd="0"]'); await sleep(300);
+    const set1 = await p.evaluate(() => ({ gfx: window.FG_GFX.level, mute: localStorage.getItem('mk_mute'), sel: document.querySelector('[data-set-gfx="low"]').classList.contains('sel'), aim: !!document.querySelector('input[data-set="sens"]') }));
+    check(`${game}: the Esc menu changes graphics and sound mid-match`, set1.gfx === 'low' && set1.mute === '1' && set1.sel, `was ${g0}, now ${JSON.stringify(set1)}`);
+    check(`${game}: ...with mouse and view sliders only in the shooter`, set1.aim === (game === 'blasters'));
+    await p.click(`[data-set-gfx="${g0}"]`); await p.click('[data-set-snd="1"]');
     await sleep(3000); check(`${game}: still in the same match after 3 s away`, await p.evaluate(() => !document.querySelector('#game').classList.contains('hidden')));
     await p.click('#awayBack'); await sleep(1500); const back = await me(); check(`${game}: Back puts you into the same match with your score`, !back.aw && back.k === before.k && !(await p.$('#awayBack')), JSON.stringify(back));
     await p.context().close();

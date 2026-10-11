@@ -116,8 +116,8 @@
   }
 
   // ---- lobby ---------------------------------------------------------------
-  $('#leaveBtn').onclick = () => { socket.emit('leave'); goHome(); };
-  $('#quitBtn').onclick = () => { if (confirm('Leave this room? The game carries on without you.')) { socket.emit('leave'); goHome(); } };
+  $('#leaveBtn').onclick = () => { if (socket.hosting && room && room.players.some((p) => !p.bot && p.id !== myId) && !confirm('Leave? You are the host, so the room closes for everyone.')) return; socket.emit('leave'); goHome(); }; /* a peer-to-peer host leaving ends the room: say so first */
+  $('#quitBtn').onclick = () => { if (confirm(socket.hosting ? 'Leave? You are the host, so the room closes for everyone.' : 'Leave this room? The game carries on without you, and you can come back with the invite link.')) { socket.emit('leave'); goHome(); } };
   $('#copyBtn').onclick = () => { navigator.clipboard?.writeText(`${location.origin}/?room=${room.code}`); toast('Invite link copied'); };
   $('#copyBig').onclick = () => { $('#copyBtn').onclick(); $('#copyBig').textContent = 'Copied ✓'; setTimeout(() => { $('#copyBig').textContent = 'Copy link'; }, 1600); };
   $('#shareBig').onclick = () => { const url = `${location.origin}/?room=${room.code}`; if (navigator.share) navigator.share({ title: 'Join my game', text: `Join my game, room ${room.code}`, url }).catch(() => {}); else $('#copyBig').onclick(); };
@@ -161,6 +161,7 @@
   const setSound = (on) => { LS.set('mk_mute', on ? '0' : '1'); drawSettings(); window.dispatchEvent(new CustomEvent('fg-sound', { detail: { muted: !on } })); }; /* the games listen and apply it at once */
   $('#sndOn').onclick = () => setSound(true); $('#sndOff').onclick = () => setSound(false);
   $('#lsSens').oninput = (e) => { LS.set('tbb_sens', e.target.value); drawSettings(); }; $('#lsFov').oninput = (e) => { LS.set('tbb_fov', e.target.value); drawSettings(); };
+  $('#lsReset').onclick = () => { for (const k of ['fg_gfx', 'tbb_sens', 'tbb_fov']) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } setSound(true); if (window.FG_GFX) window.FG_GFX.set(window.matchMedia('(pointer:coarse)').matches ? 'medium' : 'high'); drawSettings(); toast('Settings back to the defaults'); };
   drawSettings();
   function renderLobby() {
     $('#roomCode').textContent = room.code; $('#bigCode').textContent = room.code; $('#inviteLink').textContent = `${location.host}/?room=${room.code}`;
@@ -176,7 +177,12 @@
     $('#mapPicker').innerHTML = blGame ? window.BLASTERS.MAPS.map(m => blMapCard(m, m.id === room.blastersMap, !isHost)).join('') : window.MEMEKARTS_MAPS.map(m => window.kartMapCard(m, m.id === room.mapId, !isHost)).join('');
     for (const el of $('#mapPicker').querySelectorAll('[data-map]')) el.onclick = () => socket.emit('pickMap', { mapId: el.dataset.map });
     $('#playerList').innerHTML = room.players.map((p) => `<li><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${p.bot ? '<span class="botTag">BOT</span>' : ''}${p.id === room.hostId ? ' <span class="hint">(host)</span>' : ''}<span style="margin-left:auto" class="hint">${p.score}</span></li>`).join('');
-    $('#hostHint').textContent = (isHost ? 'You are the host: pick a game and press Start.' : 'Waiting for the host to start a game.') + (socket.hosting ? ' The room runs in this tab, so keep it open: closing or refreshing it ends the room for everyone.' : '');
+    { const hostName = (room.players.find((p) => p.id === room.hostId) || {}).name || 'the host', p2p = !!socket.p2p, hosting = !!socket.hosting;
+      const lines = isHost ? ['You are the host. Pick a game and a map, then press Start.', 'Friends join with the link or the code on the left, even after the game has started.']
+        : [`${hostName} is the host. They pick the game and press Start.`, 'Set your graphics and sound below while you wait.'];
+      if (hosting) lines.push('Keep this tab open: the room runs in it. If you close or refresh it, the room ends for everyone.');
+      else if (p2p) lines.push(`If ${hostName} closes their tab, the room ends. You can refresh, or step away with Esc during a game, without losing your place.`);
+      $('#hostHint').innerHTML = lines.map((l, i) => `<span class="hint-line${i === 2 ? ' warn' : ''}">${esc(l)}</span>`).join(''); }
     $('#gameGrid').innerHTML = gameDefs.map((g) => `<div class="gcard ${g.id === room.gameId ? 'sel' : ''}" data-id="${g.id}"><b>${esc(g.name)}</b><small>${esc(g.tagline)}</small><br><small>${g.min}–${g.max} players</small></div>`).join('');
     for (const el of document.querySelectorAll('.gcard')) el.onclick = () => isHost && socket.emit('pick', { gameId: el.dataset.id });
     const def = gameDefs.find((g) => g.id === room.gameId);

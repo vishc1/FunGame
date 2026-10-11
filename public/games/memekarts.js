@@ -27,7 +27,7 @@ registerGame('memekarts', (G) => {
   const WEAPON_INFO = {
     green: 'Fires straight ahead and bounces off walls.', triple: 'Three shells in a spread. They bounce off walls.', red: 'Homing shell. Chases the nearest kart.',
     blue: 'Flies over walls and hunts whoever has the most kills.', tnt: 'Drops behind you and explodes after 2 seconds.', bomb: 'Lobbed ahead. Blows up on contact or after a moment.',
-    pad: 'Placed under you. Launches any kart that drives over it.', egg: 'Three eggs. A hit turns a kart into a slow, helpless egg.', banana: 'Drops behind you. Karts that touch it spin out.',
+    pad: 'Placed under you. Launches any kart that drives over it.', egg: 'Three eggs. A hit turns a kart into a slow, helpless egg.', banana: 'Drops behind you. Karts that touch it spin out and lose a heart.',
     fake: 'Drops a fake item box. Whoever grabs it spins out.', fire: 'A quick burst of five bouncing fireballs.', gun: 'Sprays bullets ahead for two seconds.',
     mush: 'Speed boost. Ram other karts to hurt them.', star: 'Six seconds invincible and fast. Ramming wrecks karts.', boo: 'Untouchable for five seconds, and steals someone\'s item.',
     bolt: 'Shrinks and slows everyone else. May zap their items.', bill: 'Three seconds of autopilot rocket. Flattens karts in your path.', ink: 'Splats ink over everyone else\'s screen.',
@@ -48,7 +48,9 @@ registerGame('memekarts', (G) => {
     G.ui.innerHTML = `<div class="away-card"><h3>You stepped away</h3><p>You are still in this race. Nothing can hit you while you are away, and your kills are kept.</p>
       <div class="away-kart"><span style="background:${col}"></span><b>${VEHICLE_NAMES[k.v % 8]}</b></div>
       <div class="away-stats"><div><b>${k.kills}</b><small>kills</small></div><div><b>${rank}<small>/${order.length}</small></b><small>place</small></div><div><b>${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')}</b><small>left</small></div></div>
+      <h4 class="away-h">Settings</h4>${window.FG_SETTINGS ? window.FG_SETTINGS.html(false) : ''}
       <div class="away-btns"><button id="awayLeave">Leave the room</button><button id="awayBack" class="primary">Back to the race</button></div></div>`;
+    if (window.FG_SETTINGS) window.FG_SETTINGS.bind(G.ui);
     G.ui.querySelector('#awayBack').onclick = () => { away = 0; G.send({ type: 'away', on: 0 }); G.clearUI(); }; G.ui.querySelector('#awayLeave').onclick = () => { const q = document.querySelector('#quitBtn'); if (q) q.click(); };
   }
   function trigger(down) { if (away) return;
@@ -378,7 +380,7 @@ registerGame('memekarts', (G) => {
         const horiz = rp.dir === 'E' || rp.dir === 'W', len = horiz ? rp.w : rp.h, wid = horiz ? rp.h : rp.w, g = new THREE.Group();
         const [Z0, Z1] = window.MEMEKARTS_MAPS.rampZ(rp), RH = Z1 - Z0; /* this ramp's rise; a tower's second ramp starts on the first deck */
         const custom = asset(map.theme === 'neon' ? 'ramp_neon' : map.theme === 'canyon' ? 'ramp_canyon' : 'ramp', 60) || asset('ramp', 60); /* optional model: rises toward +X in Blender; stretched to the footprint */
-        if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RH / sz.y, wid / sz.z); custom.traverse((m) => { if (m.isMesh) m.material.side = THREE.DoubleSide; }); /* solid from every angle */
+        if (custom) { const bb = new THREE.Box3().setFromObject(custom), sz = bb.getSize(new THREE.Vector3()); custom.scale.set(len / sz.x, RH / sz.y, wid / sz.z); /* single-sided: the ramp's top end shares the deck wall's plane, and a double-sided end face flickered against it */
           custom.traverse((m) => { if (m.isMesh && /ink|dark|runway/i.test((m.material.name || '') + m.name)) m.material.color.set(map.theme === 'neon' ? '#ff3fd0' : '#ff8a1f'); }); /* the runway is painted a loud colour: a dark ramp reads as a floor marking */
           g.add(custom); }
         else {
@@ -396,8 +398,8 @@ registerGame('memekarts', (G) => {
         const dress = new THREE.Group(); /* decoration lives beside the ramp group so the ramp itself keeps its exact footprint */
         const hot = map.theme === 'neon' ? '#68efff' : '#ffd21f', tilt = Math.atan2(RH, len), slopeLen = Math.hypot(len, RH);
         for (const sd of [-1, 1]) {
-          const rail = box(slopeLen, 3.2, 3.2, glow(hot, 1.4), 0, RH / 2 + 2.2, sd * (wid / 2 - 1.6)); rail.rotation.z = tilt; rail.castShadow = false; dress.add(rail);
-          dress.add(box(3.2, RH, 3.2, M3('#f4f4f4'), len / 2 - 1.6, RH / 2, sd * (wid / 2 - 1.6)));
+          const rail = box(slopeLen, 3.2, 3.2, glow(hot, 1.4), 0, RH / 2 + 2.2, sd * (wid / 2 - 1.1)); /* rails and posts stand 0.5 proud of the ramp's side wall: flush with it they flickered */ rail.rotation.z = tilt; rail.castShadow = false; dress.add(rail);
+          dress.add(box(3.2, RH - 0.4, 3.2, M3('#f4f4f4'), len / 2 - 2.5, RH / 2 - 0.2, sd * (wid / 2 - 1.1))); /* corner posts: clear of the deck wall, the side wall and the deck top */
         }
         const lead = tex(256, 128, (c, cw, ch) => { c.clearRect(0, 0, cw, ch); c.strokeStyle = '#ffffff'; c.lineWidth = 16; c.lineCap = 'round'; c.lineJoin = 'round'; for (const x of [40, 110, 180]) { c.beginPath(); c.moveTo(x - 16, 22); c.lineTo(x + 22, 64); c.lineTo(x - 16, 106); c.stroke(); } });
         const runway = mesh(new THREE.PlaneGeometry(90, wid * 0.8), new THREE.MeshBasicMaterial({ map: lead, transparent: true, depthWrite: false, color: new THREE.Color(hot).multiplyScalar(1.5) }), -len / 2 - 50, 0.8, 0); runway.rotation.x = -Math.PI / 2; runway.castShadow = false;
@@ -852,11 +854,13 @@ registerGame('memekarts', (G) => {
     s.boxes.forEach((on, i) => { if (on) { ctx.fillStyle = '#ffd84d'; ctx.fillRect(mx + BOXES[i][0] * ms - 2, my + BOXES[i][1] * ms - 2, 4, 4); } });
     for (const e of s.ents) if (e.k === 'blue' || e.k === 'red') G.circle(mx + e.x * ms, my + e.y * ms, 2, e.k === 'blue' ? '#6ea0ff' : '#ff6a6a');
     for (const k of s.karts) { if (k.dead || k.aw || (k.ghost && k.id !== G.me)) continue; const p = G.player(k.id), x = mx + k.x * ms, y = my + k.y * ms; G.circle(x, y, k.id === G.me ? 4.5 : 3.5, p.color, k.id === G.me ? '#fff' : null); if (k.id === G.me) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(k.a) * 10, y + Math.sin(k.a) * 10); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, 8 + Math.sin(time * 5) * 1.5, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.stroke(); G.text('YOU', x, y - 13, { size: 9, weight: 800, color: '#fff' }); } }
-    { /* who is in, who is still racing, where you stand */
-      const total = s.karts.length, racing = s.karts.filter((k) => !k.dead).length, order = s.karts.slice().sort((a, b) => b.kills - a.kills), rank = order.findIndex((k) => k.id === G.me) + 1, iy = my + MH * ms + 16;
-      rr(mx - 4, iy - 10, MW * ms + 8, 34, 8, 'rgba(0,0,0,.5)', 'rgba(255,255,255,.2)');
-      G.text(`${total} players  ·  ${racing} racing  ·  ${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')} left`, mx + (MW * ms) / 2, iy, { size: 10.5, color: '#fff', stroke: false });
-      if (me) G.text(`You: ${me.kills} tags  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') + ' of ' + total : ''}  ·  ${map.name}`, mx + (MW * ms) / 2, iy + 14, { size: 10, color: '#ffd84d', stroke: false });
+    { /* who is in, who is still racing, where you stand: sized to fit inside the box, kart words not shooter words */
+      const total = s.karts.length, racing = s.karts.filter((k) => !k.dead && !k.aw).length, order = s.karts.slice().sort((a, b) => b.kills - a.kills), rank = order.findIndex((k) => k.id === G.me) + 1, iy = my + MH * ms + 16, bw = MW * ms + 8;
+      rr(mx - 4, iy - 10, bw, 36, 8, 'rgba(0,0,0,.5)', 'rgba(255,255,255,.2)');
+      const fit = (t, size) => { ctx.font = `700 ${size}px system-ui, sans-serif`; let sz = size; while (sz > 7 && ctx.measureText(t).width > bw - 12) { sz -= 0.5; ctx.font = `700 ${sz}px system-ui, sans-serif`; } return sz; };
+      const l1 = `${total} players  ·  ${racing} racing  ·  ${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')} left`;
+      G.text(l1, mx - 4 + bw / 2, iy, { size: fit(l1, 10.5), color: '#fff', stroke: false });
+      if (me) { const l2 = `You: ${me.kills} ${me.kills === 1 ? 'kill' : 'kills'}  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') + ' of ' + total : ''}  ·  ${map.name}`; G.text(l2, mx - 4 + bw / 2, iy + 14, { size: fit(l2, 10), color: '#ffd84d', stroke: false }); }
     }
     // item slot + hearts
     if (me) {
