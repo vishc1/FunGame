@@ -161,7 +161,7 @@
   const setSound = (on) => { LS.set('mk_mute', on ? '0' : '1'); drawSettings(); window.dispatchEvent(new CustomEvent('fg-sound', { detail: { muted: !on } })); }; /* the games listen and apply it at once */
   $('#sndOn').onclick = () => setSound(true); $('#sndOff').onclick = () => setSound(false);
   $('#lsSens').oninput = (e) => { LS.set('tbb_sens', e.target.value); drawSettings(); }; $('#lsFov').oninput = (e) => { LS.set('tbb_fov', e.target.value); drawSettings(); };
-  $('#lsReset').onclick = () => { for (const k of ['fg_gfx', 'tbb_sens', 'tbb_fov']) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } setSound(true); if (window.FG_GFX) window.FG_GFX.set(window.matchMedia('(pointer:coarse)').matches ? 'medium' : 'high'); drawSettings(); toast('Settings back to the defaults'); };
+  $('#lsReset').onclick = () => { for (const k of ['tbb_sens', 'tbb_fov']) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } setSound(true); if (window.FG_GFX) window.FG_GFX.reset(); drawSettings(); toast('Settings back to the defaults'); };
   drawSettings();
   function renderLobby() {
     $('#roomCode').textContent = room.code; $('#bigCode').textContent = room.code; $('#inviteLink').textContent = `${location.host}/?room=${room.code}`;

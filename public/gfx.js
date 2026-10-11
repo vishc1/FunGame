@@ -9,7 +9,7 @@
   };
   const ORDER = ['low', 'medium', 'high'];
   const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
-  let level = coarse ? 'medium' : 'high';
+  let level = coarse ? 'medium' : 'high'; /* the default; FG_GFX.DEFAULT */
   try { const v = localStorage.getItem('fg_gfx'); if (LEVELS[v]) level = v; } catch (e) { /* storage blocked */ }
   const q = new URLSearchParams(location.search).get('gfx'); if (LEVELS[q]) level = q; // ?gfx=low for tests
   window.FG_GFX = {
@@ -18,6 +18,8 @@
     cfg() { return LEVELS[level]; },
     set(v) { if (!LEVELS[v] || v === level) return; level = v; try { localStorage.setItem('fg_gfx', v); } catch (e) { /* ignore */ } window.dispatchEvent(new CustomEvent('fg-gfx', { detail: LEVELS[v] })); syncUI(); },
     next() { this.set(ORDER[(ORDER.indexOf(level) + 1) % ORDER.length]); },
+    get DEFAULT() { return coarse ? 'medium' : 'high'; },
+    reset() { this.set(this.DEFAULT); try { localStorage.removeItem('fg_gfx'); } catch (e) { /* ignore */ } },
   };
   // One settings panel for the in-game Esc menu and the shooter's Settings (L): graphics, sound and, for the shooter, mouse and view.
   // Same storage keys as the lobby, so a change anywhere is the same setting everywhere.
@@ -34,6 +36,8 @@
       const redraw = () => { for (const b of root.querySelectorAll('[data-set-gfx]')) b.classList.toggle('sel', b.dataset.setGfx === level); const m = lsGet('mk_mute', '0') === '1'; for (const b of root.querySelectorAll('[data-set-snd]')) b.classList.toggle('sel', (b.dataset.setSnd === '1') !== m); };
       for (const b of root.querySelectorAll('[data-set-gfx]')) b.onclick = (e) => { e.stopPropagation(); window.FG_GFX.set(b.dataset.setGfx); redraw(); };
       for (const b of root.querySelectorAll('[data-set-snd]')) b.onclick = (e) => { e.stopPropagation(); const on = b.dataset.setSnd === '1'; lsSet('mk_mute', on ? '0' : '1'); window.dispatchEvent(new CustomEvent('fg-sound', { detail: { muted: !on } })); redraw(); };
+      const live = () => { if (!root.querySelector('[data-set-gfx]')) { window.removeEventListener('fg-sound', live); window.removeEventListener('fg-gfx', live); return; } redraw(); }; /* M key, the lobby or another panel changed it */
+      window.addEventListener('fg-sound', live); window.addEventListener('fg-gfx', live);
       for (const r of root.querySelectorAll('input[data-set]')) r.oninput = () => { const k = r.dataset.set, v = +r.value; lsSet(k === 'sens' ? 'tbb_sens' : 'tbb_fov', v); const out = root.querySelector(`[data-set-v="${k}"]`); if (out) out.textContent = k === 'sens' ? v.toFixed(2) : v; if (hooks[k]) hooks[k](v); };
     },
   };

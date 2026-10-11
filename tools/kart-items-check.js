@@ -53,6 +53,8 @@ reset(); place('b', 400, 380, 0); tick(1 / 30); fire('a', 'banana'); n = events.
 ok('Banana: a kart that drives into it spins out', since(n).some((e) => e.type === 'slip' && e.id === 'b'));
 ok('Banana: the owner does not slip on their own banana straight away', !since(n).some((e) => e.type === 'slip' && e.id === 'a'));
 ok('Banana: the slip costs that kart a heart', K('b').hp === 2, 'hp=' + K('b').hp);
+reset(); place('b', 400, 380, 0); { const g = game.__state(); g.karts.get('b').star = 5; } tick(1 / 30); fire('a', 'banana'); n = events.length; ctl('b', { up: true }); tick(1.5);
+ok('Banana: a kart with a Star drives straight over it (no spin, no heart lost)', !since(n).some((e) => e.type === 'slip' && e.id === 'b') && K('b').hp === 3, 'hp=' + K('b').hp);
 // fake item box: looks like a box; touching it spins you and eats your item
 reset(); place('b', 400, 380, 0); tick(1 / 30); game.onInput('b', { type: 'give', weapon: 'green' }); fire('a', 'fake'); n = events.length; ctl('b', { up: true }); tick(1.5);
 ok('Fake box: the kart that touches it spins out', since(n).some((e) => e.type === 'fakebox' && e.id === 'b'));

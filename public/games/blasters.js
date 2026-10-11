@@ -801,12 +801,12 @@ registerGame('blasters', (G) => {
       ctx.restore();
       txt('N', mx + mw - 8, my + 9, { size: 9, weight: 800, color: 'rgba(255,255,255,.7)', stroke: false });
       // the numbers: who is in, who is still standing, where you are in the race
-      const total = s.ps.length, alive = s.ps.filter((p) => !p.dead).length, order = s.ps.slice().sort((a, b) => b.k - a.k || b.sc - a.sc), rank = order.findIndex((p) => p.id === G.me) + 1, iy = my + mw + 18;
+      const total = s.ps.length, alive = s.ps.filter((p) => !p.dead && !p.aw).length, order = s.ps.slice().sort((a, b) => b.k - a.k || b.sc - a.sc), rank = order.findIndex((p) => p.id === G.me) + 1, iy = my + mw + 18;
       rr(mx - 4, iy - 11, mw + 44, 36, 8, 'rgba(0,0,0,.55)', 'rgba(255,255,255,.2)');
       const bw = mw + 44, cx = mx - 4 + bw / 2, fit = (t, size, w) => { ctx.font = `${w} ${size}px system-ui, sans-serif`; let sz = size; while (sz > 7 && ctx.measureText(t).width > bw - 12) { sz -= 0.5; ctx.font = `${w} ${sz}px system-ui, sans-serif`; } return sz; }; /* both lines centred in the box and shrunk to fit it */
       const l1 = `${total} players  ·  ${alive} standing`, l2 = s.tm ? `Red ${s.tk[0]}  ·  Blue ${s.tk[1]}  ·  ${MAP.name}` : `You: ${st ? st.k : 0} tags  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') : '-'} of ${total}  ·  ${MAP.name}`;
       txt(l1, cx, iy, { size: fit(l1, 11, 700), weight: 700, color: '#fff', stroke: false });
-      txt(l2, cx, iy + 14, { size: fit(l2, 10, 400), color: '#ffd84d', stroke: false });
+      txt(l2, cx, iy + 14, { size: fit(l2, 10, 600), weight: 600, color: '#ffd84d', stroke: false });
     }
   }
   let deathBy = '';
@@ -885,14 +885,14 @@ registerGame('blasters', (G) => {
     key(k, down) {
       if (!down) return; audio();
       if (k === 'Escape') { if (locker) { setLocker(false); return; } if (away === 'count') { away = 0; return; } if (away === 'on') return; if (softLock || TOUCH) startAway(); return; }
-      if (k === 'l') { setLocker(!locker); return; }
+      if (k === 'l') { if (!away) setLocker(!locker); return; } /* the away screen has its own settings, and closing the locker would strand it */
       if (locker) return;
       if (k === ' ') jumpQ = true; else if (k === 'Shift') dashQ = true; else if (k === 'r') reload(); else if (k === 'q') dropWeapon(); else if (k === 'h') showGuide = !showGuide;
       else if (k >= '1' && k <= String(WEAPONS.length)) switchTo(+k - 1);
       else if (k === 'e' || k === 'v') melee();
       else if (k === 'g') dropWeapon(); /* Q or G drops the blaster you hold */
       else if ((k === '[' || k === ']') && testRoom()) { giveIdx = ((giveIdx || 0) + (k === ']' ? 1 : -1) + (WEAPONS.length - 1) * 4) % (WEAPONS.length - 1); G.send({ type: 'give', w: giveIdx + 1 }); } /* test rooms: [ and ] hand you each blaster in turn */
-      else if (k === 'm') { muted = !muted; lset('mk_mute', muted ? '1' : '0'); if (master) master.gain.value = muted ? 0 : 0.25; G.toast(muted ? 'Sound off' : 'Sound on'); }
+      else if (k === 'm') { muted = !muted; lset('mk_mute', muted ? '1' : '0'); if (master) master.gain.value = muted ? 0 : 0.25; G.toast(muted ? 'Sound off' : 'Sound on'); window.dispatchEvent(new CustomEvent('fg-sound', { detail: { muted } })); }
     },
     mouse(kind, x, y, e) {
       if (locker) return;

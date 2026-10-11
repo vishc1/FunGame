@@ -99,7 +99,7 @@
   window.addEventListener('keydown', (ev) => {
     if (!active || ev.target.tagName === 'INPUT' || ev.repeat) return;
     wake();
-    if (ev.key === 'm' || ev.key === 'M') { muted = !muted; try { localStorage.setItem('mk_mute', muted ? '1' : '0'); } catch (e) { /* ignore */ } if (master) master.gain.value = muted ? 0 : 0.22; G.toast(muted ? 'Sound off' : 'Sound on'); }
+    if (ev.key === 'm' || ev.key === 'M') { muted = !muted; try { localStorage.setItem('mk_mute', muted ? '1' : '0'); } catch (e) { /* ignore */ } if (master) master.gain.value = muted ? 0 : 0.22; G.toast(muted ? 'Sound off' : 'Sound on'); window.dispatchEvent(new CustomEvent('fg-sound', { detail: { muted } })); }
     if ((ev.key === '[' || ev.key === ']') && testMode()) { itemIdx = (itemIdx + (ev.key === ']' ? 1 : -1) + ITEMS.length * 2) % ITEMS.length; G.send({ type: 'give', weapon: ITEMS[itemIdx][0] }); G.toast('Test item: ' + ITEMS[itemIdx][1]); }
   });
   window.addEventListener('mousedown', () => wake());
