@@ -87,7 +87,7 @@ const BRAINS = {
     const body = m.body, ex = body.x, ey = body.y + P.EYE, ez = body.z, MAP = BL.mapById(s.map) || BL.MAP; // the room's map comes with every snapshot
     // nearest enemy this bot can actually see
     let tgt = null, td = 1e9;
-    for (const o of s.ps) { if (o.id === b.id || o.dead || (s.tm && o.tm === me.tm)) continue; const d = Math.hypot(o.x - body.x, o.y - body.y, o.z - body.z); if (d > 55 || d >= td || (o.pw === 'ghost' && d > 9) || o.pw === 'shadow') continue; if (BL.los(ex, ey, ez, o.x, o.y + 1.2, o.z, MAP)) { tgt = o; td = d; } }
+    for (const o of s.ps) { if (o.id === b.id || o.dead || o.aw || (s.tm && o.tm === me.tm)) continue; const d = Math.hypot(o.x - body.x, o.y - body.y, o.z - body.z); if (d > 55 || d >= td || (o.pw === 'ghost' && d > 9) || o.pw === 'shadow') continue; if (BL.los(ex, ey, ez, o.x, o.y + 1.2, o.z, MAP)) { tgt = o; td = d; } }
     // 'noticing' takes 0.7 s of looking at the SAME enemy; a one-tick flicker behind a pillar only dents it, a new enemy starts it over
     if (tgt) { if (m.seeId !== tgt.id) { m.see = 0; m.seeId = tgt.id; } m.see += c.dt; m.last = { x: tgt.x, z: tgt.z, t: 6 }; } else { m.see = Math.max(0, m.see - 2 * c.dt); if (m.last && (m.last.t -= c.dt) <= 0) m.last = null; }
     // where to go
@@ -147,7 +147,7 @@ const BRAINS = {
   memekarts(b, s, c) {
     const me = find(s.karts, b.id); if (!me || me.dead) return [];
     const map = KMAPS.find((m) => m.id === s.mapId) || KMAPS[0];
-    let t = nearest(s.karts, me, (k) => !k.dead && !k.ghost && !(k.el > 12));
+    let t = nearest(s.karts, me, (k) => !k.dead && !k.aw && !k.ghost && !(k.el > 12));
     if (!me.weapon) { let bd = t ? dist(t, me) * 1.4 : 1e9; map.boxes.forEach(([x, y], i) => { if (!s.boxes[i] || KMAPS.surface(map, x, y) > 0) return; const d = Math.hypot(x - me.x, y - me.y); if (d < bd) { bd = d; t = { x, y }; } }); }
     if (!t) t = { x: (map.w || 900) / 2, y: (map.h || 600) / 2 };
     const wp = route(map, me, t); // steer along a path around the walls instead of straight at the target

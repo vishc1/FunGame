@@ -401,7 +401,7 @@ registerGame('blasters', (G) => {
     function updatePlayers(dt) {
       const seen = new Set();
       for (const p of s.ps) {
-        if (p.id === G.me) continue; seen.add(p.id); const pl = G.player(p.id);
+        if (p.id === G.me || p.aw) continue; seen.add(p.id); const pl = G.player(p.id); /* away players are out of the world */
         let v = views.get(p.id);
         const fc = colOf(p), mate = s.tm && mySt() && p.tm === mySt().tm;
         if (!v || v.ch !== p.ch || v.sk !== (p.sk || 0) || v.col !== fc) { const old = v; if (v) scene.remove(v.g); v = { g: buildFigure(fc, p.ch, p.sk || 0), col: fc, x: old ? old.x : p.x, y: old ? old.y : p.y, z: old ? old.z : p.z, yaw: p.yw, pitch: p.pt, ch: p.ch, sk: p.sk || 0, walk: 0, hp: p.hp, squash: 0, flinch: 0, recoil: 0, swing: 0, deathT: 0, lean: 0, leanS: 0, vy: 0 }; v.g.rotation.order = 'YXZ'; views.set(p.id, v); scene.add(v.g); }
@@ -614,7 +614,22 @@ registerGame('blasters', (G) => {
 
   // ============================ input ============================
   let softLock = false; // fallback when the browser refuses pointer lock: play with the free mouse instead of being stuck
-  const onLock = () => { locked = document.pointerLockElement === canvas || softLock; if (!locked) { firing = false; zooming = false; } };
+  const onLock = () => { const was = locked; locked = document.pointerLockElement === canvas || softLock; if (!locked) { firing = false; zooming = false; } if (was && !locked && !TOUCH) startAway(); else if (locked && away === 'count') away = 0; };
+  // ---- stepping away (Esc): 2 seconds to change your mind, then an away screen. You stay in the match with every tag kept;
+  // the server keeps you out of the world (nobody can hit you, bots ignore you) until you press Back to the match.
+  let away = 0, awayAt = 0; // 0 | 'count' | 'on'
+  function startAway() { if (away || over || locker || !s || !mySt() || mySt().dead) return; away = 'count'; awayAt = time + 2; }
+  function enterAway() {
+    away = 'on'; G.send({ type: 'away', on: 1 }); firing = false; zooming = false;
+    const st = mySt(), order = s.ps.slice().sort((a, b) => b.k - a.k || b.sc - a.sc), rank = order.findIndex((p) => p.id === G.me) + 1;
+    G.ui.innerHTML = `<div class="tbb-locker" style="--pc:${G.player(G.me).color};max-width:440px;left:50%;transform:translate(-50%,-50%);top:50%"><h3>You stepped away</h3><div style="color:#8b91a5;font-size:13px">You are still in this match. Nobody can tag you while you are away, and your tags are kept.</div>
+      <h4>Your toy</h4><div style="font-size:20px;font-weight:900">${CHAR_NAMES[charIdx]} <span style="color:#d9fa78">· ${SKINS[skinIdx].name}</span></div>
+      <h4>This match</h4><div style="display:flex;gap:22px;font-size:15px"><div><b style="font-size:28px">${st ? st.k : 0}</b><br><small>tags</small></div><div><b style="font-size:28px">${rank || '-'}<small style="font-size:14px">/${order.length}</small></b><br><small>place</small></div><div><b style="font-size:28px">${st ? st.sc : 0}</b><br><small>score</small></div><div><b style="font-size:28px">${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')}</b><br><small>left</small></div></div>
+      <div class="tbb-foot"><button id="awayLeave">Leave the room</button><button id="awayBack" class="primary">Back to the match</button></div></div>`;
+    G.ui.querySelector('#awayBack').onclick = () => backFromAway(); G.ui.querySelector('#awayLeave').onclick = () => { const q = document.querySelector('#quitBtn'); if (q) q.click(); };
+    if (T && T.ready) T.preview(charIdx, skinIdx);
+  }
+  function backFromAway() { if (away !== 'on') return; away = 0; G.send({ type: 'away', on: 0 }); G.clearUI(); if (T) T.preview(null); if (!TOUCH && canvas.requestPointerLock) { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* the next click will capture */ } } }
   if (TOUCH) { softLock = true; locked = true; buildTouch(); }
   const onWheel = (e) => { if (!me.alive) return; e.preventDefault(); cycle(e.deltaY > 0 ? 1 : -1); };
   const onTab = (e) => { if (e.key === 'Tab') { e.preventDefault(); showScores = e.type === 'keydown'; } };
@@ -725,7 +740,7 @@ registerGame('blasters', (G) => {
       rows.forEach((p, i) => { const y = ly + 34 + i * rh, rank = order.indexOf(p) + 1, pl = G.player(p.id) || { name: '?' }, me = p.id === G.me;
         if (me) rr(lx + 6, y - 10, lw - 12, 20, 6, 'rgba(255,216,77,.16)');
         txt(String(rank), lx + 20, y, { size: 12, weight: 800, color: rank === 1 ? '#ffd84d' : '#8b91a5', stroke: false });
-        G.circle(lx + 36, y, 5, colOf(p)); txt((me ? 'You' : pl.name).slice(0, 12) + (p.dead ? '  ✕' : ''), lx + 48, y, { size: 13, weight: me ? 900 : 600, align: 'left', color: me ? '#ffd84d' : '#fff', stroke: false });
+        G.circle(lx + 36, y, 5, colOf(p)); txt((me ? 'You' : pl.name).slice(0, 12) + (p.aw ? '  (away)' : p.dead ? '  ✕' : ''), lx + 48, y, { size: 13, weight: me ? 900 : 600, align: 'left', color: me ? '#ffd84d' : '#fff', stroke: false });
         txt(String(p.k), lx + lw - 16, y, { size: 14, weight: 900, align: 'right', color: '#fff', stroke: false }); });
       feedY = ly + lh + 20;
     }
@@ -751,7 +766,9 @@ registerGame('blasters', (G) => {
     // death screen
     if (st && st.dead && !over) { ctx.fillStyle = 'rgba(10,0,0,.4)'; ctx.fillRect(0, 0, W, H); txt(deathBy || 'Tagged out!', cx, cy - 40, { size: 30, color: '#ff6b6b', weight: 900 }); txt(`Back in ${Math.max(0, st.dead).toFixed(1)}s`, cx, cy, { size: 18 }); txt(`${CHAR_NAMES[charIdx]} in ${SKINS[skinIdx].name}   •   press L for the locker`, cx, cy + 34, { size: 13, color: '#cfd6e4' }); }
     // not captured yet
-    if (!locked && me.alive && !over && !showGuide && !locker) { ctx.fillStyle = 'rgba(5,8,14,.6)'; ctx.fillRect(0, 0, W, H); txt('Click to play', cx, cy - 46, { size: 36, weight: 900, color: '#ffd84d' }); ['WASD move   •   Space jump (twice)   •   Shift dash   •   C crouch, tap while running to slide', 'Click fire   •   Right-click aim   •   E foam sword   •   Q drop blaster   •   R reload   •   1-9 or wheel: switch', 'Tab scores   •   H guide   •   L settings   •   M mute   •   Esc frees the mouse', ...(testRoom() ? ['Test room: [ and ] hand you each blaster in turn'] : [])].forEach((l, i) => txt(l, cx, cy + 4 + i * 24, { size: 14, color: '#e8eaf0' })); }
+    if (away === 'count') { if (time >= awayAt) enterAway(); else { ctx.fillStyle = 'rgba(5,8,14,.55)'; ctx.fillRect(0, 0, W, H); txt(`Stepping away in ${Math.ceil(awayAt - time)}…`, cx, cy - 20, { size: 34, weight: 900, color: '#ffd84d' }); txt('Click to keep playing', cx, cy + 22, { size: 17, color: '#fff' }); } }
+    else if (away === 'on') { /* the away screen is on top */ }
+    else if (!locked && me.alive && !over && !showGuide && !locker) { ctx.fillStyle = 'rgba(5,8,14,.6)'; ctx.fillRect(0, 0, W, H); txt('Click to play', cx, cy - 46, { size: 36, weight: 900, color: '#ffd84d' }); ['WASD move   •   Space jump (twice)   •   Shift dash   •   C crouch, tap while running to slide', 'Click fire   •   Right-click aim   •   E foam sword   •   Q drop blaster   •   R reload   •   1-9 or wheel: switch', 'Tab scores   •   H guide   •   L settings   •   M mute   •   Esc frees the mouse', ...(testRoom() ? ['Test room: [ and ] hand you each blaster in turn'] : [])].forEach((l, i) => txt(l, cx, cy + 4 + i * 24, { size: 14, color: '#e8eaf0' })); }
     if (showScores || over) scoreboard();
     if (showGuide) guide();
     if (!locker) txt(`Level ${levelOf(xp)}  •  ${CHAR_NAMES[charIdx]}  •  ${SKINS[skinIdx].name}`, 20, 52, { size: 11.5, align: 'left', color: '#ffd84d' });
@@ -768,7 +785,7 @@ registerGame('blasters', (G) => {
       MAP.teles.forEach((pair, i) => pair.forEach((e) => { ctx.strokeStyle = TELE_COLS[i % TELE_COLS.length]; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X(e.x), Z(e.z), 3, 0, 7); ctx.stroke(); }));
       { const pp = MAP.pickups.find((p) => p.kind === 'power'); if (pp) txt(s.pw.up ? '★' : '☆', X(pp.x), Z(pp.z), { size: 11, color: s.pw.up ? '#ffd84d' : 'rgba(255,255,255,.6)', stroke: false }); }
       if (s.tr) { ctx.fillStyle = '#e23b3b'; ctx.fillRect(X(s.tr[0] - (s.tr[1] > 0 ? MAP.train.len : 0)), Z(MAP.train.z) - 2, MAP.train.len * k, 4); }
-      for (const p of s.ps) { if (p.id === G.me || p.dead) continue; const mate = s.tm && st && p.tm === st.tm, d = Math.hypot(p.x - body.x, p.z - body.z); if (!mate && !(d < 14 || time - (recentShot[p.id] || -9) < 2.5) || p.pw === 'shadow' || (p.pw === 'ghost' && !mate)) continue;
+      for (const p of s.ps) { if (p.id === G.me || p.dead || p.aw) continue; const mate = s.tm && st && p.tm === st.tm, d = Math.hypot(p.x - body.x, p.z - body.z); if (!mate && !(d < 14 || time - (recentShot[p.id] || -9) < 2.5) || p.pw === 'shadow' || (p.pw === 'ghost' && !mate)) continue;
         const col = mate ? TEAM[p.tm].color : s.tm ? TEAM[p.tm].color : '#ff5d5d'; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(p.x), Z(p.z), mate ? 3.5 : 3, 0, 7); ctx.fill(); if (!mate) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke(); } }
       if (st && !st.dead) { const x = X(body.x), z = Z(body.z); ctx.save(); ctx.translate(x, z); ctx.rotate(-me.yaw); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(5, 5); ctx.lineTo(0, 2.5); ctx.lineTo(-5, 5); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.beginPath(); ctx.arc(x, z, 9 + Math.sin(time * 5) * 1.5, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5; ctx.stroke(); }
       ctx.restore();
@@ -855,7 +872,7 @@ registerGame('blasters', (G) => {
     },
     key(k, down) {
       if (!down) return; audio();
-      if (k === 'Escape') { softLock = TOUCH; onLock(); if (locker) setLocker(false); return; }
+      if (k === 'Escape') { if (locker) { setLocker(false); return; } if (away === 'count') { away = 0; return; } if (away === 'on') return; if (softLock || TOUCH) startAway(); return; }
       if (k === 'l') { setLocker(!locker); return; }
       if (locker) return;
       if (k === ' ') jumpQ = true; else if (k === 'Shift') dashQ = true; else if (k === 'r') reload(); else if (k === 'q') dropWeapon(); else if (k === 'h') showGuide = !showGuide;
@@ -867,7 +884,8 @@ registerGame('blasters', (G) => {
     },
     mouse(kind, x, y, e) {
       if (locker) return;
-      if (kind === 'down') { audio(); if (!locked) { if (over) return; if (canvas.requestPointerLock) { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (err) { /* not available */ } } setTimeout(() => { if (document.pointerLockElement !== canvas && !over) { softLock = true; locked = true; } }, 450); return; } if (e.button === 2) zooming = true; else if (e.button === 0) { firing = true; fire(); } }
+      if (away === 'on') return;
+      if (kind === 'down') { audio(); if (away === 'count') { away = 0; } if (!locked) { if (over) return; if (canvas.requestPointerLock) { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (err) { /* not available */ } } setTimeout(() => { if (document.pointerLockElement !== canvas && !over) { softLock = true; locked = true; } }, 450); return; } if (e.button === 2) zooming = true; else if (e.button === 0) { firing = true; fire(); } }
       else if (kind === 'up') { if (e && e.button === 2) zooming = false; else firing = false; }
       else if (kind === 'move' && locked && e && me.alive) { const sens = (0.0022 * sensMul) / (1 + (adsOf(me.w) - 1) * me.zoom); me.yaw -= (e.movementX || 0) * sens; me.pitch = Math.max(-1.5, Math.min(1.5, me.pitch - (e.movementY || 0) * sens)); }
     },

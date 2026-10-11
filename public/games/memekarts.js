@@ -38,7 +38,19 @@ registerGame('memekarts', (G) => {
   let chargeAt = null; const chargeNow = () => chargeAt == null ? 0 : Math.min(1, (time - chargeAt) / 1.1);
   let showGuide = false, cardW = null, cardT = -9;
   // SPACE / click: most items fire on press. A held item (the pie) starts charging on press and is thrown on release.
-  function trigger(down) {
+  // ---- stepping away (Esc): 2 seconds to change your mind, then an away screen. You stay in the match with your kills kept;
+  // the server parks your kart outside the arena until you press Back to the race.
+  let away = 0, awayAt = 0;
+  function startAway() { const k = s && s.karts.find((q) => q.id === G.me); if (!k || k.dead) return; away = 'count'; awayAt = time + 2; }
+  function enterAway() {
+    away = 'on'; G.send({ type: 'away', on: 1 }); const k = s.karts.find((q) => q.id === G.me), order = s.karts.slice().sort((a, b) => b.kills - a.kills), rank = order.findIndex((q) => q.id === G.me) + 1, col = G.player(G.me).color;
+    G.ui.innerHTML = `<div class="away-card"><h3>You stepped away</h3><p>You are still in this race. Nothing can hit you while you are away, and your kills are kept.</p>
+      <div class="away-kart"><span style="background:${col}"></span><b>${VEHICLE_NAMES[k.v % 8]}</b></div>
+      <div class="away-stats"><div><b>${k.kills}</b><small>kills</small></div><div><b>${rank}<small>/${order.length}</small></b><small>place</small></div><div><b>${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')}</b><small>left</small></div></div>
+      <div class="away-btns"><button id="awayLeave">Leave the room</button><button id="awayBack" class="primary">Back to the race</button></div></div>`;
+    G.ui.querySelector('#awayBack').onclick = () => { away = 0; G.send({ type: 'away', on: 0 }); G.clearUI(); }; G.ui.querySelector('#awayLeave').onclick = () => { const q = document.querySelector('#quitBtn'); if (q) q.click(); };
+  }
+  function trigger(down) { if (away) return;
     const k = s && s.karts.find((q) => q.id === G.me), held = k && k.weapon === 'pie';
     if (down) { if (held) { if (chargeAt == null) chargeAt = time; } else G.send({ type: 'fire' }); }
     else if (chargeAt != null) { G.send({ type: 'fire', charge: chargeNow() }); chargeAt = null; }
@@ -611,7 +623,7 @@ registerGame('memekarts', (G) => {
         u.body.visible = form === 'kart'; for (const w of u.wheels) w.visible = form === 'kart'; u.eggG.visible = form === 'egg'; u.billG.visible = form === 'bill';
         if (form === 'egg') u.eggG.rotation.z = Math.sin(time * 9) * 0.12;
         u.flame.visible = !!(k.mush || k.star || k.bill || k.bst || (u.sled && form === 'kart' && v.spd > 40)); if (u.flame.visible) {const pulse=1+Math.sin(time*32+k.v)*.16;u.flame.scale.set(pulse,(k.mush||k.bill?1.6:1)*pulse,pulse);}
-        v.g.visible = !k.dead && !(k.inv && !k.star && !k.bill && Math.sin(time * 26) > 0.2);
+        v.g.visible = !k.dead && !k.aw && !(k.inv && !k.star && !k.bill && Math.sin(time * 26) > 0.2);
         setLook(v, k.ghost ? (me ? 0.4 : 0.1) : 1, k.star ? (time * 1.6) % 1 : null);
         u.label.visible = !me && !k.ghost; drawLabel(u, p.name, p.color, k.hp, me);
         // trails
@@ -690,7 +702,7 @@ registerGame('memekarts', (G) => {
       const v = views.get(G.me), k = s && s.karts.find((q) => q.id === G.me);
       const portrait=camera.aspect<1;
       let fov = portrait?82:62;
-      if (v && k && !k.dead) {
+      if (v && k && !k.dead && !k.aw) { /* away: the kart is parked off the map, so the camera orbits the arena instead */
         const lookBack = G.keys.has('c'); /* hold C to look behind you */
         camA = lerpAngle(camA, v.a + (lookBack ? Math.PI : 0), 1 - Math.exp(-(lookBack || wasBack ? 18 : k.spin ? 1.2 : 6.5) * dt)); wasBack = lookBack;
         const dx = Math.cos(camA), dz = Math.sin(camA), X = v.x - OX, Z = v.y - OZ, h = v.h || 0;
@@ -774,7 +786,7 @@ registerGame('memekarts', (G) => {
   }
 
   // ============================ input ============================
-  function sendCtl() {
+  function sendCtl() { if (away) return;
     const k = new Set([...G.keys,...touchKeys]);
     const c = { up: k.has('w') || k.has('ArrowUp'), down: k.has('s') || k.has('ArrowDown'), left: k.has('a') || k.has('ArrowLeft'), right: k.has('d') || k.has('ArrowRight') };
     const key = `${+c.up}${+c.down}${+c.left}${+c.right}`;
@@ -783,6 +795,7 @@ registerGame('memekarts', (G) => {
 
   // ============================ HUD ============================
   function hud(dt) {
+    if (away === 'count') { if (time >= awayAt) enterAway(); else { ctx.fillStyle = 'rgba(5,8,14,.55)'; ctx.fillRect(0, 0, W, H); G.text(`Stepping away in ${Math.ceil(awayAt - time)}…`, W / 2, H / 2 - 20, { size: 34, weight: 900, color: '#ffd84d' }); G.text('Press any key or click to keep racing', W / 2, H / 2 + 22, { size: 17, color: '#fff' }); } }
     ctx.clearRect(0, 0, W, H);
     if (failed) { ctx.fillStyle = '#0b0d13'; ctx.fillRect(0, 0, W, H); G.text('3D could not start: ' + failed, W / 2, H / 2, { size: 16, color: '#ff8a7a' }); return; }
     if (!T || !T.ready || !s) { ctx.fillStyle = '#0b0d13'; ctx.fillRect(0, 0, W, H); G.text('Loading 3D arena…', W / 2, H / 2, { size: 22 }); return; }
@@ -824,7 +837,7 @@ registerGame('memekarts', (G) => {
     ctx.fillStyle = 'rgba(255,255,255,.28)'; for (const o of OBST) ctx.fillRect(mx + o.x * ms, my + o.y * ms, o.w * ms, o.h * ms);
     s.boxes.forEach((on, i) => { if (on) { ctx.fillStyle = '#ffd84d'; ctx.fillRect(mx + BOXES[i][0] * ms - 2, my + BOXES[i][1] * ms - 2, 4, 4); } });
     for (const e of s.ents) if (e.k === 'blue' || e.k === 'red') G.circle(mx + e.x * ms, my + e.y * ms, 2, e.k === 'blue' ? '#6ea0ff' : '#ff6a6a');
-    for (const k of s.karts) { if (k.dead || (k.ghost && k.id !== G.me)) continue; const p = G.player(k.id), x = mx + k.x * ms, y = my + k.y * ms; G.circle(x, y, k.id === G.me ? 4.5 : 3.5, p.color, k.id === G.me ? '#fff' : null); if (k.id === G.me) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(k.a) * 10, y + Math.sin(k.a) * 10); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, 8 + Math.sin(time * 5) * 1.5, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.stroke(); G.text('YOU', x, y - 13, { size: 9, weight: 800, color: '#fff' }); } }
+    for (const k of s.karts) { if (k.dead || k.aw || (k.ghost && k.id !== G.me)) continue; const p = G.player(k.id), x = mx + k.x * ms, y = my + k.y * ms; G.circle(x, y, k.id === G.me ? 4.5 : 3.5, p.color, k.id === G.me ? '#fff' : null); if (k.id === G.me) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(k.a) * 10, y + Math.sin(k.a) * 10); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, 8 + Math.sin(time * 5) * 1.5, 0, 7); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5; ctx.stroke(); G.text('YOU', x, y - 13, { size: 9, weight: 800, color: '#fff' }); } }
     { /* who is in, who is still racing, where you stand */
       const total = s.karts.length, racing = s.karts.filter((k) => !k.dead).length, order = s.karts.slice().sort((a, b) => b.kills - a.kills), rank = order.findIndex((k) => k.id === G.me) + 1, iy = my + MH * ms + 16;
       rr(mx - 4, iy - 10, MW * ms + 8, 34, 8, 'rgba(0,0,0,.5)', 'rgba(255,255,255,.2)');
@@ -896,8 +909,11 @@ registerGame('memekarts', (G) => {
       if (e.type === 'over') banner(e.winner ? `${nm(e.winner)} wins!` : 'Time!', '#ffd84d', 5);
       if (feed.length > 6) feed.length = 6;
     },
-    key(k, down) { if (k === ' ') trigger(down); if (down && k === 'h') showGuide = !showGuide; sendCtl(); },
-    mouse(kind) { if (kind === 'down') trigger(true); else if (kind === 'up') trigger(false); },
+    key(k, down) {
+      if (k === 'Escape' && down) { if (away === 'count') away = 0; else if (!away) startAway(); return; }
+      if (away) { if (away === 'count' && down) away = 0; return; } /* any key during the countdown keeps you racing */
+      if (k === ' ') trigger(down); if (down && k === 'h') showGuide = !showGuide; sendCtl(); },
+    mouse(kind) { if (away === 'count' && kind === 'down') { away = 0; return; } if (away) return; if (kind === 'down') trigger(true); else if (kind === 'up') trigger(false); },
     render(dt) {
       time += dt; sendCtl();
       if (!T && !failed && window.THREE) { try { T = create3D(); } catch (e) { failed = e.message; console.error(e); } }

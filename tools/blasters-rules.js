@@ -59,4 +59,11 @@ ok('the cannon holds one ball at a time', w.me('a').m === 0);
   run(3); const over = ev.find((e) => e.type === 'over'); ok('a round ends on time and names a winner, with the next round announced', over && over.next > 0 && over.winner === 'a', JSON.stringify(over && { next: over.next, winner: over.winner }));
   run(7); const rd = ev.find((e) => e.type === 'round'); ok('the next round starts by itself on the same map', !!rd && rd.round === 2 && !ended && st.map === 'cove', `round ${rd && rd.round}, ended ${ended}, map ${st && st.map}`);
   ok('...with everyone back to zero tags and full health', st.ps.every((p) => p.k === 0 && p.hp === 100)); }
+// stepping away keeps your tags; while away nobody can hit you; back respawns you in the same match
+{ let w = world(); w.put('a', 10, 0, 28); w.put('b', 12, 0, 28); w.tick(); for (let i = 0; i < 5; i++) { w.game.onInput('a', { type: 'fire', w: 0, hits: [{ id: 'b', n: 1, h: 0 }] }); w.tick(8); }
+  const k0 = w.me('a').k; w.tick(90); w.game.onInput('a', { type: 'away', on: 1 }); w.tick();
+  w.put('b', 12, 0, 28); w.tick(); for (let i = 0; i < 5; i++) { w.game.onInput('b', { type: 'fire', w: 0, hits: [{ id: 'a', n: 1, h: 0 }] }); w.tick(8); }
+  ok('an away player keeps their tags and cannot be hit', w.me('a').aw === 1 && w.me('a').k === k0 && k0 === 1 && w.me('a').hp === 100, `k=${w.me('a').k} hp=${w.me('a').hp}`);
+  w.game.onInput('a', { type: 'fire', w: 0, hits: [{ id: 'b', n: 1, h: 0 }] }); w.tick(); ok('...and cannot shoot while away', w.me('b').hp === 100);
+  w.game.onInput('a', { type: 'away', on: 0 }); w.tick(); ok('back from away: same match, tags kept, fresh spawn', !w.me('a').aw && w.me('a').k === 1 && w.me('a').hp === 100); }
 console.log(bad ? `${bad} PROBLEMS` : 'blasters rules ok'); process.exit(bad ? 1 : 0);

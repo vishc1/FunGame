@@ -91,17 +91,17 @@ const WEAPONS = [
   { id: 'star', name: 'Star', color: '#ffd84d', w: 3, fire(g, k) { k.star = 6; k.weaponLock = 0; } },
   { id: 'boo', name: 'Boo ghost', color: '#e8e8ff', w: 4, fire(g, k) {
     k.ghost = 5;
-    const victims = [...g.karts.values()].filter((o) => o !== k && !o.dead && o.weapon);
+    const victims = [...g.karts.values()].filter((o) => o !== k && !o.dead && !o.away && o.weapon);
     if (victims.length) { const v = victims[Math.floor(Math.random() * victims.length)]; k.stolen = v.weapon; v.weapon = null; g.api.emit('g:event', { type: 'steal', id: k.id, from: v.id, weapon: k.stolen }); }
   } },
   { id: 'bolt', name: 'Lightning', color: '#fff27a', w: 3, fire(g, k) {
     g.api.emit('g:event', { type: 'bolt', id: k.id });
-    for (const o of g.karts.values()) { if (o === k || o.dead || o.star > 0 || o.ghost > 0) continue; o.small = 6; o.spin = Math.max(o.spin, 0.6); if (o.weapon && Math.random() < 0.7) o.weapon = null; }
+    for (const o of g.karts.values()) { if (o === k || o.dead || o.away || o.star > 0 || o.ghost > 0) continue; o.small = 6; o.spin = Math.max(o.spin, 0.6); if (o.weapon && Math.random() < 0.7) o.weapon = null; }
   } },
   { id: 'bill', name: 'Bullet Bill', color: '#333', w: 3, fire(g, k) { k.bill = 3; k.inv = Math.max(k.inv, 3); g.api.emit('g:event', { type: 'bill', id: k.id }); } },
   // the one item you aim: hold SPACE to charge the throw (the client shows the arc), release to lob it. charge 0..1 sets the distance.
   { id: 'pie', name: 'Cream pie', color: '#fff1d6', w: 7, hold: true, fire(g, k, charge = 1) { const c = clamp(charge, 0, 1), dist = 140 + 460 * c, t = 0.55 + 0.5 * c; shoot(g, k, 'pie', dist / t, { life: t + 1, fly: t, flyT: t, peak: 40 + 45 * c, r: 10, name: 'Cream pie' }); } },
-  { id: 'ink', name: 'Blooper', color: '#2b2b6b', w: 5, fire(g, k) { for (const o of g.karts.values()) if (o !== k && !o.dead && o.star <= 0) o.ink = 5; g.api.emit('g:event', { type: 'ink', id: k.id }); } },
+  { id: 'ink', name: 'Blooper', color: '#2b2b6b', w: 5, fire(g, k) { for (const o of g.karts.values()) if (o !== k && !o.dead && !o.away && o.star <= 0) o.ink = 5; g.api.emit('g:event', { type: 'ink', id: k.id }); } },
 ];
 const WEIGHT_SUM = WEAPONS.reduce((a, w) => a + (w.w || 5), 0);
 // Items that hit everyone at once are held back for the first 20 seconds, so nobody is inked and shrunk the moment a match starts.
@@ -129,7 +129,7 @@ const KINDS = {
   red: {
     update(e, g, dt) {
       let best = null, bd = 1e9;
-      for (const k of g.karts.values()) { if (k.dead || k.air || k.id === e.owner) continue; const d = Math.hypot(k.x - e.x, k.y - e.y); if (d < bd) { bd = d; best = k; } }
+      for (const k of g.karts.values()) { if (k.dead || k.away || k.air || k.id === e.owner) continue; const d = Math.hypot(k.x - e.x, k.y - e.y); if (d < bd) { bd = d; best = k; } }
       if (best) { const want = Math.atan2(best.y - e.y, best.x - e.x); let da = ((want - e.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; e.a += clamp(da, -4 * dt, 4 * dt); }
       e.vx = Math.cos(e.a) * 380; e.vy = Math.sin(e.a) * 380; e.x += e.vx * dt; e.y += e.vy * dt;
       if (g.wallHit(e, e.r, 1)) { e.bounces = (e.bounces || 0) + 1; e.a = Math.atan2(e.vy, e.vx); if (e.bounces > 2) return false; }
@@ -174,7 +174,7 @@ const KINDS = {
     update(e, g, dt) {
       if (!e.target || !g.karts.has(e.target) || g.karts.get(e.target).dead) {
         let best = null, bk = -Infinity, bd = 1e9;
-        for (const k of g.karts.values()) { if (k.dead || k.id === e.owner) continue; const d = Math.hypot(k.x - e.x, k.y - e.y); if (k.kills > bk || (k.kills === bk && d < bd)) { bk = k.kills; bd = d; best = k; } }
+        for (const k of g.karts.values()) { if (k.dead || k.away || k.id === e.owner) continue; const d = Math.hypot(k.x - e.x, k.y - e.y); if (k.kills > bk || (k.kills === bk && d < bd)) { bk = k.kills; bd = d; best = k; } }
         e.target = best ? best.id : null;
       }
       const tk = e.target ? g.karts.get(e.target) : null;
@@ -264,7 +264,7 @@ module.exports = {
     // Keeps a kart on the ground it can reach after it moved from (px, py). Returns true when it ran into a deck or ramp side.
     function terrain(k, px, py, dt, rest) {
       if (surf(px, py) - k.el > STEP) { k.el = surf(k.x, k.y); return false; } // shoved inside a deck by a collision: pop up onto it
-      const mx = k.x - px, my = k.y - py, ml = Math.hypot(mx, my) || 1, lx = (mx / ml) * R * 0.75, ly = (my / ml) * R * 0.75;
+      const mx = k.x - px, my = k.y - py, ml = Math.hypot(mx, my) || 1, lx = (mx / ml) * R, ly = (my / ml) * R; /* the kart's front edge, so its nose stops at a ramp side instead of sinking in */
       const wall = (x, y, ox, oy) => { const d = Math.hypot(x - px, y - py), rise = surf(x, y) - k.el, rise2 = surf(x + ox, y + oy) - k.el; return (rise > STEP && rise > d * GRADE) || (rise2 > STEP && rise2 > (d + Math.hypot(ox, oy)) * GRADE); };
       let hit = false;
       if (wall(k.x, k.y, lx, ly)) {
@@ -311,7 +311,7 @@ module.exports = {
       spawn(e) { e.age = 0; e.id = ++eid; if (e.life == null) e.life = 10; if (e.el == null) { const o = karts.get(e.owner); e.el = o ? o.el : surf(e.x, e.y); } ents.push(e); },
       behind(k, d) { return { x: k.x - Math.cos(k.a) * d, y: k.y - Math.sin(k.a) * d }; },
       damage(k, amt, by, weapon) {
-        if (k.dead || k.pitFall || k.inv > 0 || k.star > 0 || k.bill > 0 || k.ghost > 0) return;
+        if (k.dead || k.away || k.pitFall || k.inv > 0 || k.star > 0 || k.bill > 0 || k.ghost > 0) return;
         if (k.egg > 0) { amt = Math.max(2, amt * 2); k.egg = 0; }
         k.hp -= amt;
         if (k.hp <= 0.001) {
@@ -339,7 +339,11 @@ module.exports = {
       onLeave(pid) { karts.delete(pid); if (!over && karts.size < 2) finish(); }, // nobody left to fight: end instead of leaving one kart alone
       onInput(pid, msg) {
         const k = karts.get(pid); if (!k || over) return;
+        if (k.away && msg.type !== 'away') return;
         if (msg.type === 'ctl') k.ctl = { up: !!msg.up, down: !!msg.down, left: !!msg.left, right: !!msg.right };
+        else if (msg.type === 'away') { // stepped away (Esc): parked out of the arena, kills kept, back with a fresh spawn
+          const on = !!msg.on; if (on === !!k.away) return; k.away = on; k.ctl = {}; if (on) { k.x = -5000; k.y = -5000; k.air = 0; k.bill = 0; } /* parked far outside, so nothing in the arena can reach them */ if (!on) { const sp = spawnPoint(); Object.assign(k, { x: sp[0], y: sp[1], el: surf(sp[0], sp[1]), vx: 0, vy: 0, air: 0, inv: 2 }); } api.emit('g:event', { type: 'away', id: pid, on: on ? 1 : 0 });
+        }
         else if (msg.type === 'tp') { // test rooms only (a room with bots): place your kart somewhere, for screenshots and checks
           if (api.room && api.room.bots && api.room.bots.size && !k.dead && [msg.x, msg.y, msg.a].every(Number.isFinite)) { k.x = clamp(msg.x, M + R, W - M - R); k.y = clamp(msg.y, M + R, H - M - R); k.a = msg.a; k.el = surf(k.x, k.y); k.falling = false; k.vx = k.vy = 0; k.air = 0; k.spin = 0; k.inv = Math.max(k.inv, 4); }
         }
@@ -359,6 +363,7 @@ module.exports = {
         for (const k of karts.values()) {
           for (const f of ['egg', 'spin', 'mush', 'inv', 'padCd', 'ramCd', 'star', 'small', 'ink', 'pie', 'boost', 'hitCd', 'tpCd', 'hazCd']) if (k[f] > 0) k[f] = Math.max(0, k[f] - dt);
           if (k.ghost > 0) { k.ghost = Math.max(0, k.ghost - dt); if (k.ghost <= 0 && k.stolen) { if (!k.weapon) k.weapon = k.stolen; k.stolen = null; } }
+          if (k.away) continue; // stepped away: parked until they come back
           if (k.dead > 0) { k.dead -= dt; if (k.dead <= 0) { const s = spawnPoint(); Object.assign(k, { dead: 0, pitFall: false, pitOut: false, x: s[0], y: s[1], el: surf(s[0],s[1]), falling: false, vx: 0, vy: 0, hp: 3, egg: 0, air: 0, spin: 0, inv: 2, a: Math.atan2(CY - s[1], CX - s[0]) }); } continue; }
           if (k.pitFall) {
             k.el -= 240 * dt;
@@ -371,7 +376,18 @@ module.exports = {
             continue;
           }
           if (k.air > 0) {
-            k.air -= dt; k.x += k.avx * dt; k.y += k.avy * dt; k.x = clamp(k.x, M + R, W - M - R); k.y = clamp(k.y, M + R, H - M - R);
+            const ax0 = k.x, ay0 = k.y; k.air -= dt; k.x += k.avx * dt; k.y += k.avy * dt; k.x = clamp(k.x, M + R, W - M - R); k.y = clamp(k.y, M + R, H - M - R);
+            { /* a flying kart is solid too: it clears walls (33 high) and decks only while its arc is above them; otherwise it bumps off and drops beside them */
+              const arc = k.el + Math.sin((1 - Math.max(0, k.air) / 1.2) * Math.PI) * 75, OBH = 33;
+              const inObs = (x, y) => map.obstacles.find((o) => x > o.x - R && x < o.x + o.w + R && y > o.y - R && y < o.y + o.h + R);
+              const top = (x, y) => Math.max(surf(x, y), inObs(x, y) ? OBH : 0);
+              if (top(k.x, k.y) > arc + 2) {
+                k.x = ax0; k.y = ay0; k.avx = 0; k.avy = 0;
+                if (top(k.x, k.y) > arc + 2 && !inObs(k.x, k.y)) k.air = 0; /* came down onto the edge of a deck: land on it now rather than sinking into it */
+                const o = top(k.x, k.y) > arc + 2 && inObs(k.x, k.y); // already over it and now too low: slide off the nearest side
+                if (o) { const opts = [[o.x - R - 1, k.y], [o.x + o.w + R + 1, k.y], [k.x, o.y - R - 1], [k.x, o.y + o.h + R + 1]].filter(([x, y]) => x > M + R && x < W - M - R && y > M + R && y < H - M - R && top(x, y) <= arc + 2); opts.sort((p, q) => Math.hypot(p[0] - k.x, p[1] - k.y) - Math.hypot(q[0] - k.x, q[1] - k.y)); if (opts[0]) { k.x = opts[0][0]; k.y = opts[0][1]; } }
+              }
+            }
             if (k.air <= 0) {
               k.air = 0; k.padCd = 0.8; k.el = Math.max(0,surf(k.x, k.y)); k.falling = false; // a pit landing begins a fall, not a teleport to its bottom
               for (const o of [...karts.values()]) if (o !== k && !o.dead && !o.air && Math.abs(o.el - k.el) < 30 && Math.hypot(o.x - k.x, o.y - k.y) < 70) g.damage(o, 1, k.id, 'Launch pad');
@@ -398,7 +414,7 @@ module.exports = {
         for(const k of karts.values()) if(!k.dead&&!k.air&&!k.pitFall&&k.el<=0&&MAPS.isPit(map,k.x,k.y)) {
           k.pitFall=true; k.vx=k.vy=0; k.inv=0;
         }
-        const live = [...karts.values()].filter((k) => !k.dead && !k.pitFall && !k.air && !k.ghost && !k.bill);
+        const live = [...karts.values()].filter((k) => !k.dead && !k.away && !k.pitFall && !k.air && !k.ghost && !k.bill);
         for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
           const a = live[i], b = live[j];
           if (Math.abs(a.el - b.el) < 22 && circleHit(a, b, R, R, 0.5)) { // karts on different levels pass over each other
@@ -459,7 +475,7 @@ module.exports = {
         t: Math.ceil(t),
         mapId: map.id,
         haz: movers.length ? movers.map((m) => [Math.round(m.x), Math.round(m.y)]) : undefined, // live positions of the map's moving hazards
-        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1) })),
+        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1), aw: k.away ? 1 : undefined })),
         ents: ents.filter((e) => e.kind !== 'burst' && e.kind !== 'gunfire').map((e) => ({ id: e.id, k: e.kind, x: Math.round(e.x), y: Math.round(e.y), el: Math.round(e.el || 0), z: Math.round(e.z || 0), a: +(e.a || 0).toFixed(2), o: e.owner, f: +e.life.toFixed(1) })),
         boxes: boxes.map((b) => (b.t > 0 ? 0 : 1)),
       };

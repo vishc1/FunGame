@@ -65,7 +65,7 @@ module.exports = {
       return had;
     }
     function hurt(v, amount, byId, weapon, head, from) {
-      if (v.dead || v.prot > 0 || over) return 0;
+      if (v.dead || v.away || v.prot > 0 || over) return 0;
       const by = players.get(byId);
       if (TEAMS && by && by !== v && by.team === v.team) return 0; // no friendly fire
       if (by && by !== v && by.power === 'shadow') amount = 999; // Shadow Ninja: one-tap
@@ -147,9 +147,12 @@ module.exports = {
       onLeave(pid) { players.delete(pid); if (!over && players.size < 2) finish(); },
       onInput(pid, m) {
         const p = players.get(pid); if (!p || over) return;
+        if (p.away && m.type !== 'away' && m.type !== 'hello') return;
         if (m.type === 'p') {
           if (p.dead || !fin(m.x) || !fin(m.y) || !fin(m.z) || !fin(m.yaw) || !fin(m.pitch)) return;
           const lim = MAP.size - P.R; p.x = Math.max(-lim, Math.min(lim, m.x)); p.z = Math.max(-lim, Math.min(lim, m.z)); p.y = Math.max(0, Math.min(40, m.y)); p.yaw = m.yaw; p.pitch = Math.max(-1.55, Math.min(1.55, m.pitch)); p.cr = m.cr ? 1 : 0;
+        } else if (m.type === 'away') { // stepped away (Esc): out of the world but still in the match, with every tag and point kept
+          const on = !!m.on; if (on === !!p.away) return; p.away = on; if (on) { p.power = null; p.powerT = 0; p.reloadT = 0; api.emit('g:event', { type: 'away', id: pid, on: 1 }); } else { spawn(p); api.emit('g:event', { type: 'away', id: pid, on: 0 }); }
         } else if (m.type === 'hello') { if (fin(m.lvl)) p.lvl = Math.max(1, Math.min(99, m.lvl | 0)); if (fin(m.ch)) p.ch = Math.abs(m.ch | 0) % 8; if (fin(m.sk)) p.sk = Math.abs(m.sk | 0) % 16;
           if (fin(m.lo) && LOADOUT.includes(m.lo | 0)) { p.lo = m.lo | 0; if (!p.dead && t - p.bornT < 4) starter(p); } } // a loadout chosen in the first seconds of a life applies right away
         else if (m.type === 'switch') { const w = m.w | 0; if (!p.dead && w >= 0 && w < WEAPONS.length && p.own[w] && w !== p.w) { p.w = w; p.reloadT = 0; p.nextFire = Math.max(p.nextFire, t + 0.3); } }
@@ -194,6 +197,7 @@ module.exports = {
         if (over) return;
         t += dt; left -= dt; if (left <= 0) { left = 0; finish(); return; }
         for (const p of players.values()) {
+          if (p.away) continue; // stepped away: nothing happens to them until they come back
           if (p.dead > 0) { p.dead -= dt; if (p.dead <= 0) spawn(p); continue; }
           if (p.prot > 0) p.prot -= dt;
           if (p.powerT > 0) { p.powerT -= dt; if (p.powerT <= 0) { p.power = null; api.to(p.id, 'g:event', { type: 'powerend' }); } }
@@ -207,7 +211,7 @@ module.exports = {
             if (k.t > 0) { const before = k.t; k.t -= dt; if (before > POWER_WARN && k.t <= POWER_WARN) { k.kind = B.rollPower(); api.emit('g:event', { type: 'powersoon', kind: k.kind }); } if (k.t <= 0 && !k.kind) k.kind = B.rollPower(); continue; }
           } else if (k.t > 0) { k.t -= dt; continue; }
           for (const p of players.values()) {
-            if (p.dead || Math.hypot(p.x - d.x, p.z - d.z) > 1.35 || Math.abs(p.y - d.y) > 1.5) continue;
+            if (p.dead || p.away || Math.hypot(p.x - d.x, p.z - d.z) > 1.35 || Math.abs(p.y - d.y) > 1.5) continue;
             if (d.kind === 'health') { if (p.hp >= 100) continue; p.hp = Math.min(100, p.hp + 30); }
             else if (d.kind === 'mega') { if (p.hp >= 150) continue; p.hp = Math.min(150, p.hp + 100); }
             else if (d.kind === 'armor') { if (p.armor >= 100) continue; p.armor = Math.min(100, p.armor + 50); }
@@ -226,7 +230,7 @@ module.exports = {
           train.x += train.dir * TR.speed * dt; // x is the nose; the body trails behind it
           const a = Math.min(train.x, train.x - train.dir * TR.len), b = Math.max(train.x, train.x - train.dir * TR.len);
           for (const p of [...players.values()]) {
-            if (p.dead || train.hit.has(p.id) || p.y > TR.h || Math.abs(p.z - TR.z) > TR.half + P.R || p.x < a - P.R || p.x > b + P.R) continue;
+            if (p.dead || p.away || train.hit.has(p.id) || p.y > TR.h || Math.abs(p.z - TR.z) > TR.half + P.R || p.x < a - P.R || p.x > b + P.R) continue;
             train.hit.add(p.id); api.to(p.id, 'g:event', { type: 'trainhit', dir: train.dir });
             hurt(p, TR.dmg, null, 'Toy Train', false, { x: p.x - train.dir * 3, z: p.z }); if (over) return;
           }
@@ -235,21 +239,21 @@ module.exports = {
         // dropped weapons
         for (let i = drops.length - 1; i >= 0; i--) {
           const dr = drops[i]; dr.t -= dt; dr.age = (dr.age || 0) + dt; let taken = dr.t <= 0;
-          if (!taken && dr.age > 0.6) for (const p of players.values()) if (!p.dead && !(dr.by === p.id && dr.age < dr.hold) && Math.hypot(p.x - dr.x, p.z - dr.z) < 1.3 && Math.abs(p.y - dr.y) < 1.5) { takeDrop(p, dr); api.emit('g:event', { type: 'pickup', id: p.id, kind: 'weapon', w: dr.w, drop: 1 }); taken = true; break; }
+          if (!taken && dr.age > 0.6) for (const p of players.values()) if (!p.dead && !p.away && !(dr.by === p.id && dr.age < dr.hold) && Math.hypot(p.x - dr.x, p.z - dr.z) < 1.3 && Math.abs(p.y - dr.y) < 1.5) { takeDrop(p, dr); api.emit('g:event', { type: 'pickup', id: p.id, kind: 'weapon', w: dr.w, drop: 1 }); taken = true; break; }
           if (taken) drops.splice(i, 1);
         }
         // rockets
         for (let i = rockets.length - 1; i >= 0; i--) {
           const rk = rockets[i]; rk.age += dt; rk.life -= dt; if (rk.g) rk.vy -= rk.g * dt; const sp = Math.hypot(rk.vx, rk.vy, rk.vz) || 0.001, step = sp * dt, dx = rk.vx / sp, dy = rk.vy / sp, dz = rk.vz / sp;
           let hitT = B.rayMap(rk.x, rk.y, rk.z, dx, dy, dz, step, MAP), direct = null;
-          for (const v of players.values()) { if (v.dead || (v.id === rk.o && rk.age < 0.25)) continue; const h = B.rayPlayer(rk.x, rk.y, rk.z, dx, dy, dz, v.x, v.y, v.z, Math.min(step, hitT), v.cr); if (h) { hitT = h.t; direct = v; } }
+          for (const v of players.values()) { if (v.dead || v.away || (v.id === rk.o && rk.age < 0.25)) continue; const h = B.rayPlayer(rk.x, rk.y, rk.z, dx, dy, dz, v.x, v.y, v.z, Math.min(step, hitT), v.cr); if (h) { hitT = h.t; direct = v; } }
           if (hitT !== Infinity || rk.life <= 0) { const tt = hitT === Infinity ? step : Math.max(0, hitT - 0.05); explode(rk.x + dx * tt, rk.y + dy * tt, rk.z + dz * tt, rk.o, direct, rk.w); rockets.splice(i, 1); if (over) return; continue; }
           rk.x += dx * step; rk.y += dy * step; rk.z += dz * step;
         }
         const pw = pick[0];
         api.emit('g:state', {
           t: Math.ceil(left), goal: TEAMS ? TEAM_GOAL : KILL_GOAL, map: MAP.id, tm: TEAMS ? 1 : 0, tk: TEAMS ? tk : undefined,
-          ps: [...players.values()].map((p) => ({ id: p.id, x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch), hp: Math.ceil(p.hp), ar: Math.round(p.armor), w: p.w, m: p.mag[p.w], r: p.res[p.w] === Infinity ? -1 : p.res[p.w], own: p.own.reduce((a, v, i) => a | (v ? 1 << i : 0), 0), rl: p.reloadT > 0 ? 1 : 0, dead: p.dead > 0 ? r2(p.dead) : 0, prot: p.prot > 0 ? 1 : 0, k: p.kills, d: p.deaths, sc: p.score, st: p.streak, pw: p.power || 0, pwt: p.powerT > 0 ? Math.ceil(p.powerT) : 0, lvl: p.lvl, ch: p.ch, sk: p.sk, cr: p.cr, tm: TEAMS ? p.team : undefined })),
+          ps: [...players.values()].map((p) => ({ id: p.id, x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch), hp: Math.ceil(p.hp), ar: Math.round(p.armor), w: p.w, m: p.mag[p.w], r: p.res[p.w] === Infinity ? -1 : p.res[p.w], own: p.own.reduce((a, v, i) => a | (v ? 1 << i : 0), 0), rl: p.reloadT > 0 ? 1 : 0, dead: p.dead > 0 ? r2(p.dead) : 0, prot: p.prot > 0 ? 1 : 0, k: p.kills, d: p.deaths, sc: p.score, st: p.streak, pw: p.power || 0, pwt: p.powerT > 0 ? Math.ceil(p.powerT) : 0, lvl: p.lvl, ch: p.ch, sk: p.sk, cr: p.cr, tm: TEAMS ? p.team : undefined, aw: p.away ? 1 : undefined })),
           pk: pick.map((k) => (k.t > 0 ? 0 : 1)), pw: { kind: pw.kind || 0, up: pw.t <= 0 ? 1 : 0, in: Math.max(0, Math.ceil(pw.t)) },
           dr: drops.map((d) => ({ id: d.id, w: d.w, x: r2(d.x), y: r2(d.y), z: r2(d.z) })), rk: rockets.map((k) => ({ id: k.id, w: k.w, x: r2(k.x), y: r2(k.y), z: r2(k.z) })),
           tr: train.x === null ? null : [r2(train.x), train.dir],

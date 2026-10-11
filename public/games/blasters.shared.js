@@ -295,8 +295,9 @@
     // horizontal moves with step-up. A ramp surface more than one step above your feet is a wall (its sides and high end).
     for (const axis of ['x', 'z']) {
       const d = (axis === 'x' ? p.vx : p.vz) * dt; if (!d) continue;
-      const nx = axis === 'x' ? p.x + d : p.x, nz = axis === 'z' ? p.z + d : p.z, rh = rampAt(nx, nz, map);
-      if (rh > p.y + P.STEP) { if (axis === 'x') p.vx = 0; else p.vz = 0; continue; }
+      const nx = axis === 'x' ? p.x + d : p.x, nz = axis === 'z' ? p.z + d : p.z, rh = rampAt(nx, nz, map), lead = Math.sign(d) * P.R;
+      const rhEdge = rampAt(axis === 'x' ? nx + lead : nx, axis === 'z' ? nz + lead : nz, map); /* the body's leading edge, not just its centre: otherwise you sink 0.38 m into a ramp's side and see through it */
+      if (rh > p.y + P.STEP || rhEdge > p.y + P.STEP) { if (axis === 'x') p.vx = 0; else p.vz = 0; continue; }
       const hit = overlap(nx, p.y, nz, map);
       if (!hit) { p.x = nx; p.z = nz; if (rh > p.y) p.y = rh; continue; }
       const rise = hit.top - p.y;
