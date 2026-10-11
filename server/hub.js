@@ -8,6 +8,7 @@ const KART_MAPS = require('../public/memekarts-maps');
 const BL_MAPS = require('../public/games/blasters.shared').MAPS;
 
 // opts: games (array of game modules), randomHex(nBytes), graceMs (seat hold after a disconnect), trustClientCode
+const ROOM_MAX = 16; // a party: the two main games take 16; the smaller party games still stop at 8 when you press Start
 module.exports = function attachHub(io, opts) {
   const randomHex = opts.randomHex;
   // ---- game registry -------------------------------------------------------
@@ -106,7 +107,7 @@ module.exports = function attachHub(io, opts) {
       this.broadcast();
     }
     addBot() {
-      if (this.players.size >= 8) return;
+      if (this.players.size >= ROOM_MAX) return;
       let n = 1; while ([...this.players.values()].some((p) => p.name === 'Bot ' + n)) n++;
       const id = 'bot:' + this.code + ':' + n + ':' + Math.random().toString(36).slice(2, 6);
       this.players.set(id, { id, name: 'Bot ' + n, color: this.freeColor(), score: 0, connected: true, bot: true });
@@ -216,7 +217,8 @@ module.exports = function attachHub(io, opts) {
       if (roomOf()) return cb && cb({ error: 'Already in a room' });
       const room = rooms.get(String(code || '').toUpperCase().trim());
       if (!room) return cb && cb({ error: 'No room with that code' });
-      if (room.players.size >= 8) return cb && cb({ error: 'Room is full (8 max)' });
+      if (room.players.size >= ROOM_MAX) { const bot = [...room.players.values()].find((q) => q.bot); if (bot) room.removePlayer(bot.id); } /* bots are placeholders: a friend who joins takes a bot's seat */
+      if (room.players.size >= ROOM_MAX) return cb && cb({ error: `Room is full (${ROOM_MAX} max)` });
       const p = room.addPlayer(socket, String(name || ''));
       cb && cb({ ok: true, code: room.code, id: p.id, key: p.key });
     });
@@ -259,6 +261,7 @@ module.exports = function attachHub(io, opts) {
       if (!room || room.hostId !== socket.data.pid || room.phase === 'playing') return;
       const def = GAMES[room.gameId];
       if (room.players.size < (def.min || 2)) return socket.emit('toast', `${def.name} needs at least ${def.min || 2} players`);
+      if (room.players.size > (def.max || 8)) return socket.emit('toast', `${def.name} fits ${def.max || 8} players; this room has ${room.players.size}. Pick Meme Karts or Toy Box Blasters, or remove some bots.`);
       room.startGame();
     });
 
@@ -283,7 +286,7 @@ module.exports = function attachHub(io, opts) {
     on('bots', ({ op, n }) => {
       const room = roomOf();
       if (!room || room.hostId !== socket.data.pid || room.phase === 'playing') return;
-      if (op === 'add') for (let i = 0; i < Math.max(1, Math.min(7, n | 0 || 1)); i++) room.addBot();
+      if (op === 'add') for (let i = 0; i < Math.max(1, Math.min(ROOM_MAX - 1, n | 0 || 1)); i++) room.addBot();
       else if (op === 'clear') room.removeBots();
     });
 

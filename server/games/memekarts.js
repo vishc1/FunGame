@@ -269,7 +269,7 @@ module.exports = {
   id: 'memekarts',
   name: 'Meme Karts',
   tagline: '3D kart battle on big maps with raised decks, ramps, portals and hazards. 18 items.',
-  min: 2, max: 8,
+  min: 2, max: 16,
   controls: 'WASD / arrows to drive. Drive through ? boxes. Space or click uses your item. H shows what every item does. Hold C to look behind. M mutes sound.',
   create(api) {
     const map = MAPS.find(m => m.id === api.memory.memekartsMap) || MAPS[0];
@@ -319,7 +319,10 @@ module.exports = {
     function spawnPoint() {
       const ranked = SPAWNS.map((s) => { let d = 1e9; for (const k of karts.values()) if (!k.dead) d = Math.min(d, Math.hypot(k.x - s[0], k.y - s[1])); return { s, d }; }).sort((a, b) => b.d - a.d);
       const pool = ranked.filter((r, i) => (i < 3 && (r.d > 120 || i === 0)) || r.d === ranked[0].d); // all tie when nobody else is in yet: any spot then
-      return pool[Math.floor(Math.random() * pool.length)].s;
+      const s0 = pool[Math.floor(Math.random() * pool.length)].s; /* with more karts than spawn points, step out to a free spot near it */
+      const freeAt = (x, y) => x > M + R && y > M + R && x < W - M - R && y < H - M - R && surf(x, y) === 0 && !map.obstacles.some((o) => x > o.x - R - 6 && x < o.x + o.w + R + 6 && y > o.y - R - 6 && y < o.y + o.h + R + 6) && [...karts.values()].every((k) => k.dead || Math.hypot(k.x - x, k.y - y) > R * 2 + 14);
+      for (const r of [0, 60, 110]) for (let i = 0; i < (r ? 8 : 1); i++) { const a = (i / 8) * Math.PI * 2, x = s0[0] + Math.cos(a) * r, y = s0[1] + Math.sin(a) * r; if (freeAt(x, y)) return [x, y]; }
+      return s0;
     }
     function addKart(id) {
       const s = spawnPoint();

@@ -27,9 +27,9 @@ const check = (name, ok, extra = '') => { ok ? pass++ : fail++; console.log(`${o
   check('non-host cannot pick or start', host.room.phase === 'lobby' && host.room.gameId !== 'sumo' || host.room.phase === 'lobby');
   host.emit('pick', { gameId: 'nope' }); await sleep(100); check('unknown game id ignored', host.room.gameId !== 'nope');
 
-  // room cap: fill to 8, the 9th is refused
-  const extra = []; for (let i = 0; i < 5; i++) { const c = await mk(); extra.push(c); await ask(c, 'join', { name: 'E' + i, code: made.code }); }
-  const ninth = await mk(); check('9th player refused (8 max)', !!(await ask(ninth, 'join', { name: 'Nine', code: made.code })).error);
+  // room cap: fill to 16, the 17th is refused
+  const extra = []; for (let i = 0; i < 13; i++) { const c = await mk(); extra.push(c); await ask(c, 'join', { name: 'E' + i, code: made.code }); }
+  const ninth = await mk(); check('17th player refused (16 max)', !!(await ask(ninth, 'join', { name: 'Nine', code: made.code })).error);
   for (const c of extra) c.disconnect(); ninth.disconnect(); await sleep(GRACE);
   check('room shrinks back to 3 after disconnects', host.room.players.length === 3);
 
@@ -40,7 +40,7 @@ const check = (name, ok, extra = '') => { ok ? pass++ : fail++; console.log(`${o
 
   // bots
   host.emit('bots', { op: 'add', n: 99 }); await sleep(150);
-  check('bots fill to the cap of 8', host.room.players.length === 8 && host.room.players.filter((p) => p.bot).length === 7);
+  check('bots fill to the cap of 16', host.room.players.length === 16 && host.room.players.filter((p) => p.bot).length === 15);
   host.emit('bots', { op: 'clear' }); await sleep(150); check('bots cleared', host.room.players.length === 1);
   host.emit('bots', { op: 'add', n: 3 }); await sleep(150);
 

@@ -19,7 +19,7 @@ module.exports = {
   id: 'blasters',
   name: 'Toy Box Blasters',
   tagline: 'First-person foam-dart arena. Nine blasters including a cannon, a foam sword, loadouts, crouch, slide and aim.',
-  min: 2, max: 12, // 12 so a party can split into two teams of six
+  min: 2, max: 16, // 16 so a party can split into two teams of eight
   controls: 'Click the game to capture the mouse. WASD move, Space jump (twice), Shift dash, C crouch (tap while running to slide), click fire, right-click aim, E sword, Q or G drop blaster, R reload, 1-9 or wheel switch, Tab scores, H guide, L locker and settings.',
   create(api) {
     const MAP = B.mapById(api.memory.blastersMap) || B.MAP; // picked in the lobby; everything below is per-map
@@ -47,7 +47,8 @@ module.exports = {
       const side = TEAMS ? MAP.spawns.filter((s) => (p.team === 0 ? s.z < 0 : s.z > 0)) : []; // Red spawns north, Blue south
       // a random one of the three spawns farthest from everyone else: never the same corner every match, never on top of someone
       const ranked = (side.length ? side : MAP.spawns).map((s) => { let d = 1e9; for (const o of players.values()) if (o !== p && !o.dead) d = Math.min(d, Math.hypot(o.x - s.x, o.z - s.z)); return { s, d }; }).sort((a, b) => b.d - a.d);
-      const pool = ranked.filter((r, i) => (i < 3 && (r.d > 8 || i === 0)) || r.d === ranked[0].d); best = pool[Math.floor(Math.random() * pool.length)].s; bd = 0; // all tie when nobody else is in yet: any spot then
+      const pool = ranked.filter((r, i) => (i < 3 && (r.d > 8 || i === 0)) || r.d === ranked[0].d); best = pool[Math.floor(Math.random() * pool.length)].s; bd = 0;
+      { const taken = (x, z) => [...players.values()].some((o) => o !== p && !o.dead && Math.hypot(o.x - x, o.z - z) < 1.6); if (taken(best.x, best.z)) for (const r of [2.5, 4.5]) { let found = false; for (let i = 0; i < 8 && !found; i++) { const a = (i / 8) * Math.PI * 2, x = best.x + Math.cos(a) * r, z = best.z + Math.sin(a) * r; if (Math.abs(x) < MAP.size - 1 && Math.abs(z) < MAP.size - 1 && !B.overlap(x, 0.01, z, MAP) && B.rampAt(x, z, MAP) < 0 && !taken(x, z)) { best = { x, z, yaw: best.yaw }; found = true; } } if (found) break; } } /* more players than spawn points: step to a free spot nearby */ // all tie when nobody else is in yet: any spot then
       Object.assign(p, { x: best.x, y: 0, z: best.z, yaw: best.yaw, pitch: 0, hp: 100, armor: 0, w: 0, own: NONE(), mag: WEAPONS.map((w) => w.mag), res: WEAPONS.map((w) => w.reserve), dead: 0, prot: 2.5, power: null, powerT: 0, reloadT: 0, nextFire: 0, streak: 0 });
       p.hurtBy.clear(); p.bornT = t; starter(p);
       api.emit('g:event', { type: 'spawn', id: p.id, x: p.x, y: p.y, z: p.z, yaw: r2(p.yaw) });

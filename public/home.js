@@ -5,14 +5,14 @@
   const COPY = {
     memekarts: {
       eyebrow: 'YOUR FRIENDS. YOUR RIVALS.', title: 'MEME<br><span>KARTS</span><i>✦</i>', desc: "Small karts. Big chaos.<br>Grab a ridiculous weapon. Ruin a friend's lap.",
-      label: 'YOUR DRIVER NAME', meta: `2–8 drivers <span>•</span> ${window.MEMEKARTS_MAPS.length} arenas <span>•</span> Absolutely no brakes*`,
+      label: 'YOUR DRIVER NAME', meta: `2–16 drivers <span>•</span> ${window.MEMEKARTS_MAPS.length} arenas <span>•</span> Absolutely no brakes*`,
       badge: '<span>MEET YOUR NEW BAD IDEA</span><b>The rocket sled.</b><small>One of eight ridiculous rides.</small>', sticker: 'READY.<br>SET.<br>CHAOS.',
       how: '<b>THE RULES ARE SIMPLE.</b><span><kbd>W A S D</kbd> Drive</span><span><kbd>?</kbd> Grab an item</span><span><kbd>SPACE</kbd> Make it personal</span><small>* Okay, S reverses.</small>',
       foot: 'MEME KARTS', explore: ['#arenas', 'Explore arenas ↗'],
     },
     blasters: {
       eyebrow: 'SMALL TOYS. BIG GRUDGES.', title: 'TOY BOX<br><span>BLASTERS</span><i>✦</i>', desc: 'Foam darts. First person. No mercy.<br>Find a better blaster. Tag everyone you know.',
-      label: 'YOUR NAME', meta: '2–8 players <span>•</span> first to 20 tags <span>•</span> Nobody gets hurt*',
+      label: 'YOUR NAME', meta: '2–16 players <span>•</span> first to 20 tags <span>•</span> Nobody gets hurt*',
       badge: '<span>PICK YOUR FIGURE</span><b>The wizard.</b><small>One of eight toys, in nine finishes.</small>', sticker: 'AIM.<br>TAG.<br>GLOAT.',
       how: '<b>THE RULES ARE SIMPLE.</b><span><kbd>W A S D</kbd> Move</span><span><kbd>MOUSE</kbd> Aim and fire</span><span><kbd>SPACE</kbd> Jump, twice</span><span><kbd>H</kbd> What everything does</span><small>* Except feelings.</small>',
       foot: 'TOY BOX BLASTERS', explore: ['#toybox', "What's in the box ↗"],

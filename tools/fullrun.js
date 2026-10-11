@@ -54,7 +54,7 @@ let fails = 0;
 for (const f of files) {
   const def = require('../server/games/' + f); if (only && def.id !== only) continue;
   const min = def.min || 2;
-  const scenarios = [[`${min}p`, min, {}], ['4p', 4, {}], ['8p', 8, {}], ['4p +junk input', 4, { garbage: true }], ['5p, 2 leave', 5, { leave: [8, 20] }], ['3p, 1 joins', Math.max(3, min), { join: 12 }], [`${min}p, 1 leaves`, min, { leave: [6] }], ['4p, 3 leave', 4, { leave: [8, 9, 10] }]];
+  const scenarios = [[`${min}p`, min, {}], ['4p', 4, {}], ['8p', 8, {}], ...((def.max || 8) >= 16 ? [['16p', 16, {}]] : []), ['4p +junk input', 4, { garbage: true }], ['5p, 2 leave', 5, { leave: [8, 20] }], ['3p, 1 joins', Math.max(3, min), { join: 12 }], [`${min}p, 1 leaves`, min, { leave: [6] }], ['4p, 3 leave', 4, { leave: [8, 9, 10] }]];
   for (const [label, n, opts] of scenarios) {
     const r = run(def, n, opts);
     if (r.fail) fails++;
