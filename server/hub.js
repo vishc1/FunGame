@@ -21,7 +21,7 @@ module.exports = function attachHub(io, opts) {
   });
 
   // ---- rooms ---------------------------------------------------------------
-  const COLORS = ['#ff5d5d', '#4da6ff', '#5ee07a', '#ffd84d', '#c77dff', '#ff9f43', '#2ee6d6', '#ff7ab6'];
+  const COLORS = ['#ff5d5d', '#4da6ff', '#5ee07a', '#ffd84d', '#c77dff', '#ff9f43', '#2ee6d6', '#ff7ab6', '#ffffff', '#8b5a2b', '#a3e635', '#1e40af', '#f472b6', '#14b8a6', '#facc15', '#7c3aed']; // 16, one per seat
   const rooms = new Map();
   const TICK_HZ = 30;
   // A player who disconnects (page refresh, wifi blip) keeps their seat for this long and can rejoin as the same player.
@@ -72,7 +72,9 @@ module.exports = function attachHub(io, opts) {
     addPlayer(socket, name) {
       // Player ids are stable and independent of the socket, so a refresh can reattach to the same player. `key` is the
       // secret that proves a rejoining socket is that player (ids are public, keys never leave the owner's browser).
-      const p = { id: 'u' + randomHex(6), key: randomHex(9), name: name.slice(0, 14) || 'Player', color: this.freeColor(), score: 0, connected: true };
+      let nm = String(name).trim().slice(0, 14) || 'Player'; const taken = new Set([...this.players.values()].map((q) => q.name.toLowerCase())); /* two friends with the same name get told apart: Sam, Sam 2 */
+      if (taken.has(nm.toLowerCase())) { let i = 2; while (taken.has(`${nm.slice(0, 11)} ${i}`.toLowerCase())) i++; nm = `${nm.slice(0, 11)} ${i}`; }
+      const p = { id: 'u' + randomHex(6), key: randomHex(9), name: nm, color: this.freeColor(), score: 0, connected: true };
       this.players.set(p.id, p);
       if (!this.hostId) this.hostId = p.id;
       this.attach(socket, p);

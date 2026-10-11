@@ -14,7 +14,7 @@
 
   window.createP2PSocket = function () {
     const handlers = {}, acks = new Map(), conns = new Map();
-    let mode = null, peer = null, worker = null, conn = null, ackSeq = 0, sidSeq = 0, lastHeard = 0, pingTimer = null, gen = 0;
+    let closed = false, mode = null, peer = null, worker = null, conn = null, ackSeq = 0, sidSeq = 0, lastHeard = 0, pingTimer = null, gen = 0;
     const fire = (ev, ...a) => { for (const fn of (handlers[ev] || []).slice()) { try { fn(...a); } catch (e) { console.error(e); } } };
     const sock = {
       connected: false, p2p: true, get hosting() { return mode === 'host'; },
@@ -25,6 +25,7 @@
         if (ev === 'create') return void startHost(data || {}, cb || (() => {}));
         if (ev === 'join' || ev === 'rejoin') return void startGuest(ev, data || {}, cb || (() => {}));
         if (mode === 'host') toWorker(ev, data, cb); else if (mode === 'guest') toHost(ev, data, cb); else if (cb) cb({ error: 'Not connected' });
+        if (ev === 'leave' && mode === 'host') { setTimeout(() => { sayBye(); setTimeout(() => teardown(), 250); }, 120); return; } /* the room lives in this tab: tell everyone it closed, after the last room update */
         if (ev === 'leave' && mode) setTimeout(() => teardown(), 200); // let the goodbye go out first
       },
       connect() {}, disconnect() { teardown(); }, close() { teardown(); },
@@ -34,11 +35,13 @@
       if (!Array.isArray(a)) return; const [ev, data] = a;
       if (ev === '__ack') { const cb = acks.get(data[0]); if (cb) { acks.delete(data[0]); cb(data[1]); } return; }
       if (ev === '__pong') return;
+      if (ev === 'room-closed') { closed = true; }
       fire(ev, data);
     }
     const withAck = (cb) => { if (!cb) return undefined; const id = ++ackSeq; acks.set(id, cb); return id; };
     const toWorker = (ev, data, cb) => worker.postMessage({ t: 'msg', sid: 'local', s: [ev, data, withAck(cb)] });
     const toHost = (ev, data, cb) => { try { conn.send(JSON.stringify([ev, data, withAck(cb)])); } catch (e) { /* connection is closing */ } };
+    function sayBye() { const bye = JSON.stringify(['room-closed', { why: 'host-left' }]); for (const c of conns.values()) { try { if (c.open) c.send(bye); } catch (e) { /* closing */ } } }
     function teardown() {
       gen++; mode = null; sock.connected = false; clearInterval(pingTimer); pingTimer = null; acks.clear();
       if (worker) { worker.terminate(); worker = null; }
@@ -103,10 +106,11 @@
     // the host went quiet or the link dropped: tell the app, then let it try to take its seat back
     function lost(mine) {
       if (mine !== gen || mode !== 'guest') return;
+      if (closed) { closed = false; teardown(); return; } /* the host closed the room on purpose: nothing to reconnect to */
       teardown(); fire('disconnect', 'transport close');
       setTimeout(() => fire('connect'), 1500);
     }
-    window.addEventListener('pagehide', () => { if (peer) { try { peer.destroy(); } catch (e) { /* ignore */ } } }); // lets the others notice straight away
+    window.addEventListener('pagehide', () => { if (mode === 'host') sayBye(); if (peer) { try { peer.destroy(); } catch (e) { /* ignore */ } } }); // lets the others notice straight away
     setTimeout(() => fire('connect'), 0); // like a real socket: the app uses this to reclaim a saved seat after a refresh
     return sock;
   };

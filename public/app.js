@@ -71,7 +71,7 @@
   const loadSession = () => { try { return JSON.parse(sessionStorage.getItem(SESSION) || 'null'); } catch (e) { return null; } };
   const clearSession = () => { myId = null; try { sessionStorage.removeItem(SESSION); } catch (e) { /* ignore */ } };
   // create / join a room, remembering who we are
-  function enter(ev, data, then) { socket.emit(ev, data, (r) => { if (!r || r.error) return toast((r && r.error) || 'No response from the server'); myId = r.id; saveSession(r); then && then(r); }); }
+  function enter(ev, data, then) { closedCode = null; socket.emit(ev, data, (r) => { if (!r || r.error) return toast((r && r.error) || 'No response from the server'); myId = r.id; saveSession(r); then && then(r); }); }
   function goHome(msg) { clearSession(); room = null; stopGame(); show('home'); renderTestBox(); if (msg) toast(msg); }
 
   const nameEl = $('#name');
@@ -87,19 +87,20 @@
   if (qs.get('room')) $('#code').value = qs.get('room').toUpperCase();
   // An invite link goes straight into the party: no home page, no wrong buttons. With a saved name it joins on its own.
   const inviteCode = (qs.get('room') || '').toUpperCase().trim();
+  const dropRoomParam = () => { const u = new URL(location.href); u.searchParams.delete('room'); history.replaceState(null, '', u.pathname + u.search); }; /* keep any other settings in the address */
   function inviteJoin() {
     const n = $('#invName').value.trim(); if (!n) { $('#invName').focus(); return; } nameEl.value = n; localStorage.setItem('fg_name', n);
     $('#invGo').disabled = true; $('#invGo').textContent = 'Joining…'; $('#invMsg').textContent = 'Connecting to your friend…';
     socket.emit('join', { name: n, code: inviteCode }, (r) => {
       $('#invGo').disabled = false; $('#invGo').textContent = 'Join the party';
       if (!r || r.error) { $('#invMsg').textContent = ((r && r.error) || 'No answer from the room') + '. Ask your friend for a fresh link, or check the code.'; $('#invMsg').classList.add('bad'); return; }
-      myId = r.id; saveSession(r); history.replaceState(null, '', location.pathname); /* a refresh now rejoins this seat instead of joining again */
+      myId = r.id; saveSession(r); dropRoomParam(); /* a refresh now rejoins this seat instead of joining again */
     });
   }
   if (inviteCode && !(loadSession() && loadSession().code === inviteCode)) {
     $('#invCode').textContent = inviteCode; $('#invName').value = localStorage.getItem('fg_name') || ''; show('invite');
     $('#invGo').onclick = inviteJoin; $('#invName').addEventListener('keydown', (e) => { if (e.key === 'Enter') inviteJoin(); });
-    $('#invHome').onclick = () => { history.replaceState(null, '', location.pathname); show('home'); };
+    $('#invHome').onclick = () => { dropRoomParam(); show('home'); };
     if ($('#invName').value) setTimeout(inviteJoin, socket.connected || socket.p2p ? 50 : 600); else setTimeout(() => $('#invName').focus(), 50);
   }
 
@@ -268,6 +269,7 @@
   socket.on('games', (list) => { gameDefs = list; if (room) renderLobby(); });
   socket.on('toast', toast);
   socket.on('room', (r) => {
+    if (closedCode && r && r.code === closedCode) return; /* a late update from a room that has closed */
     const prev = room; room = r; renderTestBox();
     if (r.phase === 'lobby') { if (active) stopGame(); renderLobby(); show('lobby'); }
     else if (r.phase === 'results') { if (active) stopGame(); renderResults(); show('results'); }
@@ -288,4 +290,5 @@
     });
   });
   socket.on('replaced', () => goHome('This player was opened in another tab'));
+  let closedCode = null; socket.on('room-closed', () => { if (room) { closedCode = room.code; goHome('The host left, so the room has closed. Ask them for a new link.'); } }); /* peer-to-peer: the room lived in the host's tab */
 })();
