@@ -13,4 +13,4 @@ for (const m of K) { const bx = [];
   for (const d of m.decks) { const inset = d.z ? 0.6 : 0; bx.push({ x0: d.x + inset, x1: d.x + d.w - inset, z0: d.y + inset, z1: d.y + d.h - inset, y0: 0, y1: K.deckZ(d), tag: (d.z ? 'tier2 ' : 'deck ') + [d.x, d.y, d.w, d.h] }); }
   scan('karts/' + m.id, bx); }
 for (const m of B.MAPS) scan('blasters/' + m.id, m.boxes.filter((b) => b.t !== 'wall' && b.t !== 'step').map((b) => ({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, y0: b.y0, y1: b.y1, tag: b.t + ' ' + [b.x0, b.z0, b.x1, b.z1, b.y0, b.y1] })));
-console.log(bad ? `${bad} shared faces` : 'no shared faces in any map (6 maps scanned)'); process.exit(bad ? 1 : 0);
+console.log(bad ? `${bad} shared faces` : `no shared faces in any map (${K.length + B.MAPS.length} maps scanned)`); process.exit(bad ? 1 : 0);

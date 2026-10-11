@@ -708,6 +708,7 @@ registerGame('memekarts', (G) => {
       camera.fov=damp(camera.fov,reducedMotion?(portrait?82:62):fov,5,dt);camera.updateProjectionMatrix();
       if (shake > 0.01) { if(!reducedMotion){camera.position.x += Math.sin(time*61) * shake * 3; camera.position.y += Math.sin(time*47) * shake * 2;}shake *= Math.pow(0.02, dt); }
       camera.lookAt(look);
+      if (window.__camOverride) { const o = window.__camOverride; camera.position.set(o.p[0], o.p[1], o.p[2]); camera.lookAt(o.l[0], o.l[1], o.l[2]); } /* tools/views.js only: photograph the map from a fixed spot */
       /* keep the shadow box centred on what the camera is looking at (snapped so shadows do not shimmer) */
       if (sunLight) { const fx = Math.round(look.x / 16) * 16, fz = Math.round(look.z / 16) * 16; sunLight.target.position.set(fx, 0, fz); sunLight.position.set(fx - 320, 430, fz + 240); }
     }

@@ -281,12 +281,21 @@ registerGame('blasters', (G) => {
       // giant toys outside the walls: you are toy-sized in a playroom (hidden on Low graphics)
       const sceneryFrom = scene.children.length;
       const blockCols = ['#ff5d5d', '#4da6ff', '#ffd84d', '#5ee07a', '#c77dff', '#ff9f43'];
-      for (let i = 0; i < 22; i++) { const a = (i / 22) * Math.PI * 2 + Math.random() * 0.2, r = 58 + Math.random() * 40, sz = 9 + Math.random() * 10, col = blockCols[i % 6];
-        const letter = tex(128, 128, (c, w, h) => { c.fillStyle = col; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 10; c.strokeRect(10, 10, w - 20, h - 20); c.fillStyle = '#fff'; c.font = '900 84px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('ABCDEFGHJKLMNPRSTUWXYZ'[i], w / 2, h / 2 + 6); });
-        const blk = bx(sz, sz, sz, new THREE.MeshStandardMaterial({ map: letter, roughness: 0.6 }), Math.cos(a) * r, sz / 2 - 0.05, Math.sin(a) * r); blk.rotation.y = Math.random() * 3; scene.add(blk);
-        if (i % 3 === 0) { const b2 = bx(sz * 0.8, sz * 0.8, sz * 0.8, M3(blockCols[(i + 2) % 6]), Math.cos(a) * r, sz + sz * 0.4, Math.sin(a) * r); b2.rotation.y = Math.random() * 3; scene.add(b2); } }
-      for (let i = 0; i < 6; i++) { const a = i * 1.05 + 0.4, r = 50 + (i % 3) * 14, ball = sph(5 + (i % 3) * 2, M3(blockCols[(i + 3) % 6], { roughness: 0.3 }), Math.cos(a) * r, 5 + (i % 3) * 2, Math.sin(a) * r, 18); scene.add(ball); }
-      for (let i = 0; i < 8; i++) { const a = i * 0.8 + 0.2, r = 46 + (i % 2) * 20, cr = cyl(1.3, 1.3, 26, M3(blockCols[i % 6]), Math.cos(a) * r, 1.3, Math.sin(a) * r, 8); cr.rotation.z = Math.PI / 2; cr.rotation.y = a * 2; scene.add(cr); const tip = mesh(new THREE.ConeGeometry(1.3, 3, 8), M3('#f2e3c4'), 0, 14.5, 0); cr.add(tip); }
+      /* placed so nothing passes through anything else: each toy claims circles on the floor and a spot is only used if it is free.
+         Seeded, so every player sees the same playroom. */
+      let seed = 1234 + MAP.id.length * 97; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+      const taken = [], free = (pts) => pts.every(([x, z, r]) => Math.max(Math.abs(x), Math.abs(z)) - r > MAP.size + 6 && /* the arena is a square: stay clear of its corners too */ taken.every(([tx, tz, tr]) => Math.hypot(x - tx, z - tz) > r + tr + 1.5));
+      const claim = (pts) => { for (const q of pts) taken.push(q); };
+      for (let i = 0, tries = 0; i < 22 && tries < 600; tries++) { const a = rnd() * Math.PI * 2, r = 54 + rnd() * 46, sz = 9 + rnd() * 10, x = Math.cos(a) * r, z = Math.sin(a) * r;
+        if (!free([[x, z, sz * 0.72]])) continue; claim([[x, z, sz * 0.72]]); const col = blockCols[i % 6], li = i;
+        const letter = tex(128, 128, (c, w, h) => { c.fillStyle = col; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 10; c.strokeRect(10, 10, w - 20, h - 20); c.fillStyle = '#fff'; c.font = '900 84px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('ABCDEFGHJKLMNPRSTUWXYZ'[li], w / 2, h / 2 + 6); });
+        const blk = bx(sz, sz, sz, new THREE.MeshStandardMaterial({ map: letter, roughness: 0.6 }), x, sz / 2, z); blk.rotation.y = rnd() * 3; scene.add(blk);
+        if (i % 3 === 0) { const b2 = bx(sz * 0.62, sz * 0.62, sz * 0.62, M3(blockCols[(i + 2) % 6]), x, sz + sz * 0.31, z); b2.rotation.y = blk.rotation.y + 0.4; scene.add(b2); } /* small enough to sit inside the top face at any turn */
+        i++; }
+      for (let i = 0, tries = 0; i < 6 && tries < 300; tries++) { const a = rnd() * Math.PI * 2, r = 50 + rnd() * 40, rad = 5 + (i % 3) * 2, x = Math.cos(a) * r, z = Math.sin(a) * r; if (!free([[x, z, rad]])) continue; claim([[x, z, rad]]); scene.add(sph(rad, M3(blockCols[(i + 3) % 6], { roughness: 0.3 }), x, rad, z, 18)); i++; }
+      for (let i = 0, tries = 0; i < 8 && tries < 400; tries++) { const a = rnd() * Math.PI * 2, r = 50 + rnd() * 40, x = Math.cos(a) * r, z = Math.sin(a) * r, turn = rnd() * Math.PI, dx = Math.cos(turn), dz = Math.sin(turn);
+        const pts = [-12, -6, 0, 6, 12, 15].map((u) => [x + dx * u, z + dz * u, 2.2]); if (!free(pts)) continue; claim(pts);
+        const cr = cyl(1.3, 1.3, 26, M3(blockCols[i % 6]), x, 1.3, z, 8); cr.rotation.order = 'YXZ'; cr.rotation.y = -turn; cr.rotation.z = Math.PI / 2; scene.add(cr); const tip = mesh(new THREE.ConeGeometry(1.3, 3, 8), M3('#f2e3c4'), 0, 14.5, 0); cr.add(tip); i++; }
       for (let i = sceneryFrom; i < scene.children.length; i++) scene.children[i].userData.scenery = true;
       if (cloudGroup) cloudGroup.userData.scenery = true;
       for (const o of scene.children) if (o.userData.scenery) o.visible = GFX().scenery;
@@ -552,6 +561,7 @@ registerGame('blasters', (G) => {
         if (shake > 0.01 && !reducedMotion) { camera.position.x += (Math.random() - 0.5) * shake * 0.35; camera.position.y += (Math.random() - 0.5) * shake * 0.35; shake *= Math.pow(0.02, dt); }
         const zf = adsOf(me.w), fov = baseFov / (1 + (zf - 1) * me.zoom) + (st && st.pw === 'speed' ? 8 : 0) + (body.slideT > 0 ? 5 : 0); if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 14); camera.updateProjectionMatrix(); }
         updateViewModel(dt);
+        if (window.__camOverride) { const o = window.__camOverride; camera.position.set(o.p[0], o.p[1], o.p[2]); camera.lookAt(o.l[0], o.l[1], o.l[2]); camera.updateMatrixWorld(); } /* tools/views.js only */
         renderer.clear(); camera.layers.set(0); renderer.shadowMap.needsUpdate=true; renderer.render(scene, camera);
         { const fovNow = camera.fov, bg = scene.background; renderer.clearDepth(); camera.layers.set(VM_LAYER); camera.fov = 78; camera.updateProjectionMatrix(); scene.background = null;
           renderer.render(scene, camera); scene.background = bg; camera.fov = fovNow; camera.updateProjectionMatrix(); camera.layers.set(0); }

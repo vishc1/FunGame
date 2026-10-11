@@ -35,6 +35,10 @@ const JOBS = [...require('../public/memekarts-maps.js').map((m) => ['memekarts',
           const pp = a.plane && c.plane && Math.abs(a.bb.min[d] - c.bb.min[d]) < eps && Math.abs(a.pn[k]) > 0.9 && Math.abs(c.pn[k]) > 0.9;
           const planeOn = pf(a, c) || pf(c, a) || pp;
           if (same || planeOn) { out.push(`${d}: ${a.name} [${a.bb.min[d].toFixed(2)}..${a.bb.max[d].toFixed(2)}]  <->  ${c.name} [${c.bb.min[d].toFixed(2)}..${c.bb.max[d].toFixed(2)}]`); break; } } }
+      // scenery (trees, mountains, giant toys...) must stay outside the play area, and must not pass through other scenery
+      const km = window.MEMEKARTS_MAPS && window.G.room && window.MEMEKARTS_MAPS.find((m) => m.id === window.G.room.mapId), bm = window.BLASTERS && window.BLASTERS.mapById(window.G.room.blastersMap);
+      const hx = window.G.room.gameId === 'memekarts' ? km.w / 2 : bm.size, hz = window.G.room.gameId === 'memekarts' ? km.h / 2 : bm.size, sc = scene.children.filter((o) => o.userData.scenery && o.visible && !(o.isGroup && o.children.length > 6 && o.children.every((c) => c.position.y > 20 || (c.children[0] && c.position.y > 20)))).map((o) => ({ o, bb: new T.Box3().setFromObject(o) }));
+      for (const { o, bb } of sc) { const c = bb.getCenter(new T.Vector3()); if (bb.min.x < hx && bb.max.x > -hx && bb.min.z < hz && bb.max.z > -hz && bb.max.y > 0.5) out.push(`scenery inside the play area: ${o.type} @${c.toArray().map((x) => x.toFixed(1)).join(',')}`); }
       return { n: items.length, out };
     }, eps);
     total += found.out.length; console.log(`${game}/${map}: ${found.n} surfaces checked, ${found.out.length} flush pairs`); for (const l of found.out.slice(0, 12)) console.log('   ' + l);
