@@ -72,3 +72,17 @@ Game logic and server checks, no browser needed: `node tools/fullrun.js` plays e
 ## Adding content
 
 Each game is one server file (`server/games/<id>.js`) and one client file (`public/games/<id>.js`); see `CLAUDE.md` for the interface. Weapons (Meme Karts), characters (Character Brawl), props (Prop Hunt), powers (Tag with Powers) and bosses (Dodge the Boss) are plain arrays at the top of their files, built to be extended when someone on the call suggests one.
+
+## Relay servers for strict networks
+
+Friends connect browser to browser. Most home networks link directly, but mobile data and many school or office
+networks need a relay (TURN) server. PeerJS's free relays no longer exist, so add your own: create a free account
+with a TURN provider (Metered, ExpressTURN or Cloudflare Calls), then set its servers as a Vercel environment variable
+and redeploy:
+
+```bash
+npx vercel@latest env add FG_ICE_SERVERS production
+# value, for example:
+# [{"urls":["turn:global.relay.metered.ca:80","turn:global.relay.metered.ca:443?transport=tcp"],"username":"...","credential":"..."}]
+npx vercel@latest deploy --prod --yes
+```

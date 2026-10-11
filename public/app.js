@@ -71,7 +71,8 @@
   const loadSession = () => { try { return JSON.parse(sessionStorage.getItem(SESSION) || 'null'); } catch (e) { return null; } };
   const clearSession = () => { myId = null; try { sessionStorage.removeItem(SESSION); } catch (e) { /* ignore */ } };
   // create / join a room, remembering who we are
-  function enter(ev, data, then) { closedCode = null; socket.emit(ev, data, (r) => { if (!r || r.error) return toast((r && r.error) || 'No response from the server'); myId = r.id; saveSession(r); then && then(r); }); }
+  function ask(ev, data, cb, ms = 25000) { let done = false; const t = setTimeout(() => { if (!done) { done = true; cb({ error: 'No answer from the room' }); } }, ms); socket.emit(ev, data, (r) => { if (done) return; done = true; clearTimeout(t); cb(r); }); } /* a reply, or an error after ms: never wait forever */
+  function enter(ev, data, then) { closedCode = null; ask(ev, data, (r) => { if (!r || r.error) return toast((r && r.error) || 'No response from the server'); myId = r.id; saveSession(r); then && then(r); }); }
   function goHome(msg) { clearSession(); room = null; stopGame(); show('home'); renderTestBox(); if (msg) toast(msg); }
 
   const nameEl = $('#name');
@@ -91,7 +92,7 @@
   function inviteJoin() {
     const n = $('#invName').value.trim(); if (!n) { $('#invName').focus(); return; } nameEl.value = n; localStorage.setItem('fg_name', n);
     $('#invGo').disabled = true; $('#invGo').textContent = 'Joining…'; $('#invMsg').textContent = 'Connecting to your friend…';
-    socket.emit('join', { name: n, code: inviteCode }, (r) => {
+    closedCode = null; ask('join', { name: n, code: inviteCode }, (r) => {
       $('#invGo').disabled = false; $('#invGo').textContent = 'Join the party';
       if (!r || r.error) { $('#invMsg').textContent = ((r && r.error) || 'No answer from the room') + '. Ask your friend for a fresh link, or check the code.'; $('#invMsg').classList.add('bad'); return; }
       myId = r.id; saveSession(r); dropRoomParam(); /* a refresh now rejoins this seat instead of joining again */
@@ -289,6 +290,7 @@
   socket.on('disconnect', () => { if (room) toast('Connection lost. Reconnecting…'); });
   socket.on('connect', () => {
     const sess = loadSession(); if (!sess) return;
+    if (inviteCode && sess.code !== inviteCode && !room) { clearSession(); return; } /* opened an invite to a different room: the old seat would cancel this join */
     socket.emit('rejoin', sess, (r) => {
       if (r && r.ok) { myId = r.id; saveSession(r); }
       else if (room) goHome((r && r.error) || 'That room has closed');

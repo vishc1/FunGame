@@ -7,6 +7,10 @@
 // Trade-offs: the room lives in the creator's tab (if they close or refresh it the room ends), and a few very strict
 // networks block direct connections.
 (function () {
+  // How browsers find a way to each other. STUN servers (free, no account) let most home networks link directly. PeerJS's
+  // own relays are gone (their names no longer resolve, checked 2026-10-11), so relays for strict networks (mobile data,
+  // schools, offices) come from window.FG_ICE, set at build time from the FG_ICE_SERVERS variable (see README).
+  const ICE = () => ({ iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }].concat(Array.isArray(window.FG_ICE) ? window.FG_ICE : []), sdpSemantics: 'unified-plan' });
   const PREFIX = 'fgroom1-', ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const randomCode = () => Array.from({ length: 4 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
   let peerLib = null;
@@ -28,7 +32,7 @@
         if (ev === 'leave' && mode === 'host') { setTimeout(() => { sayBye(); setTimeout(() => teardown(), 250); }, 120); return; } /* the room lives in this tab: tell everyone it closed, after the last room update */
         if (ev === 'leave' && mode) setTimeout(() => teardown(), 200); // let the goodbye go out first
       },
-      connect() {}, disconnect() { teardown(); }, close() { teardown(); },
+      connect() {}, disconnect() { teardown(); }, close() { teardown(); }, get _peer() { return peer; }, /* tools/p2p-keepalive.js */
     };
     function deliver(str) {
       let a; try { a = JSON.parse(str); } catch (e) { return; }
@@ -56,7 +60,7 @@
       let code = null;
       for (let tries = 0; tries < 6 && !peer; tries++) {
         code = randomCode();
-        try { peer = await new Promise((res, rej) => { const p = new window.Peer(PREFIX + code, { debug: 0 }); p.on('open', () => res(p)); p.on('error', (err) => { try { p.destroy(); } catch (e) { /* ignore */ } rej(err); }); }); }
+        try { peer = await new Promise((res, rej) => { const p = new window.Peer(PREFIX + code, { debug: 0, config: ICE() }); p.on('open', () => res(p)); p.on('error', (err) => { try { p.destroy(); } catch (e) { /* ignore */ } rej(err); }); }); }
         catch (err) { if (err && err.type !== 'unavailable-id') return cb({ error: 'Could not reach the connection service. Check your internet and try again.' }); }
         if (mine !== gen) { if (peer) peer.destroy(); return; }
       }
@@ -76,7 +80,15 @@
         c.on('close', gone); c.on('error', gone);
       });
       // losing the link to the introduction service does not affect players already in; reconnect so new ones can still join
-      peer.on('disconnected', () => { const p = peer; setTimeout(() => { if (peer === p && mode === 'host' && !p.destroyed) { try { p.reconnect(); } catch (e) { /* will retry on the next drop */ } } }, 1500); });
+      peer.on('disconnected', () => { const p = peer; setTimeout(() => { if (peer === p && mode === 'host' && !p.destroyed && p.disconnected) { try { p.reconnect(); } catch (e) { /* the keep-alive below retries */ } } }, 1500); });
+      peer.on('error', () => { /* e.g. a failed reconnect: the keep-alive below tries again */ });
+      // Keep-alive. Chrome slows timers in a background tab to once a minute after a few minutes, so PeerJS's own heartbeat
+      // stops and the service forgets the room: friends then cannot find it. A worker's timer is not slowed, so it drives a
+      // heartbeat every 4 s and reconnects whenever the link has dropped, however often.
+      try { const hb = new Worker(URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 4000);'], { type: 'text/javascript' }))); const p = peer;
+        hb.onmessage = () => { if (peer !== p || mode !== 'host' || p.destroyed) { hb.terminate(); return; } if (p.disconnected) { try { p.reconnect(); } catch (e) { /* next beat */ } } else { try { if (p.socket && p.socket.send) p.socket.send({ type: 'HEARTBEAT' }); } catch (e) { /* next beat */ } } };
+      } catch (e) { /* no workers from blobs: PeerJS's own heartbeat still runs while the tab is visible */ }
+      document.addEventListener('visibilitychange', () => { const p = peer; if (document.visibilityState === 'visible' && p && mode === 'host' && !p.destroyed && p.disconnected) { try { p.reconnect(); } catch (e) { /* keep-alive retries */ } } });
       worker.postMessage({ t: 'open', sid: 'local' });
       toWorker('create', Object.assign({}, data, { code }), cb);
     }
@@ -88,8 +100,8 @@
       if (!/^[A-Z0-9]{4}$/.test(code)) return cb({ error: gone });
       teardown(); const mine = ++gen; let settled = false;
       const fail = (msg) => { if (settled || mine !== gen) return; settled = true; teardown(); cb({ error: msg }); };
-      const p = peer = new window.Peer({ debug: 0 });
-      const timer = setTimeout(() => fail('Could not reach the room. The host may be offline or on a very strict network.'), 15000);
+      const p = peer = new window.Peer({ debug: 0, config: ICE() });
+      const timer = setTimeout(() => fail(window.FG_ICE && window.FG_ICE.length ? 'Could not reach the room. Your friend may have closed the game tab' : 'Could not link to your friend\'s browser. One of your networks blocks direct links (common on mobile data and school or work Wi-Fi). Try another network, such as home Wi-Fi'), 20000); /* relays can take a few seconds longer */
       p.on('error', (err) => { clearTimeout(timer); fail(err && err.type === 'peer-unavailable' ? gone : 'Could not connect (' + ((err && err.type) || 'unknown') + '). Try again.'); });
       p.on('open', () => {
         if (mine !== gen) return;
@@ -97,7 +109,8 @@
         c.on('open', () => {
           if (mine !== gen) return; clearTimeout(timer); settled = true; mode = 'guest'; sock.connected = true; lastHeard = Date.now();
           pingTimer = setInterval(() => { if (Date.now() - lastHeard > 11000) return lost(mine); toHost('__ping'); }, 3000);
-          toHost(ev, Object.assign({}, data, { code }), cb);
+          const ask = setTimeout(() => { settled = false; fail('The room did not answer. Ask your friend to keep the game tab open, then try again.'); }, 12000); /* never leave Joining on screen forever */
+          toHost(ev, Object.assign({}, data, { code }), (r) => { clearTimeout(ask); cb(r); });
         });
         c.on('data', (d) => { if (mine !== gen) return; lastHeard = Date.now(); if (typeof d === 'string') deliver(d); });
         c.on('close', () => lost(mine)); c.on('error', () => lost(mine));
