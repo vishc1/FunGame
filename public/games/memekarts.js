@@ -42,7 +42,7 @@ registerGame('memekarts', (G) => {
   // ---- stepping away (Esc): 2 seconds to change your mind, then an away screen. You stay in the match with your kills kept;
   // the server parks your kart outside the arena until you press Back to the race.
   let away = 0, awayAt = 0, partyEnd = 0;
-  function startAway() { const k = s && s.karts.find((q) => q.id === G.me); if (!k || k.dead) return; away = 'count'; awayAt = time + 2; }
+  function startAway() { const k = s && s.karts.find((q) => q.id === G.me); if (!k) return; /* works while knocked out too */ away = 'count'; awayAt = time + 2; }
   function enterAway() {
     away = 'on'; G.send({ type: 'away', on: 1 }); const k = s.karts.find((q) => q.id === G.me), order = s.karts.slice().sort((a, b) => b.kills - a.kills), rank = order.findIndex((q) => q.id === G.me) + 1, col = G.player(G.me).color;
     G.ui.innerHTML = `<div class="away-card"><h3>You stepped away</h3><p>You are still in this race. Nothing can hit you while you are away, and your kills are kept.</p>

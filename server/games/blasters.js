@@ -165,7 +165,7 @@ module.exports = {
           if (p.dead || !fin(m.x) || !fin(m.y) || !fin(m.z) || !fin(m.yaw) || !fin(m.pitch)) return;
           const lim = MAP.size - P.R; p.x = Math.max(-lim, Math.min(lim, m.x)); p.z = Math.max(-lim, Math.min(lim, m.z)); p.y = Math.max(0, Math.min(40, m.y)); p.yaw = m.yaw; p.pitch = Math.max(-1.55, Math.min(1.55, m.pitch)); p.cr = m.cr ? 1 : 0;
         } else if (m.type === 'away') { // stepped away (Esc): out of the world but still in the match, with every tag and point kept
-          const on = !!m.on; if (on === !!p.away) return; p.away = on; if (on) { p.power = null; p.powerT = 0; p.reloadT = 0; api.emit('g:event', { type: 'away', id: pid, on: 1 }); } else { spawn(p); api.emit('g:event', { type: 'away', id: pid, on: 0 }); }
+          const on = !!m.on; if (on === !!p.away) return; p.away = on; if (on) { p.power = null; p.powerT = 0; p.reloadT = 0; api.emit('g:event', { type: 'away', id: pid, on: 1 }); } else { p.dead = 0; spawn(p); api.emit('g:event', { type: 'away', id: pid, on: 0 }); }
         } else if (m.type === 'hello') { if (fin(m.lvl)) p.lvl = Math.max(1, Math.min(99, m.lvl | 0)); if (fin(m.ch)) p.ch = Math.abs(m.ch | 0) % 8; if (fin(m.sk)) p.sk = Math.abs(m.sk | 0) % 16;
           if (fin(m.lo) && LOADOUT.includes(m.lo | 0)) { p.lo = m.lo | 0; if (!p.dead && t - p.bornT < 4) starter(p); } } // a loadout chosen in the first seconds of a life applies right away
         else if (m.type === 'switch') { const w = m.w | 0; if (!p.dead && w >= 0 && w < WEAPONS.length && p.own[w] && w !== p.w) { p.w = w; p.reloadT = 0; p.nextFire = Math.max(p.nextFire, t + 0.3); } }

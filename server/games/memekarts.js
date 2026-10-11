@@ -369,7 +369,7 @@ module.exports = {
         if (k.away && msg.type !== 'away') return;
         if (msg.type === 'ctl') k.ctl = { up: !!msg.up, down: !!msg.down, left: !!msg.left, right: !!msg.right };
         else if (msg.type === 'away') { // stepped away (Esc): parked out of the arena, kills kept, back with a fresh spawn
-          const on = !!msg.on; if (on === !!k.away) return; k.away = on; k.ctl = {}; if (on) { k.x = -5000; k.y = -5000; k.air = 0; k.bill = 0; } /* parked far outside, so nothing in the arena can reach them */ if (!on) { const sp = spawnPoint(); Object.assign(k, { x: sp[0], y: sp[1], el: surf(sp[0], sp[1]), vx: 0, vy: 0, air: 0, inv: 2 }); } api.emit('g:event', { type: 'away', id: pid, on: on ? 1 : 0 });
+          const on = !!msg.on; if (on === !!k.away) return; k.away = on; k.ctl = {}; if (on) { k.x = -5000; k.y = -5000; k.air = 0; k.bill = 0; } /* parked far outside, so nothing in the arena can reach them */ if (!on) { const sp = spawnPoint(); Object.assign(k, { x: sp[0], y: sp[1], el: surf(sp[0], sp[1]), vx: 0, vy: 0, air: 0, inv: 2, dead: 0, hp: k.dead ? 3 : k.hp }); } api.emit('g:event', { type: 'away', id: pid, on: on ? 1 : 0 });
         }
         else if (msg.type === 'endnow') { if (api.room && api.room.bots && api.room.bots.size && !over) { k.kills += 3; finish(); } } // test rooms only: end the match now (tools/party.js)
         else if (msg.type === 'tp') { // test rooms only (a room with bots): place your kart somewhere, for screenshots and checks

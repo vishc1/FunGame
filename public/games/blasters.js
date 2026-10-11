@@ -621,7 +621,7 @@ registerGame('blasters', (G) => {
   // ---- stepping away (Esc): 2 seconds to change your mind, then an away screen. You stay in the match with every tag kept;
   // the server keeps you out of the world (nobody can hit you, bots ignore you) until you press Back to the match.
   let away = 0, awayAt = 0; // 0 | 'count' | 'on'
-  function startAway() { if (away || over || locker || !s || !mySt() || mySt().dead) return; away = 'count'; awayAt = time + 2; }
+  function startAway() { if (away || over || locker || !s || !mySt()) return; /* works while tagged out too */ away = 'count'; awayAt = time + 2; }
   function enterAway() {
     away = 'on'; G.send({ type: 'away', on: 1 }); firing = false; zooming = false;
     const st = mySt(), order = s.ps.slice().sort((a, b) => b.k - a.k || b.sc - a.sc), rank = order.findIndex((p) => p.id === G.me) + 1;
