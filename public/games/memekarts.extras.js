@@ -7,6 +7,7 @@
   const ITEMS = [['green', 'Green shell'], ['triple', 'Triple shells'], ['red', 'Red shell'], ['blue', 'Blue shell'], ['tnt', 'TNT'], ['bomb', 'Bob-omb'], ['pad', 'Launch pad'], ['egg', 'Egg gun'], ['banana', 'Banana'], ['fake', 'Fake item box'], ['fire', 'Fire flower'], ['gun', 'Minigun'], ['mush', 'Boost mushroom'], ['star', 'Star'], ['boo', 'Boo ghost'], ['bolt', 'Lightning'], ['bill', 'Bullet Bill'], ['ink', 'Blooper']];
   let active = false, ac = null, master = null, eng = null, muted = false, me = null, prev = null, prevT = 0, itemIdx = -1, hinted = false;
   try { muted = localStorage.getItem('mk_mute') === '1'; } catch (e) { /* storage blocked */ }
+  window.addEventListener('fg-sound', (e) => { muted = !!e.detail.muted; if (master) master.gain.value = muted ? 0 : 0.22; }); /* the lobby's Sound setting */
   const testMode = () => !!(G.room && G.room.players.some((p) => p.bot));
 
   // ---- audio ----

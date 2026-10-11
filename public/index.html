@@ -77,7 +77,13 @@
       <h3>Players</h3>
       <ul id="playerList"></ul>
       <p class="hint" id="hostHint"></p>
-    </aside>
+          <div class="lobby-settings"><h3>Your settings</h3>
+        <label>Graphics</label><div class="gfx-pick lobby-gfx"><button data-gfx="low">Low</button><button data-gfx="medium">Medium</button><button data-gfx="high">High</button></div><small>Pick Low if the game lags.</small>
+        <label>Sound</label><div class="gfx-pick"><button id="sndOn" data-snd="on">On</button><button id="sndOff" data-snd="off">Off</button></div>
+        <label>Mouse sensitivity <b id="lsSensV">1.00</b></label><input id="lsSens" type="range" min="0.2" max="3" step="0.05">
+        <label>Field of view <b id="lsFovV">78</b></label><input id="lsFov" type="range" min="60" max="105" step="1">
+        <small>Saved in this browser. Mouse and view apply to Toy Box Blasters.</small></div>
+</aside>
     <main>
       <div id="gameSwitch" class="game-pick in-lobby"><button data-game="memekarts"><small>KART BATTLE</small><b>Meme Karts</b></button><button data-game="blasters"><small>FIRST-PERSON SHOOTER</small><b>Toy Box Blasters</b></button></div>
       <div class="lobby-heading"><p class="eyebrow">GET THE CREW TOGETHER</p><h2>Choose your arena.</h2><p class="sub">The host picks the map. Everyone brings the chaos.</p></div>
@@ -92,6 +98,10 @@
     </main>
   </div>
 </section>
+
+<!-- INVITE: opening an invite link (?room=CODE) lands here and goes straight into the party -->
+<section id="invite" class="screen hidden"><div class="invite-screen"><p class="eyebrow">YOU'RE INVITED</p><h2>Join the party</h2><div class="inv-code">Room <b id="invCode">----</b></div><p id="invMsg" class="inv-msg">Pick a name and jump in. Your friends are waiting.</p>
+  <input id="invName" maxlength="14" placeholder="Your name" autocomplete="nickname"><button id="invGo" class="primary">Join the party</button><button id="invHome" class="small inv-home">Go to the home page instead</button></div></section>
 
 <!-- GAME -->
 <section id="game" class="screen hidden">

@@ -15,7 +15,7 @@ let pass = 0, fail = 0; const check = (n, ok, x = '') => { ok ? pass++ : fail++;
     const code = await host.evaluate(() => window.G.room.code), before = await host.evaluate(() => window.G.room.players.length);
     // fill the room right up with bots so the friend has to take a bot's seat
     await host.evaluate(() => window.G.socket.emit('bots', { op: 'add', n: 15 })); await sleep(800); const full = await host.evaluate(() => window.G.room.players.length);
-    const guest = await open(`${BASE}/?room=${code}&game=${game}`); await guest.fill('#name', 'Friend'); await guest.click('#joinBtn');
+    const guest = await open(`${BASE}/?room=${code}&game=${game}`); await guest.waitForSelector('#invite:not(.hidden)', { timeout: 15000 }); await guest.fill('#invName', 'Friend'); await guest.click('#invGo'); /* the invite link's Join the party screen */
     let scr = null; const t0 = Date.now(); while (Date.now() - t0 < 25000) { await sleep(500); scr = await guest.evaluate(() => ['home', 'lobby', 'game', 'results'].find((s) => !document.querySelector('#' + s).classList.contains('hidden'))); if (scr === 'game') break; }
     const toast = await guest.evaluate(() => (document.querySelector('#toast') || {}).textContent);
     check(`${game}: a friend joins a running match from the invite link (room was full: ${full} players)`, scr === 'game', `screen ${scr}${toast ? ', said "' + toast + '"' : ''}`);

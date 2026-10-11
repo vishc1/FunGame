@@ -8,7 +8,8 @@ registerGame('blasters', (G) => {
   const lockerBtn = document.createElement('button'); lockerBtn.className = 'small'; lockerBtn.id = 'lockerBtn'; lockerBtn.textContent = '⚙ Settings (L)'; lockerBtn.title = 'Mouse sensitivity and field of view';
   lockerBtn.onclick = (e) => { e.stopPropagation(); setLocker(!locker); };
   const TEST_CAM = /[?&]bltest=1/.test(location.search); // window.__camOverride (tools/views.js) works only in test pages, never in a real match
-  const onGfx = () => { if (T && T.applyGfx) T.applyGfx(); }; window.addEventListener('fg-gfx', onGfx); /* graphics changed in the header or on the home page */
+  const onGfx = () => { if (T && T.applyGfx) T.applyGfx(); };
+  const onSound = (e) => { muted = !!e.detail.muted; if (master) master.gain.value = muted ? 0 : 0.25; }; window.addEventListener('fg-sound', onSound); /* the lobby's Sound setting */ window.addEventListener('fg-gfx', onGfx); /* graphics changed in the header or on the home page */
   let MAP = B.MAP; // the room's map; every snapshot names it (s.map) and the world is built for it
   // team mode: s.tm = 1, every player has tm (0 Red, 1 Blue), s.tk = team tags. Figures, tags and the feed use team colours.
   const TEAM = [{ name: 'Red', color: '#ff5d5d' }, { name: 'Blue', color: '#4da6ff' }];
@@ -922,7 +923,7 @@ registerGame('blasters', (G) => {
     },
     destroy() {
       document.removeEventListener('pointerlockchange', onLock); canvas.removeEventListener('wheel', onWheel); window.removeEventListener('keydown', onTab); window.removeEventListener('keyup', onTab);
-      lockerBtn.remove(); window.removeEventListener('fg-gfx', onGfx); if (document.pointerLockElement === canvas) document.exitPointerLock(); if (touchUI) { touchUI.remove(); touchUI = null; } G.clearUI();
+      lockerBtn.remove(); window.removeEventListener('fg-sound', onSound); window.removeEventListener('fg-gfx', onGfx); if (document.pointerLockElement === canvas) document.exitPointerLock(); if (touchUI) { touchUI.remove(); touchUI = null; } G.clearUI();
       delete window.__bl; delete window.__blAim; delete window.__blGo; delete window.__blY;
       if (T) T.dispose(); T = null; if (ac) { try { ac.close(); } catch (e) { /* ignore */ } }
     },

@@ -57,8 +57,8 @@
   window.registerGame = (id, factory) => { GAMES[id] = factory; };
 
   // ---- screens -----------------------------------------------------------
-  const screens = ['home', 'lobby', 'game', 'results'];
-  function show(id) { for (const s of screens) $('#' + s).classList.toggle('hidden', s !== id); }
+  const screens = ['home', 'invite', 'lobby', 'game', 'results'];
+  function show(id) { for (const s of screens) $('#' + s).classList.toggle('hidden', s !== id); const tb = document.querySelector('#testBox'); if (tb) tb.classList.toggle('hidden', id === 'invite'); /* no Practice lobby on the invite screen: it would start a separate room */ }
   let toastT;
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2500); }
 
@@ -85,6 +85,23 @@
   nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#createBtn').click(); });
   const qs = new URLSearchParams(location.search);
   if (qs.get('room')) $('#code').value = qs.get('room').toUpperCase();
+  // An invite link goes straight into the party: no home page, no wrong buttons. With a saved name it joins on its own.
+  const inviteCode = (qs.get('room') || '').toUpperCase().trim();
+  function inviteJoin() {
+    const n = $('#invName').value.trim(); if (!n) { $('#invName').focus(); return; } nameEl.value = n; localStorage.setItem('fg_name', n);
+    $('#invGo').disabled = true; $('#invGo').textContent = 'Joining…'; $('#invMsg').textContent = 'Connecting to your friend…';
+    socket.emit('join', { name: n, code: inviteCode }, (r) => {
+      $('#invGo').disabled = false; $('#invGo').textContent = 'Join the party';
+      if (!r || r.error) { $('#invMsg').textContent = ((r && r.error) || 'No answer from the room') + '. Ask your friend for a fresh link, or check the code.'; $('#invMsg').classList.add('bad'); return; }
+      myId = r.id; saveSession(r); history.replaceState(null, '', location.pathname); /* a refresh now rejoins this seat instead of joining again */
+    });
+  }
+  if (inviteCode && !(loadSession() && loadSession().code === inviteCode)) {
+    $('#invCode').textContent = inviteCode; $('#invName').value = localStorage.getItem('fg_name') || ''; show('invite');
+    $('#invGo').onclick = inviteJoin; $('#invName').addEventListener('keydown', (e) => { if (e.key === 'Enter') inviteJoin(); });
+    $('#invHome').onclick = () => { history.replaceState(null, '', location.pathname); show('home'); };
+    if ($('#invName').value) setTimeout(inviteJoin, socket.connected || socket.p2p ? 50 : 600); else setTimeout(() => $('#invName').focus(), 50);
+  }
 
   // ---- test mode (bots) ---------------------------------------------------
   $('#testBtn').onclick = () => enter('create', { name: myName() }, () => { pickHomeGame(); socket.emit('bots', { op: 'add', n: 3 }); toast('Test mode: 3 bots joined. Pick any game and press Start.'); });
@@ -133,6 +150,17 @@
     const train = m.train ? `<line x1="20" y1="${Z(m.train.z)}" x2="880" y2="${Z(m.train.z)}" stroke="#3a3f4a" stroke-width="6" stroke-dasharray="14 10"/>` : '';
     return `<button class="map-card ${m.id} ${selected ? 'selected' : ''}" data-map="${m.id}" ${disabled ? 'disabled' : ''} aria-pressed="${selected}"><div class="map-art"><svg viewBox="0 0 900 600" aria-hidden="true"><rect x="20" y="20" width="860" height="560" rx="30" fill="${TH.floor}" stroke="#c9a06a" stroke-width="12"/>${train}${boxes}${ramps}${pads}</svg><span>${selected ? '✓ SELECTED' : 'BATTLE ARENA'}</span></div><div class="map-copy"><b>${esc(m.name)}</b><small>${esc(m.tag)}</small></div></button>`;
   }
+  // lobby settings: everyone, not just the host, can set graphics, sound and mouse before the game. Same keys the games read.
+  const LS = { get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* storage blocked */ } } };
+  function drawSettings() {
+    const muted = LS.get('mk_mute', '0') === '1'; $('#sndOn').classList.toggle('sel', !muted); $('#sndOff').classList.toggle('sel', muted);
+    const sens = Math.max(0.2, Math.min(3, +LS.get('tbb_sens', 1) || 1)), fov = Math.max(60, Math.min(105, +LS.get('tbb_fov', 78) || 78));
+    $('#lsSens').value = sens; $('#lsSensV').textContent = sens.toFixed(2); $('#lsFov').value = fov; $('#lsFovV').textContent = fov;
+  }
+  const setSound = (on) => { LS.set('mk_mute', on ? '0' : '1'); drawSettings(); window.dispatchEvent(new CustomEvent('fg-sound', { detail: { muted: !on } })); }; /* the games listen and apply it at once */
+  $('#sndOn').onclick = () => setSound(true); $('#sndOff').onclick = () => setSound(false);
+  $('#lsSens').oninput = (e) => { LS.set('tbb_sens', e.target.value); drawSettings(); }; $('#lsFov').oninput = (e) => { LS.set('tbb_fov', e.target.value); drawSettings(); };
+  drawSettings();
   function renderLobby() {
     $('#roomCode').textContent = room.code; $('#bigCode').textContent = room.code; $('#inviteLink').textContent = `${location.host}/?room=${room.code}`;
     const isHost = room.hostId === myId;

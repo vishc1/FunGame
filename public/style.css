@@ -111,6 +111,16 @@ button:focus-visible,a:focus-visible,summary:focus-visible { outline:3px solid #
 .away-kart { display:flex;align-items:center;gap:10px;font-size:20px; }.away-kart span { width:18px;height:18px;border-radius:50%; }
 .away-stats { display:flex;gap:26px; }.away-stats div { display:grid; }.away-stats b { font-size:28px; }.away-stats small { color:#93aaa9;font-size:12px; }
 .away-btns { display:flex;gap:10px; }.away-btns button { flex:1;padding:12px;font-weight:900; }
+#invite { min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 30%,#26443a,#0d1a20 70%);padding:24px; }#invite.hidden { display:none; }
+.invite-screen { width:min(440px,100%);display:grid;gap:14px;text-align:center;background:#0b161ce8;border:2px solid #d9fa78;border-radius:22px;padding:30px 26px;box-shadow:0 0 0 6px #d9fa7822,0 30px 80px #0008; }
+.invite-screen .eyebrow { margin:0;color:#d9fa78; }.invite-screen h2 { margin:0;font-size:38px; }
+.inv-code { font-size:15px;color:#a9c1bd; }.inv-code b { display:block;font:900 52px/1.1 system-ui;letter-spacing:8px;color:#fff; }
+.inv-msg { margin:0;color:#c8d6d3;font-size:14px; }.inv-msg.bad { color:#ff8f8f; }
+#invName { font-size:18px;padding:14px;text-align:center; }#invGo { font-size:18px;padding:16px;font-weight:900; }.inv-home { justify-self:center;opacity:.8; }
+.lobby-settings { display:grid;gap:7px;margin-top:20px;padding-top:16px;border-top:1px solid #ffffff1c; }.lobby-settings h3 { margin:0 0 4px; }
+.lobby-settings label { font-size:12px;font-weight:800;color:#cfe;display:flex;justify-content:space-between;margin-top:4px; }.lobby-settings label b { color:#d9fa78; }
+.lobby-settings small { color:#93aaa9;font-size:11px; }.lobby-settings .gfx-pick { margin-top:0; }.lobby-settings .gfx-pick button { padding:6px 12px;font-size:12px; }
+.lobby-settings input[type=range] { width:100%;accent-color:#d9fa78; }
 .toy-pick { display:none; }
 #home.blasters .toy-pick { display:grid;gap:8px;position:absolute;left:50%;bottom:6%;transform:translateX(-50%);z-index:3;background:#0d1b22d9;border:1px solid #ffffff2a;border-radius:16px;padding:12px 14px;backdrop-filter:blur(10px);width:min(420px,92%); }
 #home.blasters #heroBadge { display:none; }

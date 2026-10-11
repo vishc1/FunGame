@@ -268,7 +268,7 @@ const KINDS = {
 module.exports = {
   id: 'memekarts',
   name: 'Meme Karts',
-  tagline: '3D kart battle on big maps with raised decks, ramps, portals and hazards. 18 items.',
+  tagline: '3D kart battle on big maps with raised decks, ramps, portals and hazards. 21 items.',
   min: 2, max: 16,
   controls: 'WASD / arrows to drive. Drive through ? boxes. Space or click uses your item. H shows what every item does. Hold C to look behind. M mutes sound.',
   create(api) {
