@@ -84,6 +84,7 @@ registerGame('blasters', (G) => {
   }
   let hurtFlash = 0, hitMark = 0, hitKill = 0, shake = 0, card = null, muted = ls('mk_mute', '0') === '1';
   const TELE_COLS = ['#35e6ff', '#c77dff', '#ffd84d']; // teleporter pair colours, shared by the world and the minimap
+  const party = () => !!(over && over.partyEnd && time < over.partyEnd && s && s.win); // the 5 s victory lap after a match ends
   const feed = [], banners = [], dmgNums = [], hurtDirs = [], recentShot = {}; // id -> time of their last shot: enemies who fire show up on the minimap for a moment
   const banner = (text, color = '#ffd84d', t = 2) => { banners.unshift({ text, color, t, d: t }); if (banners.length > 3) banners.length = 3; };
   const showCard = (name, tip, color = '#ffd84d') => { card = { name, tip, color, t: 6 }; }; // the big pickup card: what you just got and what it does
@@ -557,6 +558,8 @@ registerGame('blasters', (G) => {
         // camera
         const st = mySt(), dead = st && st.dead;
         if (locker && preview) { preview.position.set(body.x, body.y, body.z); preview.rotation.y = me.yaw + Math.sin(time * 0.8) * 0.9; /* faces the camera, swaying so you can see the sides */ if (preview.userData.sk >= 7) paintSkin(preview.userData.paint, G.player(G.me).color, preview.userData.sk, time); const fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw), rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw); camera.position.set(body.x + fx * 3.1 + rx * 0.9, body.y + 1.45, body.z + fz * 3.1 + rz * 0.9); camera.lookAt(body.x + rx * 0.9, body.y + 1.0, body.z + rz * 0.9); }
+        else if (party() && s.win !== G.me && views.get(s.win)) { /* victory lap: everyone else watches the winner from behind and above, circling slowly */
+          const k = views.get(s.win), a = k.yaw + Math.PI + Math.sin(time * 0.6) * 0.5; camera.position.lerp(va.set(k.x + Math.sin(a) * -4.2, k.y + 2.8, k.z + Math.cos(a) * -4.2), 0.12); camera.lookAt(k.x, k.y + 1.3, k.z); }
         else if (dead && killCam) { const k = views.get(killCam); camera.position.lerp(va.set(body.x - Math.sin(me.yaw) * -3, body.y + 3.2, body.z - Math.cos(me.yaw) * -3), 0.08); if (k) camera.lookAt(k.x, k.y + 1.2, k.z); }
         else { const land = reducedMotion ? 0 : landDip; camera.position.set(body.x, body.y + me.eye - land, body.z); camera.rotation.set(me.pitch + (reducedMotion ? 0 : me.kick * 0.035), me.yaw, 0); }
         if (shake > 0.01 && !reducedMotion) { camera.position.x += (Math.random() - 0.5) * shake * 0.35; camera.position.y += (Math.random() - 0.5) * shake * 0.35; shake *= Math.pow(0.02, dt); }
@@ -564,7 +567,7 @@ registerGame('blasters', (G) => {
         updateViewModel(dt);
         const camO = TEST_CAM && window.__camOverride; if (camO) { const o = camO; camera.position.set(o.p[0], o.p[1], o.p[2]); camera.lookAt(o.l[0], o.l[1], o.l[2]); camera.updateMatrixWorld(); } /* tools/views.js only */
         renderer.clear(); camera.layers.set(0); renderer.shadowMap.needsUpdate=true; renderer.render(scene, camera);
-        if (!camO) { const fovNow = camera.fov, bg = scene.background; renderer.clearDepth(); camera.layers.set(VM_LAYER); /* no held blaster in front of a test-camera photo */ camera.fov = 78; camera.updateProjectionMatrix(); scene.background = null;
+        if (!camO && !(party() && s.win !== G.me)) { const fovNow = camera.fov, bg = scene.background; renderer.clearDepth(); camera.layers.set(VM_LAYER); /* no held blaster in front of a test-camera photo */ camera.fov = 78; camera.updateProjectionMatrix(); scene.background = null;
           renderer.render(scene, camera); scene.background = bg; camera.fov = fovNow; camera.updateProjectionMatrix(); camera.layers.set(0); }
       },
       applyGfx() { /* the player changed graphics mid-game */
@@ -769,7 +772,12 @@ registerGame('blasters', (G) => {
     if (away === 'count') { if (time >= awayAt) enterAway(); else { ctx.fillStyle = 'rgba(5,8,14,.55)'; ctx.fillRect(0, 0, W, H); txt(`Stepping away in ${Math.ceil(awayAt - time)}…`, cx, cy - 20, { size: 34, weight: 900, color: '#ffd84d' }); txt('Click to keep playing', cx, cy + 22, { size: 17, color: '#fff' }); } }
     else if (away === 'on') { /* the away screen is on top */ }
     else if (!locked && me.alive && !over && !showGuide && !locker) { ctx.fillStyle = 'rgba(5,8,14,.6)'; ctx.fillRect(0, 0, W, H); txt('Click to play', cx, cy - 46, { size: 36, weight: 900, color: '#ffd84d' }); ['WASD move   •   Space jump (twice)   •   Shift dash   •   C crouch, tap while running to slide', 'Click fire   •   Right-click aim   •   E foam sword   •   Q drop blaster   •   R reload   •   1-9 or wheel: switch', 'Tab scores   •   H guide   •   L settings   •   M mute   •   Esc frees the mouse', ...(testRoom() ? ['Test room: [ and ] hand you each blaster in turn'] : [])].forEach((l, i) => txt(l, cx, cy + 4 + i * 24, { size: 14, color: '#e8eaf0' })); }
-    if (showScores || over) scoreboard();
+    if (party()) { // victory lap banner instead of the scoreboard; confetti is fired around the winner in render()
+      const pl = G.player(s.win) || { name: '?' }, mine = s.win === G.me, left = over && over.partyEnd ? Math.max(0, Math.ceil(over.partyEnd - time)) : 0;
+      rr(cx - 280, 92, 560, 78, 18, 'rgba(8,12,20,.8)', '#ffd84d'); txt(mine ? 'YOU WIN!' : `${pl.name} wins!`, cx, 122, { size: 34, weight: 900, color: '#ffd84d' });
+      txt(mine ? 'Take a victory lap. Everyone is watching you.' : `Watching the winner  ·  ${left}`, cx, 154, { size: 15, color: '#fff', stroke: false });
+      if (showScores) scoreboard();
+    } else if (showScores || over) scoreboard();
     if (showGuide) guide();
     if (!locker) txt(`Level ${levelOf(xp)}  •  ${CHAR_NAMES[charIdx]}  •  ${SKINS[skinIdx].name}`, 20, 52, { size: 11.5, align: 'left', color: '#ffd84d' });
     // minimap: a top-down of the arena in the top-left corner. You are the white arrow; teammates always show, enemies only when close or when they just fired.
@@ -868,7 +876,7 @@ registerGame('blasters', (G) => {
       else if (e.type === 'power') { const p = POWERS[e.kind]; if (p.rare && mine) { play('medal'); banner('RARE POWER-UP!', '#ffd84d', 2.6); } if (mine) { play('power'); showCard((p.rare ? '★★ RARE: ' : '★ ') + p.name, p.tip, p.color); banner(p.name.toUpperCase() + '!', p.color, 2.2); } else feed.unshift({ text: `${nm(e.id)} grabbed ${p.name}`, t: 5 }); }
       else if (e.type === 'powersoon') { play('soon'); banner(`${POWERS[e.kind].rare ? 'RARE: ' : ''}${POWERS[e.kind].name} appears on ${MAP.powerSpot || 'the tower'} in 6`, POWERS[e.kind].rare ? '#ffd84d' : POWERS[e.kind].color, 3); }
       else if (e.type === 'round') { over = null; showScores = false; banner(`ROUND ${e.round}  ·  GO!`, '#ffd84d', 2.2); play('power'); }
-      else if (e.type === 'over') { setLocker(false); const st = mySt(), gain = 40 + Math.round((st ? st.sc : 0) / 5), before = levelOf(xp); xp += gain; lset('tbb_xp', xp); over = { winner: e.winner, team: e.team, awards: e.awards || [], gain, up: levelOf(xp) > before, nextAt: e.next ? time + e.next : 0, round: e.round || 1 }; if (!e.next && document.pointerLockElement === canvas) document.exitPointerLock(); /* back-to-back rounds keep the mouse captured */ const mt = myTeam(); play((e.team != null ? mt && TEAM[e.team] === mt : e.winner === G.me) ? 'power' : 'medal'); }
+      else if (e.type === 'over') { setLocker(false); const st = mySt(), gain = 40 + Math.round((st ? st.sc : 0) / 5), before = levelOf(xp); xp += gain; lset('tbb_xp', xp); over = { winner: e.winner, team: e.team, awards: e.awards || [], gain, up: levelOf(xp) > before, nextAt: e.next ? time + e.next : 0, round: e.round || 1, partyEnd: e.party ? time + e.party : 0 }; if (!e.next && document.pointerLockElement === canvas) document.exitPointerLock(); /* back-to-back rounds keep the mouse captured */ const mt = myTeam(); play((e.team != null ? mt && TEAM[e.team] === mt : e.winner === G.me) ? 'power' : 'medal'); }
     },
     key(k, down) {
       if (!down) return; audio();
@@ -896,7 +904,7 @@ registerGame('blasters', (G) => {
       // look with the arrow keys too (trackpads, and for automated tests)
       if (me.alive) { const lr = (K.has('ArrowLeft') ? 1 : 0) - (K.has('ArrowRight') ? 1 : 0), ud = (K.has('ArrowUp') ? 1 : 0) - (K.has('ArrowDown') ? 1 : 0); me.yaw += lr * dt * 2.4; me.pitch = Math.max(-1.5, Math.min(1.5, me.pitch + ud * dt * 1.6)); }
       // move
-      const can = me.alive && !over && !locker, f = can ? Math.max(-1, Math.min(1, (K.has('w') ? 1 : 0) - (K.has('s') ? 1 : 0) + touch.f)) : 0, sd = can ? Math.max(-1, Math.min(1, (K.has('d') ? 1 : 0) - (K.has('a') ? 1 : 0) + touch.s)) : 0;
+      const can = me.alive && (!over || (party() && s.win === G.me)) && !locker, /* after the end only the winner moves */ f = can ? Math.max(-1, Math.min(1, (K.has('w') ? 1 : 0) - (K.has('s') ? 1 : 0) + touch.f)) : 0, sd = can ? Math.max(-1, Math.min(1, (K.has('d') ? 1 : 0) - (K.has('a') ? 1 : 0) + touch.s)) : 0;
       body.grav = st && st.pw === 'moon' ? 0.33 : 1; // Moon Boots
       let rem = Math.min(dt, 0.1), firstStep = true; const crouching = can && (K.has('c') || touch.crouch), mul = (st && st.pw === 'speed' ? 1.45 : 1) * (zooming && me.alive ? P.ADS_SPEED : 1);
       while (rem > 1e-5) { const h = Math.min(rem, 1 / 90); body.launched = false; body.jumped = 0; body.dashed = false; body.landed = 0; body.kicked = false; body.teleported = false; body.slid = false; B.stepPlayer(body, { f, s: sd, yaw: me.yaw, jump: can && firstStep && jumpQ, dash: can && firstStep && dashQ, crouch: crouching }, h, mul, MAP); if (body.slid) play('slide'); rem -= h; firstStep = false;
@@ -908,6 +916,7 @@ registerGame('blasters', (G) => {
       me.kick *= Math.pow(0.0008, dt); me.spreadAdd = Math.max(0, me.spreadAdd - dt * 0.05); me.zoom += ((zooming && me.alive ? 1 : 0) - me.zoom) * Math.min(1, dt * 14);
       if (firing && can && WEAPONS[me.w].auto) fire();
       if (can) { sendT -= dt; if (sendT <= 0) { sendT = 0.05; G.send({ type: 'p', x: +body.x.toFixed(2), y: +body.y.toFixed(2), z: +body.z.toFixed(2), yaw: +me.yaw.toFixed(3), pitch: +me.pitch.toFixed(3), cr: body.crouched ? 1 : 0 }); } }
+      if (party() && T && T.ready) { const w = s.win === G.me ? { x: body.x - Math.sin(me.yaw) * 4, y: body.y - 1.4, z: body.z - Math.cos(me.yaw) * 4 } : (T.view(s.win) || null); /* the winner sees it in front of them */ if (w) for (let i = 0; i < 6; i++) { const a = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 1.8; T.spark(w.x + Math.cos(a) * r, w.y + 2.4 + Math.random(), w.z + Math.sin(a) * r, (Math.random() - 0.5) * 3, 5 + Math.random() * 5, (Math.random() - 0.5) * 3, ['#ff5d5d', '#ffd84d', '#5ee07a', '#4da6ff', '#c77dff', '#ffffff'][i], 1.6, 9); } }
       if (T) { try { T.update(dt); } catch (e) { failed = e.message; console.error(e); T.dispose(); T = null; } }
       hud(dt);
     },

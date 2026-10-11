@@ -87,6 +87,15 @@ reset(150, 0); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput(
 reset(600, 0); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire' }); tick(1.4); ok('Cream pie: a throw without a charge value counts as full power (bots)', K('b').pie > 0);
 reset(600, 0); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire', charge: 1 }); tick(1.4); ok('Cream pie: the splat passes in a little over a second', K('b').pie > 2); tick(4); ok('Cream pie: ...and clears', K('b').pie === 0);
 reset(600, 0); fire('b', 'star'); tick(0.1); game.onInput('a', { type: 'give', weapon: 'pie' }); game.onInput('a', { type: 'fire', charge: 1 }); tick(1.4); ok('Cream pie: a Star kart cannot be pied', K('b').pie === 0);
+// laser: instant, hits the first kart straight ahead, stops at walls
+reset(400, 0); fire('a', 'laser'); tick(0.1); ok('Laser: the kart straight ahead loses a heart at once', K('b').hp === 2, 'hp=' + K('b').hp);
+reset(400, 60); fire('a', 'laser'); tick(0.1); ok('Laser: a kart off to the side is missed', K('b').hp === 3);
+reset(400, 0); place('a', 120, 380, Math.PI); tick(1 / 30); fire('a', 'laser'); tick(0.1); ok('Laser: the shooter is never hit by their own beam', K('a').hp === 3);
+// boomerang: out and back, hitting each kart once each way at most, then caught
+reset(220, 0); n = events.length; fire('a', 'boomer'); tick(3.2); ok('Boomerang: hits the kart ahead', K('b').hp < 3, 'hp=' + K('b').hp);
+ok('Boomerang: hits each kart only once per throw', K('b').hp === 2, 'hp=' + K('b').hp);
+ok('Boomerang: the thrower is not hurt by it coming back', K('a').hp === 3);
+ok('Boomerang: it comes back and is caught (gone afterwards)', !game.__state().ents.some((e) => e.kind === 'boomer'));
 // a dead kart cannot fire, and items vanish on death
 reset(); { const g = game.__state(); g.damage(g.karts.get('b'), 3, 'a', 'test'); } tick(1 / 30); ok('A kart that is out drops its item and cannot fire', K('b').dead === 1 && K('b').weapon === null);
 fire('b', 'green'); tick(0.5); ok('...firing while out does nothing', K('a').hp === 3);

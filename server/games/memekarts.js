@@ -101,6 +101,16 @@ const WEAPONS = [
   { id: 'bill', name: 'Bullet Bill', color: '#333', w: 3, fire(g, k) { k.bill = 3; k.inv = Math.max(k.inv, 3); g.api.emit('g:event', { type: 'bill', id: k.id }); } },
   // the one item you aim: hold SPACE to charge the throw (the client shows the arc), release to lob it. charge 0..1 sets the distance.
   { id: 'pie', name: 'Cream pie', color: '#fff1d6', w: 7, hold: true, fire(g, k, charge = 1) { const c = clamp(charge, 0, 1), dist = 140 + 460 * c, t = 0.55 + 0.5 * c; shoot(g, k, 'pie', dist / t, { life: t + 1, fly: t, flyT: t, peak: 40 + 45 * c, r: 10, name: 'Cream pie' }); } },
+  // Laser: an instant beam straight ahead. Stops at the first wall or deck side; the first kart it meets on your level loses a heart and spins.
+  { id: 'laser', name: 'Laser', color: '#ff3df0', w: 8, fire(g, k) {
+    const dx = Math.cos(k.a), dy = Math.sin(k.a), x0 = k.x + dx * (R + 4), y0 = k.y + dy * (R + 4); let len = 0, hitK = null;
+    for (; len < 950; len += 6) { const x = x0 + dx * len, y = y0 + dy * len; if (x < M || y < M || x > g.W - M || y > g.H - M || g.map.obstacles.some((o) => x > o.x && x < o.x + o.w && y > o.y && y < o.y + o.h) || g.surf(x, y) - k.el > 10) break;
+      for (const o of g.karts.values()) if (o !== k && !o.dead && !o.away && !o.air && Math.abs(o.el - k.el) < 24 && Math.hypot(o.x - x, o.y - y) < R + 4) { hitK = o; break; } if (hitK) break; }
+    g.api.emit('g:event', { type: 'laser', id: k.id, x0: Math.round(x0), y0: Math.round(y0), x1: Math.round(x0 + dx * len), y1: Math.round(y0 + dy * len), el: Math.round(k.el) });
+    if (hitK) { hitK.spin = Math.max(hitK.spin, 0.5); g.damage(hitK, 1, k.id, 'Laser'); }
+  } },
+  // Boomerang: thrown ahead, curves round and comes back to you. Hits every kart it passes on the way (once each), out and back.
+  { id: 'boomer', name: 'Boomerang', color: '#ff9f1a', w: 8, fire(g, k) { shoot(g, k, 'boomer', 520, { life: 3, r: 12, name: 'Boomerang', hits: [], a0: k.a }); } },
   { id: 'ink', name: 'Blooper', color: '#2b2b6b', w: 5, fire(g, k) { for (const o of g.karts.values()) if (o !== k && !o.dead && !o.away && o.star <= 0) o.ink = 5; g.api.emit('g:event', { type: 'ink', id: k.id }); } },
 ];
 const WEIGHT_SUM = WEAPONS.reduce((a, w) => a + (w.w || 5), 0);
@@ -193,6 +203,17 @@ const KINDS = {
       return true;
     },
     expire(e, g) { if (e.fly <= 0) explode(g, e.x, e.y, 100, 2, e.owner, 'Bob-omb', e.el); },
+  },
+  boomer: {
+    update(e, g, dt) {
+      const o = g.karts.get(e.owner), out = e.age < 0.9;
+      if (out) { e.a += 1.6 * dt; } else if (o && !o.dead) { const want = Math.atan2(o.y - e.y, o.x - e.x); let da = ((want - e.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; e.a += clamp(da, -5 * dt, 5 * dt); }
+      const sp = out ? 520 : 600; e.vx = Math.cos(e.a) * sp; e.vy = Math.sin(e.a) * sp; e.x += e.vx * dt; e.y += e.vy * dt;
+      if (g.wallHit(e, e.r, 1)) e.a = Math.atan2(e.vy, e.vx);
+      for (const k of g.karts.values()) { if (k.dead || k.away || k.air || k.ghost > 0 || e.hits.includes(k.id)) continue; if (k.id === e.owner) { if (!out && Math.hypot(k.x - e.x, k.y - e.y) < R + 14) return false; continue; } /* caught it */
+        if (Math.hypot(k.x - e.x, k.y - e.y) < e.r + R && Math.abs(k.el - (e.el || 0)) < 24) { e.hits.push(k.id); k.spin = Math.max(k.spin, 0.4); g.damage(k, 1, e.owner, 'Boomerang'); } }
+      return true;
+    },
   },
   pie: { // a lobbed pie: splats on the first kart it meets low in its arc, or where it lands; cream over their screen and a wobble
     update(e, g, dt) {
@@ -308,10 +329,11 @@ module.exports = {
 
     const g = {
       api, karts, ents, wallHit: entWall, surf, W, H,
+      map,
       spawn(e) { e.age = 0; e.id = ++eid; if (e.life == null) e.life = 10; if (e.el == null) { const o = karts.get(e.owner); e.el = o ? o.el : surf(e.x, e.y); } ents.push(e); },
       behind(k, d) { return { x: k.x - Math.cos(k.a) * d, y: k.y - Math.sin(k.a) * d }; },
       damage(k, amt, by, weapon) {
-        if (k.dead || k.away || k.pitFall || k.inv > 0 || k.star > 0 || k.bill > 0 || k.ghost > 0) return;
+        if (over || k.dead || k.away || k.pitFall || k.inv > 0 || k.star > 0 || k.bill > 0 || k.ghost > 0) return;
         if (k.egg > 0) { amt = Math.max(2, amt * 2); k.egg = 0; }
         k.hp -= amt;
         if (k.hp <= 0.001) {
@@ -323,14 +345,16 @@ module.exports = {
       },
     };
 
+    const PARTY = 5; let winnerId = null, celebT = 0;
     function finish() {
       if (over) return; over = true;
       const list = [...karts.values()].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
       const pts = {}; let rank = 0;
       list.forEach((k, i) => { if (i > 0 && k.kills < list[i - 1].kills) rank = i; pts[k.id] = Math.max(0, k.kills + Math.max(0, list.length - rank)); });
       const top = list[0] && api.player(list[0].id);
-      api.emit('g:event', { type: 'over', winner: list[0] ? list[0].id : null });
-      api.after(2500, () => api.end(pts, top ? `${top.name} topped the board with ${list[0].kills} kills. Points: kills + rank bonus.` : 'Nobody drove.'));
+      winnerId = list[0] ? list[0].id : null; celebT = PARTY; // victory lap: only the winner can drive, everyone else watches them
+      api.emit('g:event', { type: 'over', winner: winnerId, party: PARTY });
+      api.after(PARTY * 1000 + 500, () => api.end(pts, top ? `${top.name} topped the board with ${list[0].kills} kills. Points: kills + rank bonus.` : 'Nobody drove.'));
     }
 
     return {
@@ -338,12 +362,13 @@ module.exports = {
       _debugGive(pid, w) { const k = karts.get(pid); if (k && !k.dead) k.weapon = w; }, // test hook: hand a kart a weapon
       onLeave(pid) { karts.delete(pid); if (!over && karts.size < 2) finish(); }, // nobody left to fight: end instead of leaving one kart alone
       onInput(pid, msg) {
-        const k = karts.get(pid); if (!k || over) return;
+        const k = karts.get(pid); if (!k || (over && !(pid === winnerId && celebT > 0 && msg.type === 'ctl'))) return; /* after the end only the winner drives */
         if (k.away && msg.type !== 'away') return;
         if (msg.type === 'ctl') k.ctl = { up: !!msg.up, down: !!msg.down, left: !!msg.left, right: !!msg.right };
         else if (msg.type === 'away') { // stepped away (Esc): parked out of the arena, kills kept, back with a fresh spawn
           const on = !!msg.on; if (on === !!k.away) return; k.away = on; k.ctl = {}; if (on) { k.x = -5000; k.y = -5000; k.air = 0; k.bill = 0; } /* parked far outside, so nothing in the arena can reach them */ if (!on) { const sp = spawnPoint(); Object.assign(k, { x: sp[0], y: sp[1], el: surf(sp[0], sp[1]), vx: 0, vy: 0, air: 0, inv: 2 }); } api.emit('g:event', { type: 'away', id: pid, on: on ? 1 : 0 });
         }
+        else if (msg.type === 'endnow') { if (api.room && api.room.bots && api.room.bots.size && !over) { k.kills += 3; finish(); } } // test rooms only: end the match now (tools/party.js)
         else if (msg.type === 'tp') { // test rooms only (a room with bots): place your kart somewhere, for screenshots and checks
           if (api.room && api.room.bots && api.room.bots.size && !k.dead && [msg.x, msg.y, msg.a].every(Number.isFinite)) { k.x = clamp(msg.x, M + R, W - M - R); k.y = clamp(msg.y, M + R, H - M - R); k.a = msg.a; k.el = surf(k.x, k.y); k.falling = false; k.vx = k.vy = 0; k.air = 0; k.spin = 0; k.inv = Math.max(k.inv, 4); }
         }
@@ -358,8 +383,9 @@ module.exports = {
         }
       },
       tick(dt) {
-        if (over) return;
-        t -= dt; elapsed += dt; if (t <= 0) { t = 0; finish(); }
+        if (over && celebT <= 0) return;
+        if (over) { celebT -= dt; for (const k of karts.values()) if (k.id !== winnerId) { k.ctl = {}; k.vx = 0; k.vy = 0; } } /* everyone but the winner is frozen for the victory lap */
+        else { t -= dt; elapsed += dt; if (t <= 0) { t = 0; finish(); } }
         for (const k of karts.values()) {
           for (const f of ['egg', 'spin', 'mush', 'inv', 'padCd', 'ramCd', 'star', 'small', 'ink', 'pie', 'boost', 'hitCd', 'tpCd', 'hazCd']) if (k[f] > 0) k[f] = Math.max(0, k[f] - dt);
           if (k.ghost > 0) { k.ghost = Math.max(0, k.ghost - dt); if (k.ghost <= 0 && k.stolen) { if (!k.weapon) k.weapon = k.stolen; k.stolen = null; } }
@@ -475,7 +501,7 @@ module.exports = {
         t: Math.ceil(t),
         mapId: map.id,
         haz: movers.length ? movers.map((m) => [Math.round(m.x), Math.round(m.y)]) : undefined, // live positions of the map's moving hazards
-        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1), aw: k.away ? 1 : undefined })),
+        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1), aw: k.away ? 1 : undefined })), win: over ? winnerId : undefined,
         ents: ents.filter((e) => e.kind !== 'burst' && e.kind !== 'gunfire').map((e) => ({ id: e.id, k: e.kind, x: Math.round(e.x), y: Math.round(e.y), el: Math.round(e.el || 0), z: Math.round(e.z || 0), a: +(e.a || 0).toFixed(2), o: e.owner, f: +e.life.toFixed(1) })),
         boxes: boxes.map((b) => (b.t > 0 ? 0 : 1)),
       };

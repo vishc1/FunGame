@@ -22,7 +22,7 @@ registerGame('memekarts', (G) => {
     const release=()=>{touchKeys.delete(b.dataset.drive);b.classList.remove('pressed');};b.onpointerup=release;b.onpointercancel=release;b.onlostpointercapture=release;
   }
   { const fb = touchControls.querySelector('.touch-fire'); fb.onpointerdown = (e) => { e.preventDefault(); try { fb.setPointerCapture(e.pointerId); } catch (err) { /* synthetic */ } trigger(true); }; const up = () => trigger(false); fb.onpointerup = up; fb.onpointercancel = up; fb.onlostpointercapture = up; } /* press fires; for the pie, hold to aim and release to throw */
-  const WEAPON_NAMES = { green: 'Green shell', triple: 'Triple shells', red: 'Red shell', blue: 'Blue shell', tnt: 'TNT', bomb: 'Bob-omb', pie: 'Cream pie', pad: 'Launch pad', egg: 'Egg gun', banana: 'Banana', fake: 'Fake item box', fire: 'Fire flower', gun: 'Minigun', mush: 'Boost mushroom', star: 'Star', boo: 'Boo ghost', bolt: 'Lightning', bill: 'Bullet Bill', ink: 'Blooper' };
+  const WEAPON_NAMES = { green: 'Green shell', triple: 'Triple shells', red: 'Red shell', blue: 'Blue shell', tnt: 'TNT', bomb: 'Bob-omb', pie: 'Cream pie', laser: 'Laser', boomer: 'Boomerang', pad: 'Launch pad', egg: 'Egg gun', banana: 'Banana', fake: 'Fake item box', fire: 'Fire flower', gun: 'Minigun', mush: 'Boost mushroom', star: 'Star', boo: 'Boo ghost', bolt: 'Lightning', bill: 'Bullet Bill', ink: 'Blooper' };
   /* One line each, shown at the top of the screen while you hold the item and in the H guide. Keep them short and literal. */
   const WEAPON_INFO = {
     green: 'Fires straight ahead and bounces off walls.', triple: 'Three shells in a spread. They bounce off walls.', red: 'Homing shell. Chases the nearest kart.',
@@ -31,16 +31,17 @@ registerGame('memekarts', (G) => {
     fake: 'Drops a fake item box. Whoever grabs it spins out.', fire: 'A quick burst of five bouncing fireballs.', gun: 'Sprays bullets ahead for two seconds.',
     mush: 'Speed boost. Ram other karts to hurt them.', star: 'Six seconds invincible and fast. Ramming wrecks karts.', boo: 'Untouchable for five seconds, and steals someone\'s item.',
     bolt: 'Shrinks and slows everyone else. May zap their items.', bill: 'Three seconds of autopilot rocket. Flattens karts in your path.', ink: 'Splats ink over everyone else\'s screen.',
+    laser: 'An instant beam straight ahead. The first kart in line loses a heart.', boomer: 'Thrown ahead, curves back to you. Hits everyone it passes.',
     pie: `Hold ${window.matchMedia('(pointer:coarse)').matches ? 'FIRE' : 'SPACE'} to aim the throw, let go to lob it. Cream over whoever it splats.`,
   };
-  const ITEM_ORDER = ['green', 'triple', 'red', 'blue', 'fire', 'gun', 'bomb', 'pie', 'tnt', 'banana', 'fake', 'egg', 'pad', 'mush', 'star', 'bill', 'boo', 'bolt', 'ink'];
+  const ITEM_ORDER = ['green', 'triple', 'red', 'blue', 'laser', 'boomer', 'fire', 'gun', 'bomb', 'pie', 'tnt', 'banana', 'fake', 'egg', 'pad', 'mush', 'star', 'bill', 'boo', 'bolt', 'ink'];
   // the Cream pie is aimed: hold SPACE (or the mouse button) to charge, release to throw. chargeAt = when the hold began, or null
   let chargeAt = null; const chargeNow = () => chargeAt == null ? 0 : Math.min(1, (time - chargeAt) / 1.1);
   let showGuide = false, cardW = null, cardT = -9;
   // SPACE / click: most items fire on press. A held item (the pie) starts charging on press and is thrown on release.
   // ---- stepping away (Esc): 2 seconds to change your mind, then an away screen. You stay in the match with your kills kept;
   // the server parks your kart outside the arena until you press Back to the race.
-  let away = 0, awayAt = 0;
+  let away = 0, awayAt = 0, partyEnd = 0;
   function startAway() { const k = s && s.karts.find((q) => q.id === G.me); if (!k || k.dead) return; away = 'count'; awayAt = time + 2; }
   function enterAway() {
     away = 'on'; G.send({ type: 'away', on: 1 }); const k = s.karts.find((q) => q.id === G.me), order = s.karts.slice().sort((a, b) => b.kills - a.kills), rank = order.findIndex((q) => q.id === G.me) + 1, col = G.player(G.me).color;
@@ -75,6 +76,8 @@ registerGame('memekarts', (G) => {
     green: shellIcon('#3ddc5a', '#1a6'), red: shellIcon('#ff4040', '#900'), blue: shellIcon('#3b6cff', '#fff'),
     triple: (x, y, z) => { for (const d of [-0.7, 0.7, 0]) shellIcon('#3ddc5a', '#1a6')(x + d * z, y + (d ? z * 0.3 : -z * 0.4), z * 0.6); },
     tnt: (x, y, z) => { rr(x - z, y - z, z * 2, z * 2, 2, '#e0442a', '#000'); ctx.fillStyle = '#fff'; ctx.font = `700 ${z * 0.9}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TNT', x, y); },
+    laser: (x, y, z) => { ctx.fillStyle = '#ff3df0'; ctx.fillRect(x - z, y - z * 0.18, z * 2, z * 0.36); G.circle(x - z * 0.9, y, z * 0.42, '#ffffff', '#ff3df0'); },
+    boomer: (x, y, z) => { ctx.save(); ctx.translate(x, y); ctx.rotate(-0.6); ctx.fillStyle = '#ff9f1a'; ctx.strokeStyle = '#7a3d00'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-z, z * 0.3); ctx.quadraticCurveTo(0, -z * 1.2, z, z * 0.3); ctx.lineTo(z * 0.7, z * 0.55); ctx.quadraticCurveTo(0, -z * 0.6, -z * 0.7, z * 0.55); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); },
     pie: (x, y, z) => { G.circle(x, y + z * 0.25, z * 0.95, '#d8a861', '#8a6a3a'); G.circle(x, y - z * 0.05, z * 0.8, '#fff6e6', '#e8d4b8'); G.circle(x - z * 0.25, y - z * 0.2, z * 0.22, '#fff'); G.circle(x + z * 0.1, y - z * 0.5, z * 0.17, '#e0312f'); },
     bomb: (x, y, z) => { G.circle(x, y + 1, z, '#16181d', '#555'); G.circle(x + z * 0.6, y - z * 0.9, z * 0.3, '#ffd84d'); G.circle(x - z * 0.3, y - z * 0.2, z * 0.18, '#fff'); G.circle(x + z * 0.3, y - z * 0.2, z * 0.18, '#fff'); },
     pad: (x, y, z) => { rr(x - z, y - z * 0.6, z * 2, z * 1.2, 3, '#2f7bff', '#fff'); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x, y - z * 0.4); ctx.lineTo(x - z * 0.5, y + z * 0.3); ctx.lineTo(x + z * 0.5, y + z * 0.3); ctx.fill(); },
@@ -397,7 +400,12 @@ registerGame('memekarts', (G) => {
           dress.add(box(3.2, RH, 3.2, M3('#f4f4f4'), len / 2 - 1.6, RH / 2, sd * (wid / 2 - 1.6)));
         }
         const lead = tex(256, 128, (c, cw, ch) => { c.clearRect(0, 0, cw, ch); c.strokeStyle = '#ffffff'; c.lineWidth = 16; c.lineCap = 'round'; c.lineJoin = 'round'; for (const x of [40, 110, 180]) { c.beginPath(); c.moveTo(x - 16, 22); c.lineTo(x + 22, 64); c.lineTo(x - 16, 106); c.stroke(); } });
-        const runway = mesh(new THREE.PlaneGeometry(90, wid * 0.8), new THREE.MeshBasicMaterial({ map: lead, transparent: true, depthWrite: false, color: new THREE.Color(hot).multiplyScalar(1.5) }), -len / 2 - 50, 0.8, 0); runway.rotation.x = -Math.PI / 2; runway.castShadow = false; dress.add(runway);
+        const runway = mesh(new THREE.PlaneGeometry(90, wid * 0.8), new THREE.MeshBasicMaterial({ map: lead, transparent: true, depthWrite: false, color: new THREE.Color(hot).multiplyScalar(1.5) }), -len / 2 - 50, 0.8, 0); runway.rotation.x = -Math.PI / 2; runway.castShadow = false;
+        { /* lead-in arrows only on flat, clear ground at the ramp's foot height, shortened to fit: never over a wall, a deck or thin air */
+          const DV = { E: [1, 0], W: [-1, 0], S: [0, 1], N: [0, -1] }[rp.dir], fx = rp.x + rp.w / 2 - DV[0] * (len / 2), fy = rp.y + rp.h / 2 - DV[1] * (len / 2);
+          const clear = (u) => [-0.42, 0, 0.42].every((sd) => { const px = fx - DV[0] * u + DV[1] * sd * wid, py = fy - DV[1] * u + DV[0] * sd * wid; return Math.abs(surfaceAt(px, py) - Z0) < 0.5 && !(map.obstacles || []).some((o) => px > o.x - 2 && px < o.x + o.w + 2 && py > o.y - 2 && py < o.y + o.h + 2); });
+          let reach = 0; while (reach < 95 && clear(reach + 5)) reach += 5;
+          if (reach >= 35) { const L = reach - 5; runway.scale.x = L / 90; runway.position.x = -len / 2 - 5 - L / 2; dress.add(runway); } }
         g.position.set(rp.x + rp.w / 2 - OX, Z0, rp.y + rp.h / 2 - OZ); g.rotation.y = rp.dir === 'E' ? 0 : rp.dir === 'W' ? Math.PI : rp.dir === 'N' ? Math.PI / 2 : -Math.PI / 2; scene.add(g); dress.position.copy(g.position); dress.rotation.y = g.rotation.y; scene.add(dress);
       }
     }
@@ -663,6 +671,7 @@ registerGame('memekarts', (G) => {
       pad: () => asset('launch_pad', 46) || (() => { const g = new THREE.Group(); g.add(cyl(22, 24, 3, M3('#2f7bff', { emissive: '#2f7bff', emissiveIntensity: 0.7 }), 0, 1.5, 0, 24)); for (const x of [-5, 5]) { for (const z of [1, -1]) { const b = box(3, 0.6, 13, glow('#ffffff', 1.5), x, 3.3, z * 4.5); b.rotation.y = z * 0.7; g.add(b); } } return g; })(),
       banana: () => asset('banana', 16) || (() => { const g = new THREE.Group(); for (let i = 0; i < 3; i++) { const p = new THREE.Group(); const t = mesh(new THREE.TorusGeometry(6, 2.2, 6, 10, Math.PI * 0.8), M3('#ffe135', { roughness: 0.4 }), 0, 0, 0); t.rotation.z = Math.PI * 0.1; p.add(t); p.rotation.y = (i / 3) * Math.PI * 2; p.position.y = 2.5; g.add(p); } g.add(cyl(1.4, 1.8, 3, M3('#7a5230'), 0, 9.5, 0, 6)); return g; })(),
       bomb: () => asset('bobomb', 20) || (() => { const g = new THREE.Group(); g.add(sph(9, M3('#16181d', { roughness: 0.25, metalness: 0.5 }), 0, 10, 0, 14), box(5, 2.5, 4, M3('#ffb300'), 2, 1.2, 4), box(5, 2.5, 4, M3('#ffb300'), 2, 1.2, -4), sph(2, M3('#fff'), 7.5, 12, 3, 8), sph(2, M3('#fff'), 7.5, 12, -3, 8), cyl(0.8, 0.8, 5, M3('#c9ccd4'), 0, 20.5, 0, 6)); const sp = sph(2, glow('#ffd84d', 3), 0, 24, 0, 6); g.add(sp); g.userData.blink = sp; return g; })(),
+      boomer: () => asset('boomerang', 22) || (() => { const g = new THREE.Group(), sp = new THREE.Group(); for (const s of [-1, 1]) { const arm = box(14, 2.2, 4, M3('#ff9f1a', { roughness: 0.4 }), s * 6, 0, s * 2.5); arm.rotation.y = s * 0.55; sp.add(arm); } sp.position.y = 9; g.add(sp); g.userData.spin = sp; return g; })(),
       pie: () => asset('pie', 18) || (() => { const g = new THREE.Group(); g.add(cyl(8, 6.5, 3.5, M3('#d8a861', { roughness: 0.6 }), 0, 1.75, 0, 16)); const cream = sph(7.5, M3('#fff6e6', { roughness: 0.35 }), 0, 4, 0, 14); cream.scale.y = 0.55; g.add(cream, sph(1.6, M3('#e0312f', { roughness: 0.3 }), 1.5, 8.2, -1, 8)); return g; })(),
       fake: () => asset('fake_box', 24) || (() => { const g = itemBox('#ffb833', '¿'); g.userData.box = true; return g; })(),
     };
@@ -699,7 +708,8 @@ registerGame('memekarts', (G) => {
     }
     const camTarget = new THREE.Vector3(), lookTarget = new THREE.Vector3(); let wasBack = false;
     function updateCamera(dt) {
-      const v = views.get(G.me), k = s && s.karts.find((q) => q.id === G.me);
+      const watch = s && s.win && s.win !== G.me && partyEnd > time ? s.win : G.me; /* victory lap: the camera follows the winner */
+      const v = views.get(watch), k = s && s.karts.find((q) => q.id === watch);
       const portrait=camera.aspect<1;
       let fov = portrait?82:62;
       if (v && k && !k.dead && !k.aw) { /* away: the kart is parked off the map, so the camera orbits the arena instead */
@@ -738,6 +748,9 @@ registerGame('memekarts', (G) => {
         { const o = new THREE.Object3D(); for (let i = 0; i < 13; i++) { o.position.copy(pts[i * 2]); o.scale.setScalar(0.7 + i * 0.05); o.updateMatrix(); aimLine.setMatrixAt(i, o.matrix); } aimLine.instanceMatrix.needsUpdate = true; aimLine.visible = true; }
         aimRing.position.set(pts[24].x, el + 1.5, pts[24].z); aimRing.visible = true; aimRing.scale.setScalar(1 + Math.sin(time * 8) * 0.05);
       },
+      laser(e) { const a = new THREE.Vector3(e.x0 - OX, (e.el || 0) + 10, e.y0 - OZ), b = new THREE.Vector3(e.x1 - OX, (e.el || 0) + 10, e.y1 - OZ), len = a.distanceTo(b); if (len < 1) return;
+        const beam = mesh(new THREE.CylinderGeometry(3, 3, len, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xff9af8, transparent: true, opacity: 0.95 })); beam.position.copy(a).lerp(b, 0.5); beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()); beam.castShadow = false; scene.add(beam);
+        booms.push({ ball: null, ring: beam, t: 0, dur: 0.35, r: 0, beam: true }); burst(b.x, b.y, b.z, 14, 60, ['#ff7af5', '#ffffff'], 0.4); },
       splat(gx, gy) { burst(gx - OX, 10, gy - OZ, 26, 90, ['#fff6e6', '#ffffff', '#e0312f'], 0.8); ringFx(gx, gy, 60); },
       kartPos(id) { const v = views.get(id); return v ? { x: v.x - OX, z: v.y - OZ } : null; },
       update(dt) {
@@ -759,9 +772,10 @@ registerGame('memekarts', (G) => {
         for (let i = booms.length - 1; i >= 0; i--) {
           const b = booms[i]; b.t += dt; const p = Math.min(1, b.t / b.dur);
           if (b.ball) { b.ball.scale.setScalar(b.r * (0.25 + 0.6 * p)); b.ball.material.opacity = 0.85 * (1 - p); b.ball.material.color.setHSL(0.09 - 0.06 * p, 1, 0.6 - 0.25 * p); }
-          b.ring.scale.setScalar(b.r * (0.2 + 1.1 * p)); b.ring.material.opacity = 1 - p;
+          if (b.beam) { b.ring.scale.x = b.ring.scale.z = 1 - 0.7 * p; b.ring.material.opacity = 0.95 * (1 - p); } else { b.ring.scale.setScalar(b.r * (0.2 + 1.1 * p)); b.ring.material.opacity = 1 - p; }
           if (p >= 1) { if (b.ball) { scene.remove(b.ball); b.ball.geometry.dispose(); b.ball.material.dispose(); } scene.remove(b.ring); b.ring.geometry.dispose(); b.ring.material.dispose(); booms.splice(i, 1); }
         }
+        if (s && s.win && partyEnd > time) { const w = views.get(s.win); if (w) if (Math.random() < 0.5) for (let i = 0; i < 3; i++) { const a = (w.a || 0) + (Math.random() - 0.5) * 2.6, r = 60 + Math.random() * 90; /* fountains ahead of and around the winner, never between them and the camera */ spark(w.x - OX + Math.cos(a) * r, (w.h || 0) + 6 + Math.random() * 10, w.y - OZ + Math.sin(a) * r, (Math.random() - 0.5) * 40, 90 + Math.random() * 80, (Math.random() - 0.5) * 40, ['#ff5d5d', '#ffd84d', '#5ee07a', '#4da6ff', '#c77dff', '#ff9f43', '#ffffff'][i], 1.8, 110); } } /* victory lap party */
         stepParticles(dt); updateCamera(dt);
         if (composer) {
           composer.render(dt);
@@ -901,12 +915,13 @@ registerGame('memekarts', (G) => {
       if (e.type === 'slip') feed.unshift({ text: `${nm(e.id)} slipped on a banana`, t: 4 });
       if (e.type === 'pied') { feed.unshift({ text: `${nm(e.by)} pied ${nm(e.id)}`, t: 4 }); if (mine(e.id)) banner('Pie in the face!', '#fff1d6'); if (mine(e.by) && !mine(e.id)) banner(`Splat! ${nm(e.id)} got pied`, '#fff1d6', 1.6); }
       if (e.type === 'splat') T && T.ready && T.splat(e.x, e.y);
+      if (e.type === 'laser') { T && T.ready && T.laser(e); }
       if (e.type === 'steal') { feed.unshift({ text: `${nm(e.id)}'s ghost stole from ${nm(e.from)}`, t: 4 }); if (mine(e.from)) banner('A ghost stole your item!', '#e8e8ff'); if (mine(e.id)) banner(`Stole: ${WEAPON_NAMES[e.weapon] || e.weapon}`, '#e8e8ff'); }
       if (e.type === 'bolt') { flash = 0.6; banner(mine(e.id) ? 'LIGHTNING!' : `${nm(e.id)} used LIGHTNING`, '#fff27a'); }
       if (e.type === 'bill') feed.unshift({ text: `${nm(e.id)} became a Bullet Bill`, t: 4 });
       if (e.type === 'ink' && !mine(e.id)) banner('Inked!', '#9aa0ff', 1.5);
       if (e.type === 'pickup' && mine(e.id)) cardT = time; /* the item card at the top pops and explains it */
-      if (e.type === 'over') banner(e.winner ? `${nm(e.winner)} wins!` : 'Time!', '#ffd84d', 5);
+      if (e.type === 'over') { partyEnd = time + (e.party || 0); banner(e.winner ? (mine(e.winner) ? 'YOU WIN! Victory lap!' : `${nm(e.winner)} wins! Watch the victory lap`) : 'Time!', '#ffd84d', 5); }
       if (feed.length > 6) feed.length = 6;
     },
     key(k, down) {

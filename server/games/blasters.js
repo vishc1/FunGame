@@ -116,15 +116,27 @@ module.exports = {
     }
     // the next round, same map and same players: scores reset, everyone respawns, pickups and the train start over
     function newRound() {
-      round++; over = false; t = 0; left = fast ? (typeof fast === 'number' ? fast : 20) : MATCH; firstBlood = false; tk[0] = tk[1] = 0;
+      round++; over = false; celebT = 0; winnerId = null; t = 0; left = fast ? (typeof fast === 'number' ? fast : 20) : MATCH; firstBlood = false; tk[0] = tk[1] = 0;
       drops.length = 0; rockets.length = 0; for (const k of pick) { k.t = k.def.kind === 'power' ? POWER_EVERY * 0.5 : 0; k.kind = null; }
       train.wait = TR.every * 0.5; train.x = null; train.warned = false;
       for (const p of players.values()) { Object.assign(p, { kills: 0, deaths: 0, score: 0, streak: 0, best: 0, heads: 0, dmg: 0, rares: 0, lastKiller: null, multi: 0, lastKillT: -99 }); spawn(p); }
       api.emit('g:event', { type: 'round', round });
     }
+    const PARTY = 5; let winnerId = null, celebT = 0; // victory lap: after the end, only the winner moves and everyone else watches them
+    function sendState() {
+        const pw = pick[0];
+      api.emit('g:state', {
+        t: Math.ceil(left), win: over ? winnerId : undefined, goal: TEAMS ? TEAM_GOAL : KILL_GOAL, map: MAP.id, tm: TEAMS ? 1 : 0, tk: TEAMS ? tk : undefined,
+        ps: [...players.values()].map((p) => ({ id: p.id, x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch), hp: Math.ceil(p.hp), ar: Math.round(p.armor), w: p.w, m: p.mag[p.w], r: p.res[p.w] === Infinity ? -1 : p.res[p.w], own: p.own.reduce((a, v, i) => a | (v ? 1 << i : 0), 0), rl: p.reloadT > 0 ? 1 : 0, dead: p.dead > 0 ? r2(p.dead) : 0, prot: p.prot > 0 ? 1 : 0, k: p.kills, d: p.deaths, sc: p.score, st: p.streak, pw: p.power || 0, pwt: p.powerT > 0 ? Math.ceil(p.powerT) : 0, lvl: p.lvl, ch: p.ch, sk: p.sk, cr: p.cr, tm: TEAMS ? p.team : undefined, aw: p.away ? 1 : undefined })),
+        pk: pick.map((k) => (k.t > 0 ? 0 : 1)), pw: { kind: pw.kind || 0, up: pw.t <= 0 ? 1 : 0, in: Math.max(0, Math.ceil(pw.t)) },
+        dr: drops.map((d) => ({ id: d.id, w: d.w, x: r2(d.x), y: r2(d.y), z: r2(d.z) })), rk: rockets.map((k) => ({ id: k.id, w: k.w, x: r2(k.x), y: r2(k.y), z: r2(k.z) })),
+        tr: train.x === null ? null : [r2(train.x), train.dir],
+      });
+    }
     function finish() {
       if (over) return; over = true;
       const list = [...players.values()].sort((a, b) => b.kills - a.kills || b.score - a.score);
+      { const wt0 = TEAMS ? (tk[0] === tk[1] ? -1 : tk[0] > tk[1] ? 0 : 1) : -1; const champ = TEAMS && wt0 >= 0 ? list.find((p) => p.team === wt0) : list[0]; winnerId = champ ? champ.id : null; celebT = PARTY; }
       const pts = {}; list.forEach((p, i) => { pts[p.id] = Math.max(1, list.length - i) + Math.floor(p.kills / 4); });
       const nm = (p) => (api.player(p.id) || { name: '?' }).name;
       const top = (f) => list.slice().sort((a, b) => f(b) - f(a))[0];
@@ -132,11 +144,11 @@ module.exports = {
       if (TEAMS) { // winning team: everyone on it gets a bonus, and the match summary is about the teams
         const wt = tk[0] === tk[1] ? -1 : tk[0] > tk[1] ? 0 : 1;
         for (const p of list) if (p.team === wt) pts[p.id] += 3;
-        api.emit('g:event', { type: 'over', next: LOOP ? NEXT_IN : 0, round, winner: list[0] ? list[0].id : null, team: wt, tk, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills, tm: p.team })) });
+        api.emit('g:event', { type: 'over', next: LOOP ? NEXT_IN : 0, round, party: PARTY, champ: winnerId, winner: list[0] ? list[0].id : null, team: wt, tk, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills, tm: p.team })) });
         api.after(NEXT_IN * 1000, () => LOOP && players.size >= 2 ? newRound() : api.end(pts, wt < 0 ? `It's a draw, ${tk[0]} tags each.` : `${TEAM_NAMES[wt]} team wins ${tk[wt]} to ${tk[1 - wt]}.${list[0] ? ` Top tagger: ${nm(list[0])} with ${list[0].kills}.` : ''}`));
         return;
       }
-      api.emit('g:event', { type: 'over', next: LOOP ? NEXT_IN : 0, round, winner: list[0] ? list[0].id : null, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills })) });
+      api.emit('g:event', { type: 'over', next: LOOP ? NEXT_IN : 0, round, party: PARTY, champ: winnerId, winner: list[0] ? list[0].id : null, awards, scores: list.map((p) => ({ id: p.id, sc: p.score, k: p.kills })) });
       const w = list[0];
       api.after(NEXT_IN * 1000, () => LOOP && players.size >= 2 ? newRound() : api.end(pts, w ? `${nm(w)} wins with ${w.kills} tags.${awards.length ? ' ' + awards.map(([n, id, d]) => `${n}: ${(api.player(id) || { name: '?' }).name} (${d})`).join('. ') + '.' : ''}` : 'Nobody played.'));
     }
@@ -146,7 +158,7 @@ module.exports = {
       onRejoin(pid) { const p = players.get(pid); if (p) api.to(pid, 'g:event', { type: 'spawn', id: pid, x: p.x, y: p.y, z: p.z, yaw: r2(p.yaw), keep: 1 }); },
       onLeave(pid) { players.delete(pid); if (!over && players.size < 2) finish(); },
       onInput(pid, m) {
-        const p = players.get(pid); if (!p || over) return;
+        const p = players.get(pid); if (!p || (over && !(pid === winnerId && celebT > 0 && m.type === 'p'))) return; /* after the end only the winner moves */
         if (p.away && m.type !== 'away' && m.type !== 'hello') return;
         if (m.type === 'p') {
           if (p.dead || !fin(m.x) || !fin(m.y) || !fin(m.z) || !fin(m.yaw) || !fin(m.pitch)) return;
@@ -166,6 +178,7 @@ module.exports = {
           const next = m.next | 0; p.w = next > 0 && next < WEAPONS.length && p.own[next] ? next : 0; p.nextFire = Math.max(p.nextFire, t + 0.3);
           api.emit('g:event', { type: 'dropped', id: pid, w });
         }
+        else if (m.type === 'endnow') { if (api.room && api.room.bots && api.room.bots.size && !over) { p.kills += 3; finish(); } } // test rooms only: end the match now (tools/party.js)
         else if (m.type === 'give') { // test rooms only (a room with bots): hand yourself any blaster
           const w = m.w | 0; if (api.room && api.room.bots && api.room.bots.size && !p.dead && w > 0 && w < WEAPONS.length) { give(p, w); api.to(pid, 'g:event', { type: 'pickup', id: pid, kind: 'weapon', w, drop: 1 }); }
         }
@@ -194,7 +207,7 @@ module.exports = {
         }
       },
       tick(dt) {
-        if (over) return;
+        if (over) { if (celebT > 0) { celebT -= dt; sendState(); } return; }
         t += dt; left -= dt; if (left <= 0) { left = 0; finish(); return; }
         for (const p of players.values()) {
           if (p.away) continue; // stepped away: nothing happens to them until they come back
@@ -250,14 +263,7 @@ module.exports = {
           if (hitT !== Infinity || rk.life <= 0) { const tt = hitT === Infinity ? step : Math.max(0, hitT - 0.05); explode(rk.x + dx * tt, rk.y + dy * tt, rk.z + dz * tt, rk.o, direct, rk.w); rockets.splice(i, 1); if (over) return; continue; }
           rk.x += dx * step; rk.y += dy * step; rk.z += dz * step;
         }
-        const pw = pick[0];
-        api.emit('g:state', {
-          t: Math.ceil(left), goal: TEAMS ? TEAM_GOAL : KILL_GOAL, map: MAP.id, tm: TEAMS ? 1 : 0, tk: TEAMS ? tk : undefined,
-          ps: [...players.values()].map((p) => ({ id: p.id, x: r2(p.x), y: r2(p.y), z: r2(p.z), yw: r2(p.yaw), pt: r2(p.pitch), hp: Math.ceil(p.hp), ar: Math.round(p.armor), w: p.w, m: p.mag[p.w], r: p.res[p.w] === Infinity ? -1 : p.res[p.w], own: p.own.reduce((a, v, i) => a | (v ? 1 << i : 0), 0), rl: p.reloadT > 0 ? 1 : 0, dead: p.dead > 0 ? r2(p.dead) : 0, prot: p.prot > 0 ? 1 : 0, k: p.kills, d: p.deaths, sc: p.score, st: p.streak, pw: p.power || 0, pwt: p.powerT > 0 ? Math.ceil(p.powerT) : 0, lvl: p.lvl, ch: p.ch, sk: p.sk, cr: p.cr, tm: TEAMS ? p.team : undefined, aw: p.away ? 1 : undefined })),
-          pk: pick.map((k) => (k.t > 0 ? 0 : 1)), pw: { kind: pw.kind || 0, up: pw.t <= 0 ? 1 : 0, in: Math.max(0, Math.ceil(pw.t)) },
-          dr: drops.map((d) => ({ id: d.id, w: d.w, x: r2(d.x), y: r2(d.y), z: r2(d.z) })), rk: rockets.map((k) => ({ id: k.id, w: k.w, x: r2(k.x), y: r2(k.y), z: r2(k.z) })),
-          tr: train.x === null ? null : [r2(train.x), train.dir],
-        });
+        sendState();
       },
       destroy() {},
       __power() { return pick[0]; }, // for tools/blasters-items-check.js only: the power-up plinth's state
