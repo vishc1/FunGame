@@ -18,7 +18,11 @@
 
   window.createP2PSocket = function () {
     const handlers = {}, acks = new Map(), conns = new Map();
-    let closed = false, mode = null, peer = null, worker = null, conn = null, ackSeq = 0, sidSeq = 0, lastHeard = 0, pingTimer = null, gen = 0;
+    let closed = false, mode = null, peer = null, worker = null, conn = null, ackSeq = 0, sidSeq = 0, lastHeard = 0, pingTimer = null, gen = 0, tabs = null;
+    // Tabs of the same browser talk over a BroadcastChannel named after the room: no network at all, so a second tab on
+    // the host's computer always gets in (WebRTC between two tabs of one machine needs a local-name lookup that some
+    // machines block). Messages: {t:'hello'|'welcome'|'d'|'bye', gid, up?, s?}; `up` marks guest-to-host traffic.
+    const tabChannel = (code) => { try { return new BroadcastChannel('fg-room-' + code); } catch (e) { return null; } };
     const fire = (ev, ...a) => { for (const fn of (handlers[ev] || []).slice()) { try { fn(...a); } catch (e) { console.error(e); } } };
     const sock = {
       connected: false, p2p: true, get hosting() { return mode === 'host'; },
@@ -51,6 +55,7 @@
       if (worker) { worker.terminate(); worker = null; }
       for (const c of conns.values()) { try { c.close(); } catch (e) { /* already closed */ } } conns.clear();
       if (peer) { try { peer.destroy(); } catch (e) { /* already gone */ } peer = null; } conn = null;
+      if (tabs) { try { tabs.close(); } catch (e) { /* ignore */ } tabs = null; }
     }
 
     // ---- hosting a room ----
@@ -89,6 +94,13 @@
         hb.onmessage = () => { if (peer !== p || mode !== 'host' || p.destroyed) { hb.terminate(); return; } if (p.disconnected) { try { p.reconnect(); } catch (e) { /* next beat */ } } else { try { if (p.socket && p.socket.send) p.socket.send({ type: 'HEARTBEAT' }); } catch (e) { /* next beat */ } } };
       } catch (e) { /* no workers from blobs: PeerJS's own heartbeat still runs while the tab is visible */ }
       document.addEventListener('visibilitychange', () => { const p = peer; if (document.visibilityState === 'visible' && p && mode === 'host' && !p.destroyed && p.disconnected) { try { p.reconnect(); } catch (e) { /* keep-alive retries */ } } });
+      tabs = tabChannel(code);
+      if (tabs) { const bySid = new Map(); const ch = tabs;
+        ch.onmessage = (e) => { const m = e.data; if (!m || !m.up || mode !== 'host' || tabs !== ch) return;
+          if (m.t === 'hello') { const sid = 't' + (++sidSeq); const c = { open: true, send(s) { ch.postMessage({ t: 'd', gid: m.gid, s }); }, close() { c.open = false; ch.postMessage({ t: 'bye', gid: m.gid }); } };
+            for (const [g, old] of bySid) if (g === m.gid) { conns.delete(old); worker.postMessage({ t: 'close', sid: old }); } /* that tab asked again */
+            bySid.set(m.gid, sid); conns.set(sid, c); worker.postMessage({ t: 'open', sid }); ch.postMessage({ t: 'welcome', gid: m.gid }); }
+          else { const sid = bySid.get(m.gid); if (!sid) return; if (m.t === 'd' && typeof m.s === 'string') worker.postMessage({ t: 'msg', sid, s: m.s }); else if (m.t === 'bye') { bySid.delete(m.gid); const c = conns.get(sid); if (c) { c.open = false; conns.delete(sid); } worker.postMessage({ t: 'close', sid }); } } }; }
       worker.postMessage({ t: 'open', sid: 'local' });
       toWorker('create', Object.assign({}, data, { code }), cb);
     }
@@ -100,6 +112,18 @@
       if (!/^[A-Z0-9]{4}$/.test(code)) return cb({ error: gone });
       teardown(); const mine = ++gen; let settled = false;
       const fail = (msg) => { if (settled || mine !== gen) return; settled = true; teardown(); cb({ error: msg }); };
+      const ch = tabChannel(code);
+      if (ch) { /* is the room hosted by another tab of this browser? */
+        const gid = 'g' + Math.random().toString(36).slice(2, 10);
+        const here = await new Promise((res) => { const t = setTimeout(() => res(false), 600); ch.onmessage = (e) => { const m = e.data; if (m && m.t === 'welcome' && m.gid === gid && !m.up) { clearTimeout(t); res(true); } }; ch.postMessage({ t: 'hello', gid, up: true }); });
+        if (mine !== gen) { ch.close(); return; }
+        if (here) { tabs = ch; mode = 'guest'; sock.connected = true; lastHeard = Date.now();
+          conn = { open: true, send(s) { ch.postMessage({ t: 'd', gid, up: true, s }); }, close() { conn.open = false; try { ch.postMessage({ t: 'bye', gid, up: true }); } catch (e) { /* closed */ } } };
+          ch.onmessage = (e) => { const m = e.data; if (mine !== gen || !m || m.up || m.gid !== gid) return; lastHeard = Date.now(); if (m.t === 'd' && typeof m.s === 'string') deliver(m.s); else if (m.t === 'bye') lost(mine); };
+          pingTimer = setInterval(() => { if (Date.now() - lastHeard > 11000) return lost(mine); toHost('__ping'); }, 3000);
+          const ask = setTimeout(() => { settled = false; fail('The room did not answer. Try again.'); }, 12000);
+          toHost(ev, Object.assign({}, data, { code }), (r) => { clearTimeout(ask); settled = true; cb(r); }); return; }
+        ch.close(); }
       const p = peer = new window.Peer({ debug: 0, config: ICE() });
       const timer = setTimeout(() => fail(window.FG_ICE && window.FG_ICE.length ? 'Could not reach the room. Your friend may have closed the game tab' : 'Could not link to your friend\'s browser. One of your networks blocks direct links (common on mobile data and school or work Wi-Fi). Try another network, such as home Wi-Fi'), 20000); /* relays can take a few seconds longer */
       p.on('error', (err) => { clearTimeout(timer); fail(err && err.type === 'peer-unavailable' ? gone : 'Could not connect (' + ((err && err.type) || 'unknown') + '). Try again.'); });
@@ -123,7 +147,7 @@
       teardown(); fire('disconnect', 'transport close');
       setTimeout(() => fire('connect'), 1500);
     }
-    window.addEventListener('pagehide', () => { if (mode === 'host') sayBye(); if (peer) { try { peer.destroy(); } catch (e) { /* ignore */ } } }); // lets the others notice straight away
+    window.addEventListener('pagehide', () => { if (mode === 'host') sayBye(); if (mode === 'guest' && tabs && conn) conn.close(); if (peer) { try { peer.destroy(); } catch (e) { /* ignore */ } } }); // lets the others notice straight away
     setTimeout(() => fire('connect'), 0); // like a real socket: the app uses this to reclaim a saved seat after a refresh
     return sock;
   };

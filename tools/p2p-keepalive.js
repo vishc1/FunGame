@@ -31,6 +31,17 @@ async function until(p, want, ms) { const t0 = Date.now(); while (Date.now() - t
   // 3. a room that is gone
   const c = await open(`${BASE}/?room=ZZZZ${Q}`, () => { try { localStorage.setItem('fg_name', 'Cy'); } catch (e) {} }); await sleep(8000);
   const msg = await c.textContent('#invMsg'), btn = await c.textContent('#invGo'); check('an invite to a closed room says so, and the button is usable again', /fresh link|code/i.test(msg) && !/Joining/.test(btn), `"${msg}" / button "${btn}"`);
+  // 4. a second tab of the host's own browser joins over the tab channel: no network, so no local-name lookup needed.
+  // This browser gets no mDNS workaround flag, which on this Mac makes WebRTC between two tabs fail.
+  const plain = await chromium.launch({ executablePath: exe, headless: true }); browsers.push(plain); const ctx = await plain.newContext();
+  const h2 = await ctx.newPage(); h2.on('pageerror', (e) => errors.push(e.message)); await h2.goto(`${BASE}/?game=memekarts${Q}`); await h2.fill('#name', 'Host2'); await h2.click('#createBtn'); await until(h2, 'lobby', 20000);
+  const code2 = await h2.evaluate(() => window.G.room.code); const t2 = await ctx.newPage(); t2.on('pageerror', (e) => errors.push(e.message)); await t2.addInitScript(() => { try { localStorage.setItem('fg_name', 'Tab'); } catch (e) {} });
+  await t2.goto(`${BASE}/?room=${code2}${Q}`); const tt = await until(t2, 'lobby', 8000);
+  check('a second tab of the same browser joins the room (no network lookup needed)', tt >= 0, tt >= 0 ? `${(tt / 1000).toFixed(1)} s` : 'stuck on ' + (await scr(t2)) + ': ' + (await t2.textContent('#invMsg')));
+  if (tt >= 0) { await h2.evaluate(() => { document.querySelector('#botAdd').click(); }); await sleep(300); await h2.evaluate(() => document.querySelector('#startBtn').click()); const tg = await until(t2, 'game', 15000); check('...and the game starts in that tab too', tg >= 0);
+    await t2.reload(); check('...the tab can refresh and is back in the game', (await until(t2, 'game', 15000)) >= 0);
+    await h2.evaluate(() => { window.confirm = () => true; document.querySelector('#leaveBtn') && document.querySelector('#leaveBtn').click(); document.querySelector('#quitBtn') && document.querySelector('#quitBtn').click(); }); const th = await until(t2, 'home', 10000);
+    check('...and when the host tab leaves, the other tab is told the room closed', th >= 0 && /closed/i.test(await t2.textContent('#toast')), th >= 0 ? await t2.textContent('#toast') : 'still on ' + (await scr(t2))); }
   check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
   console.log(`\n${pass} passed, ${fail} failed`); for (const b of browsers) await b.close().catch(() => {}); srv.kill(); process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('TEST CRASHED:', e.message.split('\n')[0]); process.exit(1); });
