@@ -265,6 +265,7 @@ const KINDS = {
   },
 };
 
+const HEARTS = 2; // hearts per life (the client HUD and name labels assume the same number)
 module.exports = {
   id: 'memekarts',
   name: 'Meme Karts',
@@ -326,7 +327,7 @@ module.exports = {
     }
     function addKart(id) {
       const s = spawnPoint();
-      karts.set(id, { id, x: s[0], y: s[1], a: Math.atan2(CY - s[1], CX - s[0]), vx: 0, vy: 0, hp: 3, weapon: null, egg: 0, air: 0, spin: 0, mush: 0, dead: 0, inv: 1.5, padCd: 0, ramCd: 0, kills: 0, deaths: 0, v: vi++ % 8, ctl: {}, el: 0, star: 0, ghost: 0, small: 0, bill: 0, ink: 0, pie: 0, stolen: null, boost: 0, streak: 0, hitCd: 0, tpCd: 0, hazCd: 0 });
+      karts.set(id, { id, x: s[0], y: s[1], a: Math.atan2(CY - s[1], CX - s[0]), vx: 0, vy: 0, hp: HEARTS, weapon: null, egg: 0, air: 0, spin: 0, mush: 0, dead: 0, inv: 1.5, padCd: 0, ramCd: 0, kills: 0, deaths: 0, v: vi++ % 8, ctl: {}, el: 0, star: 0, ghost: 0, small: 0, bill: 0, ink: 0, pie: 0, stolen: null, boost: 0, streak: 0, hitCd: 0, tpCd: 0, hazCd: 0 });
     }
     for (const p of api.players()) addKart(p.id);
 
@@ -393,7 +394,7 @@ module.exports = {
           for (const f of ['egg', 'spin', 'mush', 'inv', 'padCd', 'ramCd', 'star', 'small', 'ink', 'pie', 'boost', 'hitCd', 'tpCd', 'hazCd']) if (k[f] > 0) k[f] = Math.max(0, k[f] - dt);
           if (k.ghost > 0) { k.ghost = Math.max(0, k.ghost - dt); if (k.ghost <= 0 && k.stolen) { if (!k.weapon) k.weapon = k.stolen; k.stolen = null; } }
           if (k.away) continue; // stepped away: parked until they come back
-          if (k.dead > 0) { k.dead -= dt; if (k.dead <= 0) { const s = spawnPoint(); Object.assign(k, { dead: 0, pitFall: false, pitOut: false, x: s[0], y: s[1], el: surf(s[0],s[1]), falling: false, vx: 0, vy: 0, hp: 3, egg: 0, air: 0, spin: 0, inv: 2, a: Math.atan2(CY - s[1], CX - s[0]) }); } continue; }
+          if (k.dead > 0) { k.dead -= dt; if (k.dead <= 0) { const s = spawnPoint(); Object.assign(k, { dead: 0, pitFall: false, pitOut: false, x: s[0], y: s[1], el: surf(s[0],s[1]), falling: false, vx: 0, vy: 0, hp: HEARTS, egg: 0, air: 0, spin: 0, inv: 2, a: Math.atan2(CY - s[1], CX - s[0]) }); } continue; }
           if (k.pitFall) {
             k.el -= 240 * dt;
             if (k.el <= -100) {

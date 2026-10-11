@@ -11,6 +11,7 @@ registerGame('memekarts', (G) => {
   const { ctx, canvas } = G;
   let W = G.W, H = G.H;
   let map = window.MEMEKARTS_MAPS[0], OBST = map.obstacles, BOXES = map.boxes;
+  const HEARTS = 2; /* hearts per life, same as HEARTS in server/games/memekarts.js */
   const TEST_CAM = /[?&]bltest=1/.test(location.search); // tools/views.js only
   const onGfx = () => { if (T && T.applyGfx) T.applyGfx(); }; window.addEventListener('fg-gfx', onGfx); /* graphics changed in the header or on the home page */
   const touchKeys=new Set();
@@ -575,7 +576,7 @@ registerGame('memekarts', (G) => {
       const key = name + color + hp + me; if (u.labelKey === key) return; u.labelKey = key;
       const c = u.lc.getContext('2d'); c.clearRect(0, 0, 256, 80);
       c.font = '800 30px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineWidth = 7; c.strokeStyle = 'rgba(0,0,0,.8)'; c.strokeText(name, 128, 26); c.fillStyle = color; c.fillText(name, 128, 26);
-      const f = Math.max(0, Math.min(1, hp / 3));
+      const f = Math.max(0, Math.min(1, hp / HEARTS));
       c.fillStyle = 'rgba(0,0,0,.65)'; c.beginPath(); c.roundRect(72, 50, 112, 18, 9); c.fill();
       c.fillStyle = f > 0.6 ? '#5ee07a' : f > 0.3 ? '#ffd84d' : '#ff4d4d'; if (f > 0) { c.beginPath(); c.roundRect(75, 53, Math.max(8, 106 * f), 12, 6); c.fill(); }
       c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.roundRect(72, 50, 112, 18, 9); c.stroke();
@@ -868,7 +869,7 @@ registerGame('memekarts', (G) => {
       rr(W / 2 - 142, H - 64, 44, 44, 10, me.weapon ? 'rgba(255,216,77,.22)' : 'rgba(255,255,255,.08)', me.weapon ? '#ffd84d' : 'rgba(255,255,255,.25)');
       if (me.weapon) { (ICONS[me.weapon] || ICONS.green)(W / 2 - 120, H - 42, 14); G.text(WEAPON_NAMES[me.weapon] || me.weapon, W / 2 - 86, H - 50, { size: 16, align: 'left', stroke: false }); G.text(me.bill ? 'autopilot!' : 'SPACE / click to use', W / 2 - 86, H - 31, { size: 11, align: 'left', color: '#bbb', stroke: false }); }
       else { G.text('?', W / 2 - 120, H - 42, { size: 22, color: 'rgba(255,255,255,.35)', stroke: false }); G.text(me.ghost ? 'Ghost: untouchable' : 'Drive through an item box', W / 2 - 86, H - 42, { size: 13, align: 'left', color: '#aaa', stroke: false }); }
-      for (let i = 0; i < 3; i++) { /* three hearts that drain smoothly, so minigun chip damage is visible */
+      for (let i = 0; i < HEARTS; i++) { /* hearts drain smoothly, so minigun chip damage is visible */
         const x = W / 2 + 92 + i * 20, y = H - 42, fill = Math.max(0, Math.min(1, me.hp - i));
         const heart = () => { ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.bezierCurveTo(x - 12, y - 4, x - 5, y - 11, x, y - 4); ctx.bezierCurveTo(x + 5, y - 11, x + 12, y - 4, x, y + 6); };
         heart(); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill();

@@ -13,7 +13,7 @@ function world(mod, mem) { const ev = [], timers = []; let st = null, vt = 0, en
   const a = w.g.__state().karts.get('a'), b = w.g.__state().karts.get('b');
   ok('karts: the winner can still drive', Math.hypot(a.x - pa.x, a.y - pa.y) > 40, Math.hypot(a.x - pa.x, a.y - pa.y).toFixed(0) + ' units');
   ok('karts: everyone else is frozen', Math.hypot(b.x - pb.x, b.y - pb.y) < 1, Math.hypot(b.x - pb.x, b.y - pb.y).toFixed(1) + ' units');
-  ok('karts: snapshots say who won so cameras can follow them', w.st().win === 'a'); ok('karts: nothing hurts during the party', b.hp === 3 && a.hp === 3);
+  ok('karts: snapshots say who won so cameras can follow them', w.st().win === 'a'); ok('karts: nothing hurts during the party', b.hp === 2 && a.hp === 2);
   w.run(5); ok('karts: the results come after the party', w.ended()); }
 // shooter: a wins, only a moves
 { const w = world(bl, { __fast: 3, blastersMap: 'fort', blastersRounds: 'one' }); w.run(3.5); w.g.onInput('a', { type: 'p', x: 10, y: 0, z: 28, yaw: 0, pitch: 0, cr: 0 }); w.g.onInput('b', { type: 'p', x: 12, y: 0, z: 28, yaw: 0, pitch: 0, cr: 0 }); w.run(0.1);

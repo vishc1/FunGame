@@ -39,7 +39,7 @@ for (const map of MAPS) {
   // a shell fired on the floor does not hit a kart standing on the deck above it
   w = world(map.id); const bx = dk.x + dk.w / 2, by = dk.y + dk.h / 2; w.tp('b', bx, by, 0);
   ok(`${map.id}: a kart placed on a deck stands at deck height`, w.k('b').el === MAPS.DECK_Z);
-  if (sides.length) { const [sx, sy, sa] = sides[0]; w.tp('a', sx, sy, sa); w.game.onInput('a', { type: 'give', weapon: 'green' }); w.game.onInput('a', { type: 'fire' }); w.tick(40); ok(`${map.id}: a floor-level shell cannot hit a kart up on the deck`, w.k('b').hp === 3, 'hp ' + w.k('b').hp); }
+  if (sides.length) { const [sx, sy, sa] = sides[0]; w.tp('a', sx, sy, sa); w.game.onInput('a', { type: 'give', weapon: 'green' }); w.game.onInput('a', { type: 'fire' }); w.tick(40); ok(`${map.id}: a floor-level shell cannot hit a kart up on the deck`, w.k('b').hp === 2 && !w.k('b').dead, 'hp ' + w.k('b').hp); }
   // the item box on the deck can only be taken from the deck
   const bi = map.boxes.findIndex(([x, y]) => MAPS.surface(map, x, y) === MAPS.DECK_Z);
   if (bi >= 0) { w = world(map.id); w.tp('b', 60, 60, 0); w.tp('a', map.boxes[bi][0], map.boxes[bi][1], 0); w.tick(2); ok(`${map.id}: the item box on the deck is collected up there`, !!w.k('a').weapon); }
