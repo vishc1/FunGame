@@ -178,14 +178,10 @@ body.racing { overflow:hidden; }.kart-fullscreen { position:fixed;inset:0;min-he
 #arcade summary { cursor:pointer; }
 @media(max-width:900px){ .toy-grid { grid-template-columns:1fr 1fr; } }
 @media(max-width:600px){ .game-pick { grid-template-columns:1fr; gap:10px; margin-top:16px; padding:0 6%; } .game-pick button span { display:none; } #home.blasters .hero h1 { font-size:62px; letter-spacing:-3px; } .toy-grid { grid-template-columns:1fr; } }
-/* a zoomed 100vh is taller than the window, so each screen's min-height is divided by its zoom.
-   Big screens: the menus were laid out for a laptop and looked tiny on a monitor. Scale the menu screens up with the window
-   (the games scale their own HUD, so #game is left alone). */
-@media (min-width: 1600px) { #home, #invite, #lobby, #results, #testBox { zoom: 1.15; } #home, #invite, #lobby, #results { min-height: calc(100vh / 1.15); } }
-@media (min-width: 1900px) { #home, #invite, #lobby, #results, #testBox { zoom: 1.3; } #home, #invite, #lobby, #results { min-height: calc(100vh / 1.3); } }
-@media (min-width: 2300px) { #home, #invite, #lobby, #results, #testBox { zoom: 1.5; } #home, #invite, #lobby, #results { min-height: calc(100vh / 1.5); } }
-@media (min-width: 2800px) { #home, #invite, #lobby, #results, #testBox { zoom: 1.75; } #home, #invite, #lobby, #results { min-height: calc(100vh / 1.75); } }
-@media (min-width: 3400px) { #home, #invite, #lobby, #results, #testBox { zoom: 2.1; } #home, #invite, #lobby, #results { min-height: calc(100vh / 2.1); } }
+/* Big screens: the menus scale with --ui-zoom, set by public/gfx.js from the window's width AND height (so the first screen
+   always fits). A zoomed 100vh is taller than the window, so min-height is divided by the same zoom. Games are not zoomed. */
+#home, #invite, #lobby, #results, #testBox { zoom: var(--ui-zoom, 1); }
+#home, #invite, #lobby, #results { min-height: calc(100vh / var(--ui-zoom, 1)); }
 
 /* in-game settings (Esc menu in both games, Settings (L) in the shooter) */
 .fg-set { display:grid;gap:10px;text-align:left; }

@@ -8,8 +8,7 @@
     high:   { name: 'High',   pixelRatio: Math.min(window.devicePixelRatio || 1, 1.5), shadows: true, shadowSize: 2048, bloom: true, scenery: true },
   };
   const ORDER = ['low', 'medium', 'high'];
-  const coarse = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
-  let level = coarse ? 'medium' : 'high'; /* the default; FG_GFX.DEFAULT */
+  let level = 'medium'; /* the default everywhere; FG_GFX.DEFAULT */
   try { const v = localStorage.getItem('fg_gfx'); if (LEVELS[v]) level = v; } catch (e) { /* storage blocked */ }
   const q = new URLSearchParams(location.search).get('gfx'); if (LEVELS[q]) level = q; // ?gfx=low for tests
   window.FG_GFX = {
@@ -18,7 +17,7 @@
     cfg() { return LEVELS[level]; },
     set(v) { if (!LEVELS[v] || v === level) return; level = v; try { localStorage.setItem('fg_gfx', v); } catch (e) { /* ignore */ } window.dispatchEvent(new CustomEvent('fg-gfx', { detail: LEVELS[v] })); syncUI(); },
     next() { this.set(ORDER[(ORDER.indexOf(level) + 1) % ORDER.length]); },
-    get DEFAULT() { return coarse ? 'medium' : 'high'; },
+    get DEFAULT() { return 'medium'; },
     reset() { this.set(this.DEFAULT); try { localStorage.removeItem('fg_gfx'); } catch (e) { /* ignore */ } },
   };
   // One settings panel for the in-game Esc menu and the shooter's Settings (L): graphics, sound and, for the shooter, mouse and view.
@@ -41,6 +40,10 @@
       for (const r of root.querySelectorAll('input[data-set]')) r.oninput = () => { const k = r.dataset.set, v = +r.value; lsSet(k === 'sens' ? 'tbb_sens' : 'tbb_fov', v); const out = root.querySelector(`[data-set-v="${k}"]`); if (out) out.textContent = k === 'sens' ? v.toFixed(2) : v; if (hooks[k]) hooks[k](v); };
     },
   };
+  // Menu size: grow with the window on big monitors, but only as far as the home page's first screen still fits the
+  // window's height (it needs about 1000 x 1000 css px at normal size). Games are not zoomed.
+  function fitZoom() { const z = Math.max(1, Math.min(2.2, innerWidth / 1500, innerHeight / 1000)); document.documentElement.style.setProperty('--ui-zoom', (Math.floor(z * 20) / 20).toFixed(2)); }
+  fitZoom(); window.addEventListener('resize', fitZoom);
   function syncUI() {
     for (const b of document.querySelectorAll('[data-gfx]')) { const on = b.dataset.gfx === level; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); }
     const btn = document.querySelector('#gfxBtn'); if (btn) btn.textContent = 'Graphics: ' + LEVELS[level].name;
