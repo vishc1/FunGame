@@ -1,0 +1,28 @@
+{
+  "boomerang": {
+    "triangles": 192,
+    "budget": 300,
+    "min": [
+      -0.550000011920929,
+      -1.100000023841858,
+      0.0
+    ],
+    "max": [
+      0.550000011920929,
+      1.100000023841858,
+      0.18000000715255737
+    ],
+    "materials": [
+      "Boomerang dark edge",
+      "Boomerang orange plastic",
+      "Boomerang rounded edge"
+    ],
+    "tip_span": 2.2,
+    "thickness": 0.18,
+    "plane": "Blender XY",
+    "forward": "Blender +X",
+    "origin": "horizontal centre of V, base at Z=0",
+    "closed": true,
+    "volume": 0.1683982768650397
+  }
+}

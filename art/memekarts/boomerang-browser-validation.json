@@ -1,0 +1,97 @@
+{
+  "asset": {
+    "triangles": 192,
+    "size": [
+      1.100000023841858,
+      0.18000000715255737,
+      2.200000047683716
+    ],
+    "min": [
+      -0.550000011920929,
+      0,
+      -1.100000023841858
+    ],
+    "max": [
+      0.550000011920929,
+      0.18000000715255737,
+      1.100000023841858
+    ],
+    "materials": [
+      "Boomerang orange plastic",
+      "Boomerang dark edge",
+      "Boomerang rounded edge"
+    ],
+    "animations": 0
+  },
+  "flight": {
+    "samples": 69,
+    "first": {
+      "position": [
+        -457,
+        0,
+        -509
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "height": 1.8000000325116237,
+      "entity": [
+        443,
+        91
+      ],
+      "id": 36
+    },
+    "last": {
+      "position": [
+        -460.7864600428842,
+        0,
+        -468.0021009027189
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "height": 1.8000000325116237,
+      "entity": [
+        428,
+        120
+      ],
+      "id": 36
+    },
+    "moving": true,
+    "spinning": false,
+    "maxHeight": 1.8000000325116237,
+    "removed": true
+  },
+  "itemCycle": [
+    "green",
+    "triple",
+    "red",
+    "blue",
+    "tnt",
+    "bomb",
+    "pad",
+    "egg",
+    "banana",
+    "fake",
+    "fire",
+    "gun",
+    "mush",
+    "star",
+    "boo",
+    "bolt",
+    "bill",
+    "ink",
+    "green",
+    "triple",
+    "red"
+  ],
+  "blockers": [
+    "public/games/memekarts.extras.js ITEMS omits boomer; ] cannot select Boomerang. Flight check used the existing practice-room give command.",
+    "public/games/memekarts.js ENT.boomer returns asset() without userData.spin; updateEnts spins only the fallback wrapper and excludes boomer from its generic GLB rotation branch. Custom model moves flat but does not rotate."
+  ],
+  "errors": []
+}

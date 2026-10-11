@@ -1,6 +1,6 @@
 # Meme Karts Blender assets
 
-All 23 original required assets are exported in `../../public/models/`, along with six environment models, three decks, three ramps and the Cream pie: 36 GLBs. Each asset has an editable `.blend` source here. The optional kart arena was not generated.
+All 23 original required assets are exported in `../../public/models/`, along with six environment models, three decks, three ramps, three summit towers, the Cream pie and the Boomerang: 40 GLBs. Each asset has an editable `.blend` source here. The optional kart arena was not generated.
 
 `contact-sheet.png` shows the full set. `validation.json` records Blender triangle counts, budgets, grounded bounds, wheel names, and materials. The parent `../runtime-report.json` contains the independent Three.js browser checks; `../runtime-game.png` shows the models in the running game.
 
@@ -288,3 +288,31 @@ Passed checks:
 - `node tools/home.js`: 12 checks passed, including the five-map picker, both primary games and the phone layout.
 
 Preview images: `pitfall-overview.png`, `skyway-overview.png`, `pitfall-falling.png` and `pitfall-penalty.png`. The local preview server is on port 3097; the pre-existing port-3000 server was not restarted. All browser checks use the windowless launcher.
+
+## Boomerang delivery
+
+`boomerang.glb` is an original orange-plastic toy with a wide V silhouette, rounded tip corners and a dark edge stripe. It uses **192 / 300 triangles**. Blender bounds are **1.1 × 2.2 × 0.18 m**, with the V lying in XY, its nose toward +X, and its origin horizontally centred at Z = 0. The stripe is part of the closed mesh, so it has no overlapping decal surfaces. The generator checks manifold edges and positive signed volume.
+
+The export has three plain Principled materials, applied transforms and no textures, lights, cameras, rigs or animations. `boomerang.blend` is the editable source. Rebuild and inspect with:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 --python art/memekarts/build_boomerang.py
+TEST_URL=http://127.0.0.1:3099 node art/memekarts/check-boomerang.mjs
+```
+
+`boomerang-validation.json` records the Blender measurements. The independent browser check confirms the triangle count, grounding, 2.2 m span, open V notch and both wing tips. It verifies discovery through `/models/list` and observes the custom GLB moving flat in a practice match at the loader's 22-unit size. `boomerang-browser-validation.json` records 69 flight samples and zero browser errors. Previews are `boomerang-catalog.png`, `boomerang-equipped.png` and `boomerang-in-flight.png`.
+
+All three required checks passed:
+
+- `node tools/kart-items-check.js`: all 21 items, including Boomerang's hit, return and catch behaviour.
+- `node tools/solo.js memekarts 25` (Stadium): finished in-game with zero browser errors.
+- `TEST_URL=http://127.0.0.1:3099 node art/check-memekarts.mjs`: all five maps, guest permissions, fullscreen, mobile sizing, touch driving and kart animation at 30 / 60 / 120 fps; zero browser errors.
+
+### Game-code handoff: shortcut and spin
+
+Two existing integration gaps remain outside this art-only task:
+
+1. `public/games/memekarts.extras.js` has an 18-entry `ITEMS` list without `boomer`. Cycling `]` 21 times never equipped it. The flight check used the existing practice-room command `G.send({type:'give', weapon:'boomer'})`, then pressed Space. The item card displayed Boomerang and the GLB loaded.
+2. `public/games/memekarts.js` returns `asset('boomerang', 22)` without a `userData.spin` wrapper. `updateEnts` rotates that wrapper for the placeholder, but its generic custom-model branch omits `boomer`. Across all 69 samples the custom model moved but its rotation stayed zero. The custom path also lacks the placeholder's 9-unit vertical offset and currently travels at floor level. These need renderer changes by the game-code owner; no baked animation was added to hide them.
+
+Protected game-file SHA-256 hashes match the starting baseline. No game code or GitHub state changed. The fresh preview server is on port 3099, started with `npm --ignore-scripts start` so `prestart` cannot regenerate protected files. Static deployment manifests remain part of the owner's normal publishing build.
