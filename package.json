@@ -7,7 +7,8 @@
     "start": "node server.js",
     "prestart": "node server/build-manifest.js",
     "build": "node server/build-manifest.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "online": "node tools/host-online.js"
   },
   "license": "MIT",
   "dependencies": {

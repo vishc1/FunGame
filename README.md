@@ -86,3 +86,10 @@ npx vercel@latest env add FG_ICE_SERVERS production
 # [{"urls":["turn:global.relay.metered.ca:80","turn:global.relay.metered.ca:443?transport=tcp"],"username":"...","credential":"..."}]
 npx vercel@latest deploy --prod --yes
 ```
+
+## Playing with friends when browser-to-browser links fail
+
+`npm run online` makes this computer the game server for the live site: it starts the server, opens a free Cloudflare
+tunnel (`brew install cloudflared` once) and redeploys the site to connect through it. Works on every network, and a
+room no longer ends when the host closes a tab. Keep the window open while you play; Ctrl+C puts the site back.
+`npm run online -- --no-vercel` only prints a tunnel link to play at, without touching the live site.

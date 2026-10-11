@@ -13,6 +13,7 @@ app.use(require('compression')()); // gzip: the 3D library is ~1.5 MB uncompress
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/vendor/addons', express.static(path.join(__dirname, 'node_modules/three/examples/jsm')));
 app.get('/favicon.ico', (req, res) => res.status(204).end());
+app.get('/health', (req, res) => { res.set('Access-Control-Allow-Origin', '*'); res.json({ ok: true, games: hub.games.length, rooms: hub.roomCount ? hub.roomCount() : undefined }); }); /* a static site asks this before connecting (public/app.js) */
 // Lists the 3D models dropped into public/models (GLB files from Blender). The 3D games use this to decide
 // which assets exist and fall back to procedural placeholders for the rest.
 app.get('/models/list', (req, res) => {

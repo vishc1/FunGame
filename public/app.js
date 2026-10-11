@@ -6,7 +6,20 @@
   // Two transports with the same interface. Normal: a Socket.IO server (WebSocket only, some hosts lack long-polling).
   // Peer-to-peer (public/p2p.js): for static hosts with no game server; the build sets window.FG_P2P there. ?p2p=1 / ?p2p=0 overrides it.
   const P2P = (() => { const q = new URLSearchParams(location.search).get('p2p'); return q === '1' ? true : q === '0' ? false : !!window.FG_P2P; })();
-  const socket = P2P ? window.createP2PSocket() : window.FG_SERVER ? io(window.FG_SERVER, { transports: ['websocket'] }) : io({ transports: ['websocket'] }); /* FG_SERVER: a game server on another host (config.js) */
+  // FG_SERVER (config.js): a game server on another host. If it does not answer within a few seconds (the tunnel or
+  // server is down) the site falls back to peer-to-peer, so a stale setting never leaves the site dead.
+  const socket = (!P2P && window.FG_SERVER) ? remoteOrP2P(window.FG_SERVER) : P2P ? window.createP2PSocket() : io({ transports: ['websocket'] });
+  function remoteOrP2P(url) {
+    const subs = [], queue = []; let inner = io(url, { transports: ['websocket'], reconnectionAttempts: 2, timeout: 4000 }), decided = false;
+    const wrap = { get connected() { return inner.connected; }, get p2p() { return !!inner.p2p; }, get hosting() { return !!inner.hosting; }, get id() { return inner.id; },
+      on(ev, fn) { subs.push([ev, fn]); inner.on(ev, fn); return wrap; }, once(ev, fn) { const w = (...a) => { wrap.off(ev, w); fn(...a); }; return wrap.on(ev, w); },
+      off(ev, fn) { const i = subs.findIndex((s) => s[0] === ev && s[1] === fn); if (i >= 0) subs.splice(i, 1); inner.off(ev, fn); return wrap; },
+      emit(ev, data, cb) { if (decided || inner.connected) inner.emit(ev, data, cb); else queue.push([ev, data, cb]); return wrap; }, disconnect() { inner.disconnect(); } };
+    const useServer = () => { if (decided) return; decided = true; for (const q of queue.splice(0)) inner.emit(...q); };
+    const useP2P = () => { if (decided) return; decided = true; try { inner.disconnect(); } catch (e) { /* ignore */ } inner = window.createP2PSocket(); for (const [ev, fn] of subs) inner.on(ev, fn); for (const q of queue.splice(0)) inner.emit(...q); console.warn('game server at ' + url + ' did not answer: playing peer-to-peer'); };
+    inner.on('connect', useServer); inner.on('connect_error', useP2P); setTimeout(useP2P, 6000);
+    return wrap;
+  }
   const GAMES = {};
   let gameDefs = [];
   let room = null;
