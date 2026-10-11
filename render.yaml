@@ -1,0 +1,15 @@
+# Render blueprint: runs the FriendGame game server (server.js) always reachable over a normal web connection,
+# so joining works on every network and a room survives the host closing their tab.
+# Deploy: render.com -> New -> Blueprint -> pick the vishc1/FunGame repo. Then build the Vercel site with
+# FG_SERVER_URL=https://<service>.onrender.com so it connects there.
+services:
+  - type: web
+    name: friendgame
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

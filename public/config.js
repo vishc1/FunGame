@@ -2,3 +2,5 @@
 window.FG_P2P = false;
 // Extra ICE (TURN relay) servers from the FG_ICE_SERVERS build variable.
 window.FG_ICE = [];
+// Game server to connect to from a static site (FG_SERVER_URL); empty = this site's own server or peer-to-peer.
+window.FG_SERVER = "";

@@ -1,10 +1,11 @@
 // Dev check: a whole evening with friends, four real browsers (host + 3 friends), every multiplayer capability in order.
 // Runs in server mode (local) and peer-to-peer mode (local with ?p2p=1, or the live site).
 // Usage: node tools/session.js            server mode
+//        SERVER=1 BASE_URL=<static site> node tools/session.js   static site + game server on another host (FG_SERVER_URL)
 //        P2P=1 node tools/session.js      peer-to-peer
 //        BASE_URL=https://friendgame.vercel.app node tools/session.js
 const { chromium } = require('playwright-core'); const { spawn } = require('child_process'); const path = require('path'), fs = require('fs'), os = require('os');
-const PORT = 9550 + Math.floor(Math.random() * 90), LOCAL = !process.env.BASE_URL, BASE = process.env.BASE_URL || `http://localhost:${PORT}`, P2P = !LOCAL || !!process.env.P2P, Q = LOCAL && process.env.P2P ? '&p2p=1' : '';
+const PORT = 9550 + Math.floor(Math.random() * 90), LOCAL = !process.env.BASE_URL, BASE = process.env.BASE_URL || `http://localhost:${PORT}`, P2P = process.env.SERVER ? false : (!LOCAL || !!process.env.P2P), /* SERVER=1: BASE_URL is a static site that talks to a game server elsewhere */ Q = LOCAL && process.env.P2P ? '&p2p=1' : '';
 const cache = path.join(os.homedir(), 'Library/Caches/ms-playwright'); const dir = fs.readdirSync(cache).filter((d) => /^chromium_headless_shell-\d+$/.test(d)).sort().pop();
 const exe = path.join(cache, dir, 'chrome-headless-shell-mac-arm64/chrome-headless-shell'); const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0; const check = (n, ok, x = '') => { ok ? pass++ : fail++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x ? '  ' + x : ''}`); };

@@ -6,7 +6,7 @@
   // Two transports with the same interface. Normal: a Socket.IO server (WebSocket only, some hosts lack long-polling).
   // Peer-to-peer (public/p2p.js): for static hosts with no game server; the build sets window.FG_P2P there. ?p2p=1 / ?p2p=0 overrides it.
   const P2P = (() => { const q = new URLSearchParams(location.search).get('p2p'); return q === '1' ? true : q === '0' ? false : !!window.FG_P2P; })();
-  const socket = P2P ? window.createP2PSocket() : io({ transports: ['websocket'] });
+  const socket = P2P ? window.createP2PSocket() : window.FG_SERVER ? io(window.FG_SERVER, { transports: ['websocket'] }) : io({ transports: ['websocket'] }); /* FG_SERVER: a game server on another host (config.js) */
   const GAMES = {};
   let gameDefs = [];
   let room = null;
