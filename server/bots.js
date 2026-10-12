@@ -94,7 +94,8 @@ const BRAINS = {
     const ground = (i) => s.pk[i] && MAP.pickups[i].y < 0.5;
     const nearestPickup = (ok) => { let best = null, bd = 1e9; MAP.pickups.forEach((pk, i) => { if (!ground(i) || !ok(pk)) return; const d = Math.hypot(pk.x - body.x, pk.z - body.z); if (d < bd) { bd = d; best = pk; } }); return best; };
     let goal = null;
-    if (me.hp < 45) goal = nearestPickup((pk) => pk.kind === 'health' || pk.kind === 'mega');
+    if (s.gd && s.gd.x != null && !s.gd.soon && Math.hypot(s.gd.x - body.x, s.gd.z - body.z) < 40) goal = { x: s.gd.x, z: s.gd.z }; /* the Golden Blaster on the ground: everyone wants it */
+    if (!goal && me.hp < 45) goal = nearestPickup((pk) => pk.kind === 'health' || pk.kind === 'mega');
     if (!goal && me.own === 1) goal = (s.dr || []).find((d) => d.y < 0.5 && Math.hypot(d.x - body.x, d.z - body.z) < 18) || nearestPickup((pk) => pk.kind === 'weapon');
     if (!goal && tgt) goal = { x: tgt.x, z: tgt.z };
     if (!goal && m.last) goal = m.last;
@@ -120,7 +121,7 @@ const BRAINS = {
     out.push({ type: 'p', x: +body.x.toFixed(2), y: +body.y.toFixed(2), z: +body.z.toFixed(2), yaw: +m.yaw.toFixed(2), pitch: +m.pitch.toFixed(2), cr: m.cr || 0 });
     // weapon choice, reload, fire
     const has = (w) => (me.own >> w) & 1;
-    const want = tgt ? (td < 9 && has(1) ? 1 : td > 7 && td < 30 && has(8) ? 8 : td > 6 && has(4) ? 4 : td > 18 && has(3) ? 3 : td < 20 && has(7) ? 7 : has(5) ? 5 : has(2) ? 2 : has(1) && td < 14 ? 1 : 0) : (me.w === 6 ? 0 : me.w);
+    const want = tgt ? (has(9) ? 9 : td < 9 && has(1) ? 1 : td > 7 && td < 30 && has(8) ? 8 : td > 6 && has(4) ? 4 : td > 18 && has(3) ? 3 : td < 20 && has(7) ? 7 : has(5) ? 5 : has(2) ? 2 : has(1) && td < 14 ? 1 : 0) : (me.w === 6 ? 0 : me.w);
     if (want !== me.w && (!m.swT || m.swT <= 0)) { out.push({ type: 'switch', w: want }); m.swT = 1.2; m.fireCd = Math.max(m.fireCd, 0.45); return out; }
     if (m.swT > 0) m.swT -= c.dt;
     if (me.m === 0 && !me.rl) { if (me.r !== 0) out.push({ type: 'reload' }); else if (me.w !== 0) out.push({ type: 'switch', w: 0 }); return out; }

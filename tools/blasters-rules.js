@@ -66,4 +66,20 @@ ok('the cannon holds one ball at a time', w.me('a').m === 0);
   ok('an away player keeps their tags and cannot be hit', w.me('a').aw === 1 && w.me('a').k === k0 && k0 === 1 && w.me('a').hp === 100, `k=${w.me('a').k} hp=${w.me('a').hp}`);
   w.game.onInput('a', { type: 'fire', w: 0, hits: [{ id: 'b', n: 1, h: 0 }] }); w.tick(); ok('...and cannot shoot while away', w.me('b').hp === 100);
   w.game.onInput('a', { type: 'away', on: 0 }); w.tick(); ok('back from away: same match, tags kept, fresh spawn', !w.me('a').aw && w.me('a').k === 1 && w.me('a').hp === 100); }
+// the Golden Blaster: at most one per round (sometimes none), one dart tags anyone, gone when the holder is tagged out
+w = world(); w.put('a', -3, 0, 25.5); w.put('b', -1.4, 0, 25.5); w.tick();
+ok('gold: nothing on the ground at the start', !(w.state.gd && w.state.gd.x != null));
+w.game.onInput('a', { type: 'goldnow', x: -3, z: 25.5 }); w.tick(3);
+ok('gold: the player standing on it picks it up and is holding it', ((w.me('a').own >> B.GOLD) & 1) === 1 && w.me('a').w === B.GOLD, 'w=' + w.me('a').w);
+ok('gold: everyone is told who has it', w.ev.some((e) => e.type === 'goldtaken' && e.id === 'a'));
+ok('gold: the snapshot says it is held, not on the ground', !!(w.state.gd && w.state.gd.by === 'a'), JSON.stringify(w.state.gd));
+w.game.onInput('a', { type: 'fire', w: B.GOLD, hits: [{ id: 'b', n: 1, h: 0 }] }); w.tick();
+ok('gold: one golden dart tags a full-health player', w.me('b').dead > 0, 'hp=' + w.me('b').hp);
+w.game.onInput('a', { type: 'drop' }); w.tick();
+ok('gold: it cannot be dropped or handed over', ((w.me('a').own >> B.GOLD) & 1) === 1 && w.me('a').w === B.GOLD && !(w.state.dr || []).some((d) => d.w === B.GOLD));
+w.tick(100); w.put('b', -1.4, 0, 25.5); w.put('a', -3, 0, 25.5); w.tick();
+w.game.onInput('b', { type: 'melee', hits: ['a'] }); w.tick(30); w.game.onInput('b', { type: 'melee', hits: ['a'] }); w.tick();
+ok('gold: when the holder is tagged out, it is gone for the round', w.me('a').dead > 0 && w.state.gd === 0 && w.ev.some((e) => e.type === 'goldgone' && e.id === 'a'), 'dead=' + w.me('a').dead + ' gd=' + JSON.stringify(w.state.gd));
+ok('gold: ...and it was not dropped on the floor', !(w.state.dr || []).some((d) => d.w === B.GOLD));
+w.tick(100); ok('gold: ...and the holder comes back without it', ((w.me('a').own >> B.GOLD) & 1) === 0 && w.me('a').w !== B.GOLD);
 console.log(bad ? `${bad} PROBLEMS` : 'blasters rules ok'); process.exit(bad ? 1 : 0);

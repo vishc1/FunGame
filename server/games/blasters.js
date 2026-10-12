@@ -30,6 +30,11 @@ module.exports = {
     const TEAM_GOAL = Math.max(20, 8 * Math.ceil(api.players().length / 2));
     const players = new Map();
     const pick = MAP.pickups.map((p) => ({ def: p, t: p.kind === 'power' ? POWER_EVERY * 0.5 : 0, kind: null }));
+    // The Golden Blaster: most rounds get one, at a random moment, on a random weapon spot. One holder; tagged out = gone.
+    const GOLD = B.GOLD; let gold = rollGold();
+    function rollGold() { return Math.random() < 0.65 ? { state: 'wait', t: 25 + Math.random() * 75 } : { state: 'none' }; }
+    function goldSpot() { const spots = MAP.pickups.filter((k) => k.y < 0.5 && k.kind === 'weapon'); const k = (spots.length ? spots : MAP.spawns)[Math.floor(Math.random() * (spots.length ? spots.length : MAP.spawns.length))]; return { x: k.x, y: k.y || 0, z: k.z }; }
+    function loseGold(v) { if (gold.state !== 'held' || gold.by !== v.id) return; v.own[GOLD] = false; if (v.w === GOLD) { v.w = 0; v.reloadT = 0; } gold = { state: 'gone' }; api.emit('g:event', { type: 'goldgone', id: v.id }); }
     const drops = [], rockets = [];
     const fast = api.memory.__fast;
     let t = 0, left = fast ? (typeof fast === 'number' ? fast : 20) : MATCH, over = false, firstBlood = false, seq = 0;
@@ -82,7 +87,7 @@ module.exports = {
       return amount;
     }
     function kill(v, by, weapon, head, self) {
-      const tags = [];
+      const tags = []; loseGold(v);
       if (by) {
         by.kills++; by.streak++; by.best = Math.max(by.best, by.streak); by.score += 100; if (head) { by.heads++; by.score += 25; tags.push('headshot'); }
         if (weapon === MELEE.name) { by.score += 50; tags.push('bonk'); }
@@ -118,7 +123,7 @@ module.exports = {
     // the next round, same map and same players: scores reset, everyone respawns, pickups and the train start over
     function newRound() {
       round++; over = false; celebT = 0; winnerId = null; t = 0; left = fast ? (typeof fast === 'number' ? fast : 20) : MATCH; firstBlood = false; tk[0] = tk[1] = 0;
-      drops.length = 0; rockets.length = 0; for (const k of pick) { k.t = k.def.kind === 'power' ? POWER_EVERY * 0.5 : 0; k.kind = null; }
+      drops.length = 0; rockets.length = 0; gold = rollGold(); for (const k of pick) { k.t = k.def.kind === 'power' ? POWER_EVERY * 0.5 : 0; k.kind = null; }
       train.wait = TR.every * 0.5; train.x = null; train.warned = false;
       for (const p of players.values()) { Object.assign(p, { kills: 0, deaths: 0, score: 0, streak: 0, best: 0, heads: 0, dmg: 0, rares: 0, lastKiller: null, multi: 0, lastKillT: -99 }); spawn(p); }
       api.emit('g:event', { type: 'round', round });
@@ -132,6 +137,7 @@ module.exports = {
         pk: pick.map((k) => (k.t > 0 ? 0 : 1)), pw: { kind: pw.kind || 0, up: pw.t <= 0 ? 1 : 0, in: Math.max(0, Math.ceil(pw.t)) },
         dr: drops.map((d) => ({ id: d.id, w: d.w, x: r2(d.x), y: r2(d.y), z: r2(d.z) })), rk: rockets.map((k) => ({ id: k.id, w: k.w, x: r2(k.x), y: r2(k.y), z: r2(k.z) })),
         tr: train.x === null ? null : [r2(train.x), train.dir],
+        gd: gold.state === 'ground' ? { x: r2(gold.x), y: r2(gold.y), z: r2(gold.z) } : gold.state === 'soon' ? { x: r2(gold.x), y: r2(gold.y), z: r2(gold.z), soon: 1 } : gold.state === 'held' ? { by: gold.by } : 0,
       });
     }
     function finish() {
@@ -157,7 +163,7 @@ module.exports = {
     return {
       onJoin(pid) { if (!players.has(pid)) addPlayer(pid); },
       onRejoin(pid) { const p = players.get(pid); if (p) api.to(pid, 'g:event', { type: 'spawn', id: pid, x: p.x, y: p.y, z: p.z, yaw: r2(p.yaw), keep: 1 }); },
-      onLeave(pid) { players.delete(pid); if (!over && players.size < 2) finish(); },
+      onLeave(pid) { const p = players.get(pid); if (p) loseGold(p); players.delete(pid); if (!over && players.size < 2) finish(); },
       onInput(pid, m) {
         const p = players.get(pid); if (!p || (over && !(pid === winnerId && celebT > 0 && m.type === 'p'))) return; /* after the end only the winner moves */
         if (p.away && m.type !== 'away' && m.type !== 'hello') return;
@@ -165,12 +171,13 @@ module.exports = {
           if (p.dead || !fin(m.x) || !fin(m.y) || !fin(m.z) || !fin(m.yaw) || !fin(m.pitch)) return;
           const lim = MAP.size - P.R; p.x = Math.max(-lim, Math.min(lim, m.x)); p.z = Math.max(-lim, Math.min(lim, m.z)); p.y = Math.max(0, Math.min(40, m.y)); p.yaw = m.yaw; p.pitch = Math.max(-1.55, Math.min(1.55, m.pitch)); p.cr = m.cr ? 1 : 0;
         } else if (m.type === 'away') { // stepped away (Esc): out of the world but still in the match, with every tag and point kept
-          const on = !!m.on; if (on === !!p.away) return; p.away = on; if (on) { p.power = null; p.powerT = 0; p.reloadT = 0; api.emit('g:event', { type: 'away', id: pid, on: 1 }); } else { p.dead = 0; spawn(p); api.emit('g:event', { type: 'away', id: pid, on: 0 }); }
+          const on = !!m.on; if (on === !!p.away) return; p.away = on; if (on) { loseGold(p); p.power = null; p.powerT = 0; p.reloadT = 0; api.emit('g:event', { type: 'away', id: pid, on: 1 }); } else { p.dead = 0; spawn(p); api.emit('g:event', { type: 'away', id: pid, on: 0 }); }
         } else if (m.type === 'hello') { if (fin(m.lvl)) p.lvl = Math.max(1, Math.min(99, m.lvl | 0)); if (fin(m.ch)) p.ch = Math.abs(m.ch | 0) % 8; if (fin(m.sk)) p.sk = Math.abs(m.sk | 0) % 16;
           if (fin(m.lo) && LOADOUT.includes(m.lo | 0)) { p.lo = m.lo | 0; if (!p.dead && t - p.bornT < 4) starter(p); } } // a loadout chosen in the first seconds of a life applies right away
         else if (m.type === 'switch') { const w = m.w | 0; if (!p.dead && w >= 0 && w < WEAPONS.length && p.own[w] && w !== p.w) { p.w = w; p.reloadT = 0; p.nextFire = Math.max(p.nextFire, t + 0.3); } }
         else if (m.type === 'reload') { const def = WEAPONS[p.w]; if (!p.dead && p.power !== 'inf' && p.reloadT <= 0 && p.mag[p.w] < def.mag && p.res[p.w] > 0) p.reloadT = def.reload; }
         else if (m.type === 'drop') { // throw the blaster you are holding on the floor in front of you (not the sidearm)
+          if (p.w === GOLD) return; /* the Golden Blaster cannot be handed over */
           const w = p.w; if (p.dead || w === 0 || !p.own[w]) return;
           const f = B.dirFrom(p.yaw, 0); let dx = p.x + f[0] * 1.7, dz = p.z + f[2] * 1.7; const lim = MAP.size - 1;
           if (Math.abs(dx) > lim || Math.abs(dz) > lim || B.overlap(dx, p.y + 0.05, dz, MAP) || !B.los(p.x, p.y + 1, p.z, dx, p.y + 1, dz, MAP)) { dx = p.x; dz = p.z; }
@@ -179,6 +186,7 @@ module.exports = {
           const next = m.next | 0; p.w = next > 0 && next < WEAPONS.length && p.own[next] ? next : 0; p.nextFire = Math.max(p.nextFire, t + 0.3);
           api.emit('g:event', { type: 'dropped', id: pid, w });
         }
+        else if (m.type === 'goldnow') { if (api.room && api.room.bots && api.room.bots.size && Number.isFinite(+m.x) && Number.isFinite(+m.z)) { gold = { state: 'ground', x: +m.x, y: 0, z: +m.z }; api.emit('g:event', { type: 'goldup', x: gold.x, z: gold.z }); } } // test rooms only (tools/blasters-rules.js)
         else if (m.type === 'endnow') { if (api.room && api.room.bots && api.room.bots.size && !over) { p.kills += 3; finish(); } } // test rooms only: end the match now (tools/party.js)
         else if (m.type === 'give') { // test rooms only (a room with bots): hand yourself any blaster
           const w = m.w | 0; if (api.room && api.room.bots && api.room.bots.size && !p.dead && w > 0 && w < WEAPONS.length) { give(p, w); api.to(pid, 'g:event', { type: 'pickup', id: pid, kind: 'weapon', w, drop: 1 }); }
@@ -218,6 +226,10 @@ module.exports = {
           if (p.hp > 100) p.hp = Math.max(100, p.hp - 3 * dt);
           if (p.reloadT > 0) { p.reloadT -= dt; if (p.reloadT <= 0) { const def = WEAPONS[p.w], need = def.mag - p.mag[p.w], got = Math.min(need, p.res[p.w]); p.mag[p.w] += got; if (p.res[p.w] !== Infinity) p.res[p.w] -= got; } }
         }
+        // the Golden Blaster
+        if (gold.state === 'wait') { gold.t -= dt; if (gold.t <= 5) { Object.assign(gold, goldSpot(), { state: 'soon', t: 5 }); api.emit('g:event', { type: 'goldsoon', x: gold.x, z: gold.z }); } }
+        else if (gold.state === 'soon') { gold.t -= dt; if (gold.t <= 0) { gold.state = 'ground'; api.emit('g:event', { type: 'goldup', x: gold.x, z: gold.z }); } }
+        else if (gold.state === 'ground') { for (const p of players.values()) { if (p.dead || p.away || Math.hypot(p.x - gold.x, p.z - gold.z) > 1.35 || Math.abs(p.y - gold.y) > 1.5) continue; give(p, GOLD); p.w = GOLD; p.reloadT = 0; gold = { state: 'held', by: p.id }; api.emit('g:event', { type: 'goldtaken', id: p.id }); break; } }
         // map pickups
         for (let i = 0; i < pick.length; i++) {
           const k = pick[i], d = k.def;

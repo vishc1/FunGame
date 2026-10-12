@@ -14,7 +14,7 @@ registerGame('blasters', (G) => {
   // team mode: s.tm = 1, every player has tm (0 Red, 1 Blue), s.tk = team tags. Figures, tags and the feed use team colours.
   const TEAM = [{ name: 'Red', color: '#ff5d5d' }, { name: 'Blue', color: '#4da6ff' }];
   const teamOf = (p) => (s && s.tm && p && p.tm != null ? TEAM[p.tm] : null), colOf = (p) => { const tmc = teamOf(p); return tmc ? tmc.color : (G.player(p.id) || {}).color || '#ffffff'; }, myTeam = () => { const st = mySt(); return st ? teamOf(st) : null; };
-  const { ctx, canvas } = G;
+  const { ctx, canvas } = G; const GOLD = window.BLASTERS.GOLD;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W = 900, H = 600, s = null, T = null, failed = null, time = 0;
   const lerpAngle = (a, b, f) => a + ((((b - a) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * f;
@@ -317,6 +317,7 @@ registerGame('blasters', (G) => {
       else if (id === 'burst') g.add(bx(0.07, 0.11, 0.5, M3('#5ee07a', { roughness: 0.4 }), 0, 0, -0.1), bx(0.05, 0.05, 0.22, D, 0, 0.02, -0.42), bx(0.06, 0.16, 0.08, O, 0, -0.1, 0.08), bx(0.06, 0.14, 0.07, D, 0, -0.11, -0.14), bx(0.03, 0.04, 0.16, Y, 0, 0.08, -0.05), bx(0.06, 0.08, 0.2, D, 0, -0.01, 0.24));
       else if (id === 'lob') g.add(cyl(0.11, 0.11, 0.4, M3('#35c8ff', { roughness: 0.35 }), 0, 0.01, -0.12, 12), cyl(0.13, 0.11, 0.1, Wt, 0, 0.01, -0.36, 12), sph(0.1, M3('#ff5d8a', { roughness: 0.3 }), 0, 0.01, -0.42, 10), bx(0.06, 0.16, 0.08, D, 0, -0.13, 0.04), bx(0.07, 0.09, 0.18, O, 0, 0, 0.16));
       else if (id === 'cannon') g.add(cyl(0.12, 0.14, 0.62, D, 0, 0.02, -0.12, 14), cyl(0.15, 0.15, 0.07, Y, 0, 0.02, -0.42, 14), cyl(0.16, 0.16, 0.06, Y, 0, 0.02, 0.16, 14), sph(0.1, D, 0, 0.02, 0.22, 10), bx(0.2, 0.08, 0.3, M3('#8a5a2b'), 0, -0.12, -0.02), bx(0.06, 0.15, 0.08, M3('#8a5a2b'), 0, -0.2, 0.08));
+      else if (id === 'gold') { const Au = M3('#ffcf3f', { roughness: 0.18, metalness: 0.85, emissive: '#7a5200', emissiveIntensity: 0.35 }), Ag = M3('#fff5c2', { roughness: 0.25, metalness: 0.6 }); g.add(bx(0.09, 0.13, 0.46, Au, 0, 0, -0.08), bx(0.06, 0.17, 0.09, D, 0, -0.11, 0.08), cyl(0.045, 0.045, 0.28, Ag, 0, 0.02, -0.4, 12), cyl(0.075, 0.075, 0.06, Au, 0, 0.02, -0.55, 12), bx(0.03, 0.05, 0.1, Ag, 0, 0.1, 0.02), sph(0.045, Ag, 0, 0.1, -0.1, 8)); }
       else if (id === 'zap') g.add(bx(0.08, 0.1, 0.36, M3('#c77dff', { roughness: 0.35 }), 0, 0, -0.06), cyl(0.05, 0.05, 0.05, Wt, 0, 0, -0.27, 10), cyl(0.065, 0.065, 0.04, Wt, 0, 0, -0.34, 10), cyl(0.05, 0.05, 0.04, Wt, 0, 0, -0.4, 10), sph(0.045, glow('#7df9ff', 2.4), 0, 0, -0.46, 8), bx(0.06, 0.16, 0.08, D, 0, -0.1, 0.07), sph(0.06, glow('#7df9ff', 1.6), 0, 0.08, 0.02, 8));
       else g.add(cyl(0.085, 0.085, 0.72, O, 0, 0, -0.1, 12), cyl(0.11, 0.085, 0.12, Y, 0, 0, -0.5, 12), bx(0.06, 0.14, 0.08, D, 0, -0.12, 0.02), bx(0.06, 0.14, 0.08, D, 0, -0.12, -0.24), cyl(0.1, 0.1, 0.05, Bl, 0, 0, 0.24, 12));
       g.traverse((m) => { if (m.isMesh && m.geometry.type === 'CylinderGeometry') m.rotation.x = Math.PI / 2; });
@@ -533,6 +534,9 @@ registerGame('blasters', (G) => {
         fit(); if (!assetsReady || !s) return; if (!built) buildWorld();
         if (cloudGroup && !reducedMotion) for (const c of cloudGroup.children) { c.position.x += c.userData.drift * dt; if (c.position.x > 140) c.position.x = -140; }
         updatePlayers(dt);
+        // the Golden Blaster on the ground (or its glow before it appears)
+        if (!goldView) { goldView = new THREE.Group(); const w = weaponModel(GOLD, true); w.rotation.z = 0.25; goldView.add(w); const halo = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.05, 8, 40), new THREE.MeshBasicMaterial({ color: '#ffd84d' })); halo.rotation.x = Math.PI / 2; halo.position.y = -0.6; goldView.add(halo); goldView.userData.halo = halo; goldView.userData.w = w; scene.add(goldView); }
+        { const gd = s.gd; goldView.visible = !!(gd && gd.x != null); if (goldView.visible) { goldView.position.set(gd.x, (gd.y || 0) + 1.1 + Math.sin(time * 2.4) * 0.12, gd.z); goldView.userData.w.visible = !gd.soon; goldView.userData.w.rotation.y += dt * 2.2; goldView.userData.halo.scale.setScalar(gd.soon ? 1 + Math.sin(time * 6) * 0.25 : 1); if (Math.random() < 0.6) spark(gd.x + (Math.random() - 0.5) * 1.2, (gd.y || 0) + 0.3, gd.z + (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.5, 2 + Math.random() * 2, (Math.random() - 0.5) * 1.5, '#ffd84d', 0.7, 4); } }
         // pickups, drops, rockets
         for (const pv of pickViews) {
           const up = !!s.pk[pv.i]; pv.g.visible = up; pv.g.rotation.y += dt * 1.6; pv.g.position.y = pv.pk.y + 0.9 + Math.sin(time * 2.4 + pv.i) * 0.12;
@@ -586,7 +590,7 @@ registerGame('blasters', (G) => {
     };
   }
   let giveIdx = -1;
-  const dropViews = new Map(), rocketViews = new Map(); let killCam = null, landDip = 0, locker = false, trainWarn = 0, teleFlash = 0;
+  let goldView = null; const dropViews = new Map(), rocketViews = new Map(); let killCam = null, landDip = 0, locker = false, trainWarn = 0, teleFlash = 0;
 
   // ============================ locker: pick your figure and skin ============================
   if (!document.getElementById('tbb-style')) { const st = document.createElement('style'); st.id = 'tbb-style'; st.textContent = `
@@ -764,7 +768,7 @@ registerGame('blasters', (G) => {
       txt(def.name, W - 32, PT + 30, { size: 26, weight: 900, align: 'right', color: '#ffd84d', stroke: false });
       txt(String(me.mag), W - 92, PT + 70, { size: 44, weight: 900, align: 'right', color: me.mag === 0 ? '#ff5d5d' : '#fff', stroke: false }); txt(st.r < 0 ? '/ ∞' : `/ ${st.r}`, W - 86, PT + 74, { size: 20, align: 'left', color: '#aab', stroke: false });
       { const owned = WEAPONS.map((w, i) => i).filter((i) => (st.own >> i) & 1 && i !== me.w); owned.slice(0, 6).forEach((i, n) => { const ic = T && T.ready && T.icon(i), x = W - 396 + n * 62, y = PT - 34; rr(x, y, 58, 28, 7, 'rgba(8,12,20,.62)'); if (ic) ctx.drawImage(ic, x + 1, y - 1, 56, 28); txt(String(i + 1), x + 52, y + 21, { size: 10, weight: 800, color: '#ffd84d', stroke: false }); }); } /* the others you carry, with their number key */
-      if (!TOUCH) txt(`1-${WEAPONS.length} or wheel to switch  ·  Q drops`, W - 120, PT + 98, { size: 10.5, color: 'rgba(255,255,255,.55)', stroke: false });
+      if (!TOUCH) txt(`1-9, 0 or wheel to switch  ·  Q drops`, W - 120, PT + 98, { size: 10.5, color: 'rgba(255,255,255,.55)', stroke: false });
       { const mf = Math.max(0, Math.min(1, 1 - (me.nextMelee - time) / MELEE.cd)); txt('E', W - 420, PT + 56, { size: 17, weight: 800, color: mf >= 1 ? '#ffb347' : '#5a6b80' }); ctx.beginPath(); ctx.arc(W - 420, PT + 56, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * mf); ctx.strokeStyle = mf >= 1 ? '#ffb347' : '#5a6b80'; ctx.lineWidth = 3; ctx.stroke(); }
       if (body.crouched && me.alive) txt(body.slideT > 0 ? 'SLIDING' : 'CROUCHED', 176, PT - 38, { size: 16, weight: 800, color: '#9fc8ff' });
     }
@@ -822,7 +826,7 @@ registerGame('blasters', (G) => {
       const l = levelOf(xp), a = xpFor(l), b = xpFor(l + 1), f = (xp - a) / (b - a), y = y0 + 74; txt(`+${over.gain} XP   Level ${l}${over.up ? '  LEVEL UP!' : ''}`, W / 2, y - 14, { size: 13, color: over.up ? '#5ee07a' : '#ffd84d', stroke: false }); rr(px + 60, y, pw - 120, 10, 5, 'rgba(255,255,255,.12)'); rr(px + 60, y, (pw - 120) * Math.max(0.02, Math.min(1, f)), 10, 5, '#ffd84d'); }
   }
   function guide() {
-    const lines = [...WEAPONS.map((w, i) => [`${i + 1}  ${w.name}`, w.tip, '#ffb347']), ['E  Foam Sword', 'Everyone has one. Big hit up close, and you lunge forward.', '#ffb347'], ['Q / G  Drop', 'Puts the blaster you are holding on the floor for someone else. Pick a starter blaster in the locker (L).', '#9fc8ff'], ['Aim (right-click)', 'Zooms in and tightens your shots, but you walk slower.', '#9fc8ff'], ['Crouch and slide (C)', 'Crouching steadies your aim and makes you smaller. Tap C while running to slide.', '#9fc8ff'], ...Object.values(PICKUP_INFO).map((p) => [p.name, p.tip, '#5ee07a']), ...Object.values(POWERS).map((p) => [(p.rare ? '★★ RARE  ' : '★ ') + p.name, p.tip, p.rare ? '#ffd84d' : p.color]), ['Jump pads', 'Blue pads lift you onto the corner forts. Orange pads fling you to the tower roof.', '#35e6ff'], ['Ramps', 'Wooden ramps walk you up to the galleries. Orange ramps launch you: jump or dash off the top.', '#ff8a3d'], ['Teleporters', 'Glowing rings come in pairs. Step in one, pop out of the matching colour.', '#c77dff'], ['Toy train', 'Runs down the middle road every 30 seconds. Bells and red lights warn you. Do not be on the track.', '#ff5d5d'], ['Dropped blasters', 'Tagged players drop their best blaster. Run over it to take it.', '#ffffff']];
+    const lines = [...WEAPONS.map((w, i) => [`${i === 9 ? 0 : i + 1}  ${w.name}`, w.tip, w.gold ? '#ffd84d' : '#ffb347']), ['E  Foam Sword', 'Everyone has one. Big hit up close, and you lunge forward.', '#ffb347'], ['Q / G  Drop', 'Puts the blaster you are holding on the floor for someone else. Pick a starter blaster in the locker (L).', '#9fc8ff'], ['Aim (right-click)', 'Zooms in and tightens your shots, but you walk slower.', '#9fc8ff'], ['Crouch and slide (C)', 'Crouching steadies your aim and makes you smaller. Tap C while running to slide.', '#9fc8ff'], ...Object.values(PICKUP_INFO).map((p) => [p.name, p.tip, '#5ee07a']), ...Object.values(POWERS).map((p) => [(p.rare ? '★★ RARE  ' : '★ ') + p.name, p.tip, p.rare ? '#ffd84d' : p.color]), ['Jump pads', 'Blue pads lift you onto the corner forts. Orange pads fling you to the tower roof.', '#35e6ff'], ['Ramps', 'Wooden ramps walk you up to the galleries. Orange ramps launch you: jump or dash off the top.', '#ff8a3d'], ['Teleporters', 'Glowing rings come in pairs. Step in one, pop out of the matching colour.', '#c77dff'], ['Toy train', 'Runs down the middle road every 30 seconds. Bells and red lights warn you. Do not be on the track.', '#ff5d5d'], ['Dropped blasters', 'Tagged players drop their best blaster. Run over it to take it.', '#ffffff']];
     const pw = Math.min(W - 24, 860), rh = Math.min(26, (H - 110) / lines.length), ph = lines.length * rh + 66, px = (W - pw) / 2, py = Math.max(8, (H - ph) / 2);
     rr(px, py, pw, ph, 16, 'rgba(8,12,20,.94)', 'rgba(255,216,77,.7)'); txt('What everything does', px + 22, py + 26, { size: 18, weight: 800, align: 'left', color: '#ffd84d', stroke: false }); txt('H closes this', px + pw - 22, py + 26, { size: 11.5, align: 'right', color: '#aab', stroke: false });
     lines.forEach(([n, tip, col], i) => { const y = py + 56 + i * rh; txt(n, px + 22, y, { size: 12.5, weight: 800, align: 'left', color: col, stroke: false }); txt(tip, px + 200, y, { size: W < 620 || rh < 22 ? 9.5 : 11.5, align: 'left', color: '#dfe5ee', stroke: false }); });
@@ -870,6 +874,10 @@ registerGame('blasters', (G) => {
       else if (e.type === 'assist') banner(`Assist  +50`, '#9fc8ff', 1.5);
       else if (e.type === 'dropped' && mine) showCard(`Dropped the ${WEAPONS[e.w].name}`, 'It stays on the floor for a while with the darts it had left. Anyone can take it.', '#9fc8ff');
       else if (e.type === 'swing' && !mine) { const v = T && T.ready && T.view(e.id); if (v) { v.swing = 1; play('swing', Math.max(0.1, 1 - Math.hypot(v.x - body.x, v.z - body.z) / 20)); T.burst(v.x - Math.sin(v.yaw) * 0.9, v.y + 1.2, v.z - Math.cos(v.yaw) * 0.9, 8, 3, ['#ffb347', '#ffffff'], 0.25); } }
+      else if (e.type === 'goldsoon') { play('soon'); banner('A GOLDEN BLASTER appears in 5 seconds! One dart tags anyone.', '#ffd84d', 4); }
+      else if (e.type === 'goldup') { play('bell'); banner('The GOLDEN BLASTER is on the ground. Go!', '#ffd84d', 3); }
+      else if (e.type === 'goldtaken') { play('bell'); banner(`${e.id === G.me ? 'YOU HAVE' : (G.player(e.id) || {}).name + ' has'} the GOLDEN BLASTER!`, '#ffd84d', 3.5); }
+      else if (e.type === 'goldgone') { play('soon'); banner(`${(G.player(e.id) || {}).name || 'The holder'} is out. The Golden Blaster is gone.`, '#ffd84d', 3); }
       else if (e.type === 'trainsoon') { trainWarn = MAP.train.warn + 0.5; play('bell'); banner(`TRAIN coming from the ${e.dir > 0 ? 'west' : 'east'}. Get off the track!`, '#ff5d5d', 3); }
       else if (e.type === 'trainhit') { body.vx = e.dir * 17; body.vy = 9; body.vz += (body.z >= MAP.train.z ? 1 : -1) * 6; body.ground = false; shake = Math.max(shake, 1); }
       else if (e.type === 'explode') { if (T && T.ready) T.explode(e.x, e.y, e.z, e.r, e.w); }
@@ -888,7 +896,7 @@ registerGame('blasters', (G) => {
       if (k === 'l') { if (!away) setLocker(!locker); return; } /* the away screen has its own settings, and closing the locker would strand it */
       if (locker) return;
       if (k === ' ') jumpQ = true; else if (k === 'Shift') dashQ = true; else if (k === 'r') reload(); else if (k === 'q') dropWeapon(); else if (k === 'h') showGuide = !showGuide;
-      else if (k >= '1' && k <= String(WEAPONS.length)) switchTo(+k - 1);
+      else if (/^[0-9]$/.test(k)) { const w = k === '0' ? 9 : +k - 1; if (w < WEAPONS.length) switchTo(w); }
       else if (k === 'e' || k === 'v') melee();
       else if (k === 'g') dropWeapon(); /* Q or G drops the blaster you hold */
       else if ((k === '[' || k === ']') && testRoom()) { giveIdx = ((giveIdx || 0) + (k === ']' ? 1 : -1) + (WEAPONS.length - 1) * 4) % (WEAPONS.length - 1); G.send({ type: 'give', w: giveIdx + 1 }); } /* test rooms: [ and ] hand you each blaster in turn */

@@ -25,18 +25,31 @@ async function deploy(buildEnv) { const args = ['-y', 'vercel@latest', 'deploy',
   else { srv = run('node', ['server.js'], { env: Object.assign({}, process.env, { PORT }), stdio: ['ignore', 'ignore', 'inherit'] }); for (let i = 0; i < 40 && (await get(`http://localhost:${PORT}/health`, 1000)).status !== 200; i++) await sleep(500);
     if ((await get(`http://localhost:${PORT}/health`, 1000)).status !== 200) { console.error('The game server did not start.'); process.exit(1); } say(`Game server started on port ${PORT}.`); }
   // 2. the tunnel
-  const tun = run('cloudflared', ['tunnel', '--url', `http://localhost:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'] }); let url = null, log = '';
-  tun.stderr.on('data', (d) => { log += d; const m = log.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/); if (m && !url) url = m[0]; }); tun.on('exit', () => { if (!stopping) { console.error('The tunnel closed. Stopping.'); shutdown(); } });
-  for (let i = 0; i < 60 && !url; i++) await sleep(500); if (!url) { console.error('No tunnel address after 30 s.\n' + log.slice(-800)); shutdown(); return; }
-  const host = url.replace('https://', ''), r = new dns.Resolver(); r.setServers(['1.1.1.1']); /* wait for DNS first: asking the system too early caches a "no such name" for minutes */
-  for (let i = 0; i < 60; i++) { try { await r.resolve4(host); const ok = await dns.lookup(host).then(() => true).catch(() => false); if (ok) break; } catch (e) { /* not yet */ } await sleep(2000); }
-  for (let i = 0; i < 30 && (await get(url + '/health')).status !== 200; i++) await sleep(2000);
-  if ((await get(url + '/health')).status !== 200) { console.error('The tunnel does not answer at ' + url); shutdown(); return; }
-  say(`Tunnel open: ${url}`);
+  const fs = require('fs'), tunLog = path.join(require('os').tmpdir(), 'friendgame-tunnel.log'); let tun = null, url = null;
+  async function openTunnel() { /* returns the tunnel's address once DNS knows it and it answers, or null */
+    let log = ''; url = null; tun = run('cloudflared', ['tunnel', '--url', `http://localhost:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'] }); const mine = tun;
+    tun.stderr.on('data', (d) => { log += d; try { fs.appendFileSync(tunLog, d); } catch (e) { /* ignore */ } const m = log.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/); if (m && !url) url = m[0]; });
+    tun.on('exit', () => { if (tun === mine) tun = null; });
+    for (let i = 0; i < 60 && !url && tun; i++) await sleep(500); if (!url) { console.error('No tunnel address after 30 s.\n' + log.slice(-600)); return null; }
+    const host = url.replace('https://', ''), r = new dns.Resolver(); r.setServers(['1.1.1.1']); /* wait for DNS first: asking the system too early caches a "no such name" for minutes */
+    for (let i = 0; i < 60; i++) { try { await r.resolve4(host); const ok = await dns.lookup(host).then(() => true).catch(() => false); if (ok) break; } catch (e) { /* not yet */ } await sleep(2000); }
+    for (let i = 0; i < 30 && (await get(url + '/health')).status !== 200; i++) await sleep(2000);
+    if ((await get(url + '/health')).status !== 200) { console.error('The tunnel does not answer at ' + url); try { tun && tun.kill(); } catch (e) { /* gone */ } return null; }
+    say(`Tunnel open: ${url}  (log: ${tunLog})`); return url; }
+  if (!(await openTunnel())) { shutdown(); return; }
   // 3. the live site
-  if (NO_VERCEL) { say(`Friends can play at ${url} (served from this computer). Keep this window open. Ctrl+C to stop.`); }
-  else { say(`Redeploying ${SITE} to use this computer as its game server (about a minute)...`); if (!(await deploy(url))) { console.error('The deploy failed. Friends can still play at ' + url); }
-    else { const c = await get(SITE + '/config.js'); say(c.body.includes(url) ? `\n${SITE} now runs its games on this computer. Send friends the usual link.\nKeep this window open while you play. Ctrl+C stops and puts the site back to normal.` : 'Deployed, but the site does not show the new setting yet; give it a minute.'); } }
+  async function pointSite() {
+    if (NO_VERCEL) { say(`Friends can play at ${url} (served from this computer). Keep this window open. Ctrl+C to stop.`); return; }
+    say(`Redeploying ${SITE} to use this computer as its game server (about a minute)...`); if (!(await deploy(url))) { console.error('The deploy failed. Friends can still play at ' + url); return; }
+    const c = await get(SITE + '/config.js'); say(c.body.includes(url) ? `\n${SITE} now runs its games on this computer. Send friends the usual link.\nKeep this window open while you play. Ctrl+C stops and puts the site back to normal.` : 'Deployed, but the site does not show the new setting yet; give it a minute.'); }
+  await pointSite();
+  // Watchdog: a free quick tunnel can lose its name or its link without the process dying. Check it every 20 s; after
+  // three misses in a row, open a fresh tunnel and point the site at it. Players are on peer-to-peer meanwhile (the
+  // client falls back by itself) and get the new server on their next page load.
+  let misses = 0, healing = false;
+  setInterval(async () => { if (stopping || healing) return; const ok = (await get(url + '/health', 6000)).status === 200; misses = ok ? 0 : misses + 1; if (misses < 3) return;
+    healing = true; say(`\nThe tunnel stopped answering (${new Date().toLocaleTimeString()}). Opening a new one...`); try { tun && tun.kill(); } catch (e) { /* gone */ } await sleep(1000);
+    if (await openTunnel()) { await pointSite(); misses = 0; } else { console.error('Could not open a new tunnel; trying again in 20 s.'); } healing = false; }, 20000);
   async function shutdown() { if (stopping) return; stopping = true; say('\nStopping...'); if (!NO_VERCEL) { say('Putting the live site back to peer-to-peer...'); await deploy(null); } for (const k of kids) { try { k.kill(); } catch (e) { /* gone */ } } process.exit(0); }
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
 })();
