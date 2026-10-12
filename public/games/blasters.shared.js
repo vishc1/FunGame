@@ -88,7 +88,7 @@
       ...rot4(29, -9).map(([x, z]) => ({ kind: 'health', x, y: 0, z, respawn: 10 })),
       { kind: 'armor', x: 0, y: 0, z: 19.5, respawn: 25 },
     ];
-    const spawns = [...rot4(29.5, -3), ...rot4(17, -29.5), ...rot2(3.5, 17)].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) })); // yaw faces the centre
+    const spawns = [...rot4(29.5, -3), ...rot4(17, -29.5), ...rot2(3.5, 17), [-9.5, 2.5], [9.5, -2.5], [-29.5, 19.5], [-19.5, -29.5], [19.5, 29.5], [29.5, -19.5]].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) })); // yaw faces the centre
     return { pads, pickups, spawns, ramps, teles, train, powerSpot: 'the tower roof' };
   });
 
@@ -148,7 +148,7 @@
       ...rot4(27, -13).map(([x, z]) => ({ kind: 'health', x, y: 0, z, respawn: 10 })),
       { kind: 'armor', x: 22, y: 0, z: -27, respawn: 25 }, { kind: 'armor', x: -22, y: 0, z: 27, respawn: 25 },
     ];
-    const spawns = [...rot4(28, -6), ...rot4(28, 8), ...rot2(-27, -3)].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) }));
+    const spawns = [...rot4(28, -6), ...rot4(28, 8), ...rot2(-27, -3), [-3.5, 4.5], [-26.5, -27.5], [26.5, 27.5], [10.5, -10.5], [-8.5, -11.5], [11.5, 8.5]].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) }));
     return { pads, pickups, spawns, ramps, teles, train, powerSpot: 'the catwalk' };
   });
   // "Pirate Cove": a sunny beach with a toy pirate ship beached in the middle. Climb the hull from the sand, the stairs to the
@@ -200,7 +200,7 @@
       ...rot4(30, -10).map(([x, z]) => ({ kind: 'health', x, y: 0, z, respawn: 10 })),
       { kind: 'armor', x: 0, y: 7.2, z: 16, respawn: 25 }, { kind: 'armor', x: -24, y: 0, z: 10, respawn: 25 }, { kind: 'armor', x: 24, y: 0, z: -10, respawn: 25 },
     ];
-    const spawns = [...rot4(31, -4), ...rot4(31, 12), ...rot2(-20, -31), ...rot2(8, -31)].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) }));
+    const spawns = [...rot4(31, -4), ...rot4(31, 12), ...rot2(-20, -31), ...rot2(8, -31), [-8.5, -4.5], [9.5, 8.5], [-31.5, 24.5], [31.5, -24.5]].map(([x, z]) => ({ x, z, yaw: Math.atan2(x, z) }));
     return { pads, pickups, spawns, ramps, teles, train, powerSpot: 'the stern castle' };
   });
   const MAPS = [FORT, TOWERS, COVE], MAP = FORT; // MAP: the default map, and what older callers that do not pass a map get
