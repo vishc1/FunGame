@@ -1,10 +1,10 @@
 # Keeps the free Render game server awake during the day (it sleeps after 15 idle minutes and takes a minute to wake).
-# GitHub runs this every 5 minutes between 9:00 and 23:00 in the owner's local time (UTC-07:00), which keeps
-# the server inside Render's 750 free hours a month. Night-time: it sleeps, and the first visitor waits a minute.
+# GitHub runs this every 5 minutes from 7 pm to 10 pm Pacific (02:00-04:59 UTC; an hour earlier on the clock once daylight
+# saving ends), the usual play window. Outside it the server sleeps, and the first visitor waits a minute while it wakes.
 name: keep the game server awake
 on:
   schedule:
-    - cron: '*/5 0,1,2,3,4,5,16,17,18,19,20,21,22,23 * * *'
+    - cron: '*/5 2,3,4 * * *'
   workflow_dispatch:
 jobs:
   ping:
