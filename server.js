@@ -8,7 +8,7 @@ const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, { cors: { origin: '*' }, perMessageDeflate: { threshold: 200 } }); /* compressed frames: a 1.8 KB state snapshot goes out as ~350 bytes, which matters when the server sits on a home connection */
 app.use(require('compression')()); // gzip: the 3D library is ~1.5 MB uncompressed, which matters when friends load it over the internet
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/vendor/addons', express.static(path.join(__dirname, 'node_modules/three/examples/jsm')));

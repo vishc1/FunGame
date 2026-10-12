@@ -311,5 +311,6 @@
     });
   });
   socket.on('replaced', () => goHome('This player was opened in another tab'));
+  window.addEventListener('fg-gfx-auto', (e) => toast(`Running at ${e.detail.fps} fps, so graphics were set to ${e.detail.level === 'low' ? 'Low' : 'Medium'}. Change it any time with Esc.`));
   let closedCode = null; socket.on('room-closed', () => { if (room) { closedCode = room.code; goHome('The host left, so the room has closed. Ask them for a new link.'); } }); /* peer-to-peer: the room lived in the host's tab */
 })();

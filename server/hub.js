@@ -131,7 +131,7 @@ module.exports = function attachHub(io, opts) {
         memory: this.memory,
         players: () => [...room.players.values()].map((p) => ({ id: p.id, name: p.name, color: p.color, bot: !!p.bot })),
         player: (id) => { const p = room.players.get(id); return p ? { id: p.id, name: p.name, color: p.color } : null; },
-        emit: (ev, data) => { if (ev === 'g:state') room.lastState = data; io.to(room.code).emit(ev, data); },
+        emit: (ev, data) => { if (ev === 'g:state') { room.lastState = data; if ((room.stateN = (room.stateN || 0) + 1) % 3 === 0) return; } io.to(room.code).emit(ev, data); }, /* the sim ticks at 30 Hz; snapshots go out at 20 Hz (clients interpolate), a third less traffic */
         to: (pid, ev, data) => { if (room.bots.has(pid)) { if (ev === 'g:state') room.botState[pid] = data; return; } io.to(pid).emit(ev, data); },
         after(ms, fn) { const t = setTimeout(() => { room.timers.delete(t); room.guard(fn); }, ms); room.timers.add(t); return t; },
         every(ms, fn) { const t = setInterval(() => room.guard(fn), ms); room.timers.add(t); return t; },
