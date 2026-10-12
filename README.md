@@ -87,6 +87,20 @@ npx vercel@latest env add FG_ICE_SERVERS production
 npx vercel@latest deploy --prod --yes
 ```
 
+## An always-on game server (Render, free)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/vishc1/FunGame)
+
+Click the button, sign in to Render with GitHub, and accept the blueprint (`render.yaml`). Render builds `server.js` and
+gives it an address like `https://friendgame-xxxx.onrender.com`. Then point the static site at it and redeploy:
+
+```bash
+npx vercel@latest deploy --prod --yes --build-env FG_SERVER_URL=https://friendgame-xxxx.onrender.com
+```
+
+Every player then connects to that server: it works on every network, rooms survive the host closing a tab, and
+nobody's computer has to stay on. The free plan sleeps after 15 idle minutes and wakes in about a minute.
+
 ## Playing with friends when browser-to-browser links fail
 
 `npm run online` makes this computer the game server for the live site: it starts the server, opens a free Cloudflare
