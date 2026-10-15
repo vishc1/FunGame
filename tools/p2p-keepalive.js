@@ -33,7 +33,7 @@ async function until(p, want, ms) { const t0 = Date.now(); while (Date.now() - t
   const msg = await c.textContent('#invMsg'), btn = await c.textContent('#invGo'); check('an invite to a closed room says so, and the button is usable again', /fresh link|code/i.test(msg) && !/Joining/.test(btn), `"${msg}" / button "${btn}"`);
   // 4. a second tab of the host's own browser joins over the tab channel: no network, so no local-name lookup needed.
   // This browser gets no mDNS workaround flag, which on this Mac makes WebRTC between two tabs fail.
-  const plain = await chromium.launch({ executablePath: exe, headless: true }); browsers.push(plain); const ctx = await plain.newContext();
+  const plain = await chromium.launch({ executablePath: exe, headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] }); browsers.push(plain); /* real GPU like the other tools, but no mDNS workaround: the tab channel must carry this */ const ctx = await plain.newContext();
   const h2 = await ctx.newPage(); h2.on('pageerror', (e) => errors.push(e.message)); await h2.goto(`${BASE}/?game=memekarts${Q}`); await h2.fill('#name', 'Host2'); await h2.click('#createBtn'); await until(h2, 'lobby', 20000);
   const code2 = await h2.evaluate(() => window.G.room.code); const t2 = await ctx.newPage(); t2.on('pageerror', (e) => errors.push(e.message)); await t2.addInitScript(() => { try { localStorage.setItem('fg_name', 'Tab'); } catch (e) {} });
   await t2.goto(`${BASE}/?room=${code2}${Q}`); const tt = await until(t2, 'lobby', 8000);

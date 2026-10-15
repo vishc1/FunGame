@@ -10,14 +10,21 @@
   // server is down) the site falls back to peer-to-peer, so a stale setting never leaves the site dead.
   const socket = (!P2P && window.FG_SERVER) ? remoteOrP2P(window.FG_SERVER) : P2P ? window.createP2PSocket() : io({ transports: ['websocket'] });
   function remoteOrP2P(url) {
-    const subs = [], queue = []; let inner = io(url, { transports: ['websocket'], reconnectionAttempts: 2, timeout: 4000 }), decided = false;
-    const wrap = { get connected() { return inner.connected; }, get p2p() { return !!inner.p2p; }, get hosting() { return !!inner.hosting; }, get id() { return inner.id; },
+    // A free Render server sleeps when idle and takes up to a minute to wake, so the site keeps trying for WAKE ms
+    // (saying so on screen) before it gives up and goes peer-to-peer. Giving up early would split a party: the host's
+    // room would be browser-to-browser while friends arriving a minute later reach the now-awake server.
+    const WAKE = Math.max(3000, +new URLSearchParams(location.search).get('wakems') || 90000);
+    const subs = [], queue = []; let inner = io(url, { transports: ['websocket'], reconnection: true, reconnectionDelay: 1500, reconnectionDelayMax: 3000, timeout: 5000 }), decided = false;
+    const wrap = { get connected() { return inner.connected; }, get p2p() { return !!inner.p2p; }, get hosting() { return !!inner.hosting; }, get id() { return inner.id; }, get waking() { return !decided; }, get wakeMs() { return WAKE; },
       on(ev, fn) { subs.push([ev, fn]); inner.on(ev, fn); return wrap; }, once(ev, fn) { const w = (...a) => { wrap.off(ev, w); fn(...a); }; return wrap.on(ev, w); },
       off(ev, fn) { const i = subs.findIndex((s) => s[0] === ev && s[1] === fn); if (i >= 0) subs.splice(i, 1); inner.off(ev, fn); return wrap; },
       emit(ev, data, cb) { if (decided || inner.connected) inner.emit(ev, data, cb); else queue.push([ev, data, cb]); return wrap; }, disconnect() { inner.disconnect(); } };
-    const useServer = () => { if (decided) return; decided = true; for (const q of queue.splice(0)) inner.emit(...q); };
-    const useP2P = () => { if (decided) return; decided = true; try { inner.disconnect(); } catch (e) { /* ignore */ } inner = window.createP2PSocket(); for (const [ev, fn] of subs) inner.on(ev, fn); for (const q of queue.splice(0)) inner.emit(...q); console.warn('game server at ' + url + ' did not answer: playing peer-to-peer'); };
-    inner.on('connect', useServer); inner.on('connect_error', useP2P); setTimeout(useP2P, 6000);
+    const tell = (state) => window.dispatchEvent(new CustomEvent('fg-server', { detail: { state } }));
+    const useServer = () => { if (decided) return; decided = true; clearTimeout(slow); clearTimeout(giveUp); tell(slowShown ? 'up' : 'quiet'); for (const q of queue.splice(0)) inner.emit(...q); };
+    const useP2P = () => { if (decided) return; decided = true; clearTimeout(slow); try { inner.disconnect(); } catch (e) { /* ignore */ } inner = window.createP2PSocket(); for (const [ev, fn] of subs) inner.on(ev, fn); for (const q of queue.splice(0)) inner.emit(...q); tell('p2p'); console.warn('game server at ' + url + ' did not answer in ' + WAKE + ' ms: playing peer-to-peer'); };
+    let slowShown = false; const slow = setTimeout(() => { if (!decided) { slowShown = true; tell('waking'); } }, 3000), giveUp = setTimeout(useP2P, WAKE);
+    inner.on('connect', useServer);
+    setInterval(() => { if (decided && !inner.p2p && !document.hidden) fetch(url + '/health', { mode: 'cors' }).catch(() => { /* just a nudge */ }); }, 5 * 60 * 1000); /* a small request every 5 minutes keeps a free server awake while anyone has the site open */
     return wrap;
   }
   const GAMES = {};
@@ -73,7 +80,7 @@
   const screens = ['home', 'invite', 'lobby', 'game', 'results'];
   function show(id) { for (const s of screens) $('#' + s).classList.toggle('hidden', s !== id); const tb = document.querySelector('#testBox'); if (tb) tb.classList.toggle('hidden', id === 'invite'); /* no Practice lobby on the invite screen: it would start a separate room */ }
   let toastT;
-  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2500); }
+  function toast(msg, ms = 2500) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); return { remove() { clearTimeout(toastT); t.classList.remove('show'); } }; }
 
   // ---- home ---------------------------------------------------------------
   // ---- session: lets a refresh or a dropped connection reclaim the same player -----------------------------
@@ -84,7 +91,7 @@
   const loadSession = () => { try { return JSON.parse(sessionStorage.getItem(SESSION) || 'null'); } catch (e) { return null; } };
   const clearSession = () => { myId = null; try { sessionStorage.removeItem(SESSION); } catch (e) { /* ignore */ } };
   // create / join a room, remembering who we are
-  function ask(ev, data, cb, ms = 25000) { let done = false; const t = setTimeout(() => { if (!done) { done = true; cb({ error: 'No answer from the room' }); } }, ms); socket.emit(ev, data, (r) => { if (done) return; done = true; clearTimeout(t); cb(r); }); } /* a reply, or an error after ms: never wait forever */
+  function ask(ev, data, cb, ms) { ms = ms || (socket.waking ? socket.wakeMs + 15000 : 25000); let done = false; /* while the server is waking, allow the whole wake-up time */ const t = setTimeout(() => { if (!done) { done = true; cb({ error: 'No answer from the room' }); } }, ms); socket.emit(ev, data, (r) => { if (done) return; done = true; clearTimeout(t); cb(r); }); } /* a reply, or an error after ms: never wait forever */
   function enter(ev, data, then) { closedCode = null; ask(ev, data, (r) => { if (!r || r.error) return toast((r && r.error) || 'No response from the server'); myId = r.id; saveSession(r); then && then(r); }); }
   function goHome(msg) { clearSession(); room = null; stopGame(); show('home'); renderTestBox(); if (msg) toast(msg); }
 
@@ -311,6 +318,9 @@
     });
   });
   socket.on('replaced', () => goHome('This player was opened in another tab'));
+  let wakeToast = null;
+  window.addEventListener('fg-server', (e) => { const st = e.detail.state; if (st === 'waking') { wakeToast = toast('Waking up the game server. The first visit after a quiet spell takes up to a minute.', 120000); }
+    else { if (wakeToast && wakeToast.remove) wakeToast.remove(); wakeToast = null; if (st === 'up') toast('The game server is awake. Go!'); else if (st === 'p2p') toast('The game server is not answering, so this party runs browser to browser.', 8000); } });
   window.addEventListener('fg-gfx-auto', (e) => toast(`Running at ${e.detail.fps} fps, so graphics were set to ${e.detail.level === 'low' ? 'Low' : 'Medium'}. Change it any time with Esc.`));
   let closedCode = null; socket.on('room-closed', () => { if (room) { closedCode = room.code; goHome('The host left, so the room has closed. Ask them for a new link.'); } }); /* peer-to-peer: the room lived in the host's tab */
 })();

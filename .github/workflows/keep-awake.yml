@@ -1,19 +1,24 @@
 # Keeps the free Render game server awake during the day (it sleeps after 15 idle minutes and takes a minute to wake).
-# GitHub runs this every 5 minutes from 7 pm to 10 pm Pacific (02:00-04:59 UTC; an hour earlier on the clock once daylight
-# saving ends), the usual play window. Outside it the server sleeps, and the first visitor waits a minute while it wakes.
+# GitHub runs this every 5 minutes over 02:00-05:59 UTC: 7-11 pm Pacific in summer, 6-10 pm in winter, so the usual 7-10 pm
+# play window is covered all year with an hour to spare for matches that run late. About 125 of Render's 750 free hours a
+# month. Outside it the server sleeps; the site then waits for it to wake (public/app.js remoteOrP2P) and, while anyone
+# has the site open, nudges it every 5 minutes so it stays up. The address comes from the repository variable
+# FG_SERVER_URL (the same value as Vercel's FG_SERVER_URL build variable), with the current service as the fallback.
 name: keep the game server awake
 on:
   schedule:
-    - cron: '*/5 2,3,4 * * *'
+    - cron: '*/5 2,3,4,5 * * *'
   workflow_dispatch:
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: ping the server
+        env:
+          URL: ${{ vars.FG_SERVER_URL || 'https://friendgame.onrender.com' }}
         run: |
           for i in 1 2 3; do
-            if curl -sf --max-time 60 https://friendgame.onrender.com/health; then echo; echo "awake"; exit 0; fi
+            if curl -sf --max-time 60 "$URL/health"; then echo; echo "awake: $URL"; exit 0; fi
             sleep 20
           done
           echo "no answer after 3 tries"; exit 1
