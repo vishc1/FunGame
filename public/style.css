@@ -197,3 +197,11 @@ body.racing { overflow:hidden; }.kart-fullscreen { position:fixed;inset:0;min-he
 .fg-set-slider b { color:#d9fa78; }.fg-set-slider input { grid-column:1 / -1;width:100%; }
 .fg-set small { color:#93aaa9;font-size:12px; }
 .away-h { margin:6px 0 -4px;font-size:14px;color:#fff; }
+
+/* the big "server is waking" notice (public/app.js, fg-server events) */
+#wake { position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;display:flex;align-items:center;gap:22px;width:min(640px,92vw);padding:26px 30px;background:#0b161cf2;border:3px solid #d9fa78;border-radius:22px;box-shadow:0 20px 60px #000a,0 0 0 6px #d9fa7833;color:#fff; }
+#wake.hidden { display:none; }
+#wake b { display:block;font-size:30px;line-height:1.1;margin-bottom:8px; }#wake span { display:block;font-size:17px;color:#cfe0dc;line-height:1.35; }
+.wake-spin { flex:none;width:54px;height:54px;border-radius:50%;border:6px solid #d9fa7840;border-top-color:#d9fa78;animation:wake-spin 1s linear infinite; }
+@keyframes wake-spin { to { transform:rotate(360deg); } }
+@media(max-width:600px){ #wake { gap:14px;padding:20px; } #wake b { font-size:22px; } #wake span { font-size:14px; } }

@@ -8,7 +8,19 @@
   const P2P = (() => { const q = new URLSearchParams(location.search).get('p2p'); return q === '1' ? true : q === '0' ? false : !!window.FG_P2P; })();
   // FG_SERVER (config.js): a game server on another host. If it does not answer within a few seconds (the tunnel or
   // server is down) the site falls back to peer-to-peer, so a stale setting never leaves the site dead.
-  const socket = (!P2P && window.FG_SERVER) ? remoteOrP2P(window.FG_SERVER) : P2P ? window.createP2PSocket() : io({ transports: ['websocket'] });
+  // One socket object for the whole app. Inside it is either the remote transport (game server, or peer-to-peer) or,
+  // for Play now, a local practice host: the room runs in this tab for you and the bots, nothing goes over the internet.
+  const remote = (!P2P && window.FG_SERVER) ? remoteOrP2P(window.FG_SERVER) : P2P ? window.createP2PSocket() : io({ transports: ['websocket'] });
+  const socket = switchable(remote);
+  function switchable(first) {
+    const subs = []; let inner = first, localSock = null;
+    const swap = (next) => { if (next === inner) return; for (const [ev, fn] of subs) { inner.off(ev, fn); next.on(ev, fn); } inner = next; };
+    return { get connected() { return !!inner.connected; }, get p2p() { return !!inner.p2p; }, get hosting() { return !!inner.hosting; }, get local() { return !!inner.local; }, get id() { return inner.id; }, get waking() { return inner.waking; }, get wakeMs() { return inner.wakeMs; }, get _peer() { return inner._peer; },
+      on(ev, fn) { subs.push([ev, fn]); inner.on(ev, fn); return this; }, once(ev, fn) { const w = (...a) => { this.off(ev, w); fn(...a); }; return this.on(ev, w); },
+      off(ev, fn) { const i = subs.findIndex((s) => s[0] === ev && s[1] === fn); if (i >= 0) subs.splice(i, 1); inner.off(ev, fn); return this; },
+      emit(ev, data, cb) { inner.emit(ev, data, cb); return this; }, disconnect() { inner.disconnect && inner.disconnect(); },
+      goLocal() { if (!localSock) localSock = window.createP2PSocket(); swap(localSock); }, goRemote() { if (inner === localSock) { try { localSock.disconnect(); } catch (e) { /* ignore */ } } swap(remote); } };
+  }
   function remoteOrP2P(url) {
     // A free Render server sleeps when idle and takes up to a minute to wake, so the site keeps trying for WAKE ms
     // (saying so on screen) before it gives up and goes peer-to-peer. Giving up early would split a party: the host's
@@ -100,8 +112,8 @@
   const myName = () => { const n = nameEl.value.trim() || 'Player' + Math.floor(Math.random() * 90 + 10); localStorage.setItem('fg_name', n); return n; };
   // The home page has two primary games; window.selectedGame is the one whose tab is open (see home.js).
   const pickHomeGame = () => { const g = window.selectedGame === 'blasters' ? 'blasters' : 'memekarts'; socket.emit('pick', { gameId: g }); if (g === 'memekarts') socket.emit('pickMap', { mapId: window.selectedKartMap || 'stadium' }); else socket.emit('pickMap', { mapId: window.selectedBlMap || 'fort' }); return g; };
-  $('#createBtn').onclick = () => enter('create', { name: myName() }, pickHomeGame);
-  $('#joinBtn').onclick = () => enter('join', { name: myName(), code: $('#code').value });
+  $('#createBtn').onclick = () => { socket.goRemote(); enter('create', { name: myName() }, pickHomeGame); };
+  $('#joinBtn').onclick = () => { socket.goRemote(); enter('join', { name: myName(), code: $('#code').value }); };
   $('#code').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#joinBtn').click(); });
   nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#createBtn').click(); });
   const qs = new URLSearchParams(location.search);
@@ -112,7 +124,7 @@
   function inviteJoin() {
     const n = $('#invName').value.trim(); if (!n) { $('#invName').focus(); return; } nameEl.value = n; localStorage.setItem('fg_name', n);
     $('#invGo').disabled = true; $('#invGo').textContent = 'Joining…'; $('#invMsg').textContent = 'Connecting to your friend…';
-    closedCode = null; ask('join', { name: n, code: inviteCode }, (r) => {
+    closedCode = null; socket.goRemote(); ask('join', { name: n, code: inviteCode }, (r) => {
       $('#invGo').disabled = false; $('#invGo').textContent = 'Join the party';
       if (!r || r.error) { $('#invMsg').textContent = ((r && r.error) || 'No answer from the room') + '. Ask your friend for a fresh link, or check the code.'; $('#invMsg').classList.add('bad'); return; }
       myId = r.id; saveSession(r); dropRoomParam(); /* a refresh now rejoins this seat instead of joining again */
@@ -126,7 +138,7 @@
   }
 
   // ---- test mode (bots) ---------------------------------------------------
-  $('#testBtn').onclick = () => enter('create', { name: myName() }, () => { pickHomeGame(); socket.emit('bots', { op: 'add', n: 3 }); toast('Test mode: 3 bots joined. Pick any game and press Start.'); });
+  $('#testBtn').onclick = () => { socket.goRemote(); enter('create', { name: myName() }, () => { pickHomeGame(); socket.emit('bots', { op: 'add', n: 3 }); toast('Test mode: 3 bots joined. Pick any game and press Start.'); }); };
   $('#botAdd').onclick = () => socket.emit('bots', { op: 'add', n: 1 });
   $('#botClear').onclick = () => socket.emit('bots', { op: 'clear' });
   function renderTestBox() {
@@ -143,11 +155,11 @@
   $('#copyBig').onclick = () => { $('#copyBtn').onclick(); $('#copyBig').textContent = 'Copied ✓'; setTimeout(() => { $('#copyBig').textContent = 'Copy link'; }, 1600); };
   $('#shareBig').onclick = () => { const url = `${location.origin}/?room=${room.code}`; if (navigator.share) navigator.share({ title: 'Join my game', text: `Join my game, room ${room.code}`, url }).catch(() => {}); else $('#copyBig').onclick(); };
   $('#startBtn').onclick = () => socket.emit('start');
-  $('#soloBtn').onclick = () => enter('create', { name: myName() }, () => {
+  $('#soloBtn').onclick = () => { socket.goLocal(); enter('create', { name: myName(), local: true }, () => { /* Play now: a practice room inside this browser; no server, no waiting, no lag */
     const g = pickHomeGame();
     socket.emit('bots', { op: 'add', n: g === 'blasters' ? 5 : 7 });
     socket.emit('start');
-  });
+  }); };
   $('#returnKarts').onclick = () => socket.emit('pick', { gameId: 'memekarts' });
   async function fullscreen() {
     try {
@@ -185,6 +197,7 @@
   $('#lsReset').onclick = () => { for (const k of ['tbb_sens', 'tbb_fov']) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } setSound(true); if (window.FG_GFX) window.FG_GFX.reset(); drawSettings(); toast('Settings back to the defaults'); };
   drawSettings();
   function renderLobby() {
+    { const card = document.querySelector('.invite-card'); if (card) card.classList.toggle('hidden', !!socket.local); } /* a practice room has nobody to invite */
     $('#roomCode').textContent = room.code; $('#bigCode').textContent = room.code; $('#inviteLink').textContent = `${location.host}/?room=${room.code}`;
     const isHost = room.hostId === myId;
     const kartGame = room.gameId === 'memekarts', blGame = room.gameId === 'blasters';
@@ -201,7 +214,8 @@
     { const hostName = (room.players.find((p) => p.id === room.hostId) || {}).name || 'the host', p2p = !!socket.p2p, hosting = !!socket.hosting;
       const lines = isHost ? ['You are the host. Pick a game and a map, then press Start.', 'Friends join with the link or the code on the left, even after the game has started.']
         : [`${hostName} is the host. They pick the game and press Start.`, 'Set your graphics and sound below while you wait.'];
-      if (hosting) lines.push('Keep this tab open: the room runs in it. If you close or refresh it, the room ends for everyone.');
+      if (socket.local) lines.splice(0, lines.length, 'Practice room on this device: you and the bots. Nothing goes over the internet, so there is no lag.', 'To play with friends, leave and press Play with friends on the home page.');
+      else if (hosting) lines.push('Keep this tab open: the room runs in it. If you close or refresh it, the room ends for everyone.');
       else if (p2p) lines.push(`If ${hostName} closes their tab, the room ends. You can refresh, or step away with Esc during a game, without losing your place.`);
       $('#hostHint').innerHTML = lines.map((l, i) => `<span class="hint-line${i === 2 ? ' warn' : ''}">${esc(l)}</span>`).join(''); }
     $('#gameGrid').innerHTML = gameDefs.map((g) => `<div class="gcard ${g.id === room.gameId ? 'sel' : ''}" data-id="${g.id}"><b>${esc(g.name)}</b><small>${esc(g.tagline)}</small><br><small>${g.min}–${g.max} players</small></div>`).join('');
@@ -318,9 +332,8 @@
     });
   });
   socket.on('replaced', () => goHome('This player was opened in another tab'));
-  let wakeToast = null;
-  window.addEventListener('fg-server', (e) => { const st = e.detail.state; if (st === 'waking') { wakeToast = toast('Waking up the game server. The first visit after a quiet spell takes up to a minute.', 120000); }
-    else { if (wakeToast && wakeToast.remove) wakeToast.remove(); wakeToast = null; if (st === 'up') toast('The game server is awake. Go!'); else if (st === 'p2p') toast('The game server is not answering, so this party runs browser to browser.', 8000); } });
+  window.addEventListener('fg-server', (e) => { const st = e.detail.state, w = $('#wake'); if (st === 'waking') { w.classList.remove('hidden'); }
+    else { w.classList.add('hidden'); if (st === 'up') toast('The game server is awake. Go!'); else if (st === 'p2p') toast('The game server is not answering, so this party runs browser to browser.', 8000); } });
   window.addEventListener('fg-gfx-auto', (e) => toast(`Running at ${e.detail.fps} fps, so graphics were set to ${e.detail.level === 'low' ? 'Low' : 'Medium'}. Change it any time with Esc.`));
   let closedCode = null; socket.on('room-closed', () => { if (room) { closedCode = room.code; goHome('The host left, so the room has closed. Ask them for a new link.'); } }); /* peer-to-peer: the room lived in the host's tab */
 })();

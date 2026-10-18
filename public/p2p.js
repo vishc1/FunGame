@@ -25,7 +25,7 @@
     const tabChannel = (code) => { try { return new BroadcastChannel('fg-room-' + code); } catch (e) { return null; } };
     const fire = (ev, ...a) => { for (const fn of (handlers[ev] || []).slice()) { try { fn(...a); } catch (e) { console.error(e); } } };
     const sock = {
-      connected: false, p2p: true, get hosting() { return mode === 'host'; },
+      connected: false, p2p: true, local: false, get hosting() { return mode === 'host'; },
       on(ev, fn) { (handlers[ev] = handlers[ev] || []).push(fn); return sock; },
       once(ev, fn) { const w = (...a) => { sock.off(ev, w); fn(...a); }; return sock.on(ev, w); },
       off(ev, fn) { handlers[ev] = (handlers[ev] || []).filter((f) => f !== fn); return sock; },
@@ -63,13 +63,14 @@
       try { await loadPeer(); } catch (e) { return cb({ error: e.message }); }
       teardown(); const mine = ++gen;
       let code = null;
-      for (let tries = 0; tries < 6 && !peer; tries++) {
+      if (data.local) { code = randomCode(); sock.local = true; } /* practice room: no introduction service, nothing leaves this browser */
+      else { sock.local = false; for (let tries = 0; tries < 6 && !peer; tries++) {
         code = randomCode();
         try { peer = await new Promise((res, rej) => { const p = new window.Peer(PREFIX + code, { debug: 0, config: ICE() }); p.on('open', () => res(p)); p.on('error', (err) => { try { p.destroy(); } catch (e) { /* ignore */ } rej(err); }); }); }
         catch (err) { if (err && err.type !== 'unavailable-id') return cb({ error: 'Could not reach the connection service. Check your internet and try again.' }); }
         if (mine !== gen) { if (peer) peer.destroy(); return; }
-      }
-      if (!peer) return cb({ error: 'Could not open a room. Try again.' });
+      } }
+      if (!peer && !data.local) return cb({ error: 'Could not open a room. Try again.' });
       mode = 'host'; sock.connected = true;
       worker = new Worker('/host-worker.js');
       worker.onerror = (e) => console.error('room host worker failed:', e.message);
@@ -78,19 +79,19 @@
         if (m.t === 'emit') { for (const sid of m.sids) { if (sid === 'local') deliver(m.s); else { const c = conns.get(sid); if (c && c.open) { try { c.send(m.s); } catch (err) { /* that player is leaving */ } } } } }
         else if (m.t === 'kick') { const c = conns.get(m.sid); if (c) { conns.delete(m.sid); try { c.close(); } catch (err) { /* ignore */ } } }
       };
-      peer.on('connection', (c) => {
+      if (peer) peer.on('connection', (c) => {
         const sid = 'c' + (++sidSeq), gone = () => { if (conns.get(sid) === c) { conns.delete(sid); if (worker) worker.postMessage({ t: 'close', sid }); } };
         c.on('open', () => { conns.set(sid, c); worker.postMessage({ t: 'open', sid }); });
         c.on('data', (d) => { if (worker && typeof d === 'string') worker.postMessage({ t: 'msg', sid, s: d }); });
         c.on('close', gone); c.on('error', gone);
       });
       // losing the link to the introduction service does not affect players already in; reconnect so new ones can still join
-      peer.on('disconnected', () => { const p = peer; setTimeout(() => { if (peer === p && mode === 'host' && !p.destroyed && p.disconnected) { try { p.reconnect(); } catch (e) { /* the keep-alive below retries */ } } }, 1500); });
-      peer.on('error', () => { /* e.g. a failed reconnect: the keep-alive below tries again */ });
+      if (peer) peer.on('disconnected', () => { const p = peer; setTimeout(() => { if (peer === p && mode === 'host' && !p.destroyed && p.disconnected) { try { p.reconnect(); } catch (e) { /* the keep-alive below retries */ } } }, 1500); });
+      if (peer) peer.on('error', () => { /* e.g. a failed reconnect: the keep-alive below tries again */ });
       // Keep-alive. Chrome slows timers in a background tab to once a minute after a few minutes, so PeerJS's own heartbeat
       // stops and the service forgets the room: friends then cannot find it. A worker's timer is not slowed, so it drives a
       // heartbeat every 4 s and reconnects whenever the link has dropped, however often.
-      try { const hb = new Worker(URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 4000);'], { type: 'text/javascript' }))); const p = peer;
+      if (peer) try { const hb = new Worker(URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 4000);'], { type: 'text/javascript' }))); const p = peer;
         hb.onmessage = () => { if (peer !== p || mode !== 'host' || p.destroyed) { hb.terminate(); return; } if (p.disconnected) { try { p.reconnect(); } catch (e) { /* next beat */ } } else { try { if (p.socket && p.socket.send) p.socket.send({ type: 'HEARTBEAT' }); } catch (e) { /* next beat */ } } };
       } catch (e) { /* no workers from blobs: PeerJS's own heartbeat still runs while the tab is visible */ }
       document.addEventListener('visibilitychange', () => { const p = peer; if (document.visibilityState === 'visible' && p && mode === 'host' && !p.destroyed && p.disconnected) { try { p.reconnect(); } catch (e) { /* keep-alive retries */ } } });
