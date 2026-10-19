@@ -19,7 +19,8 @@
       on(ev, fn) { subs.push([ev, fn]); inner.on(ev, fn); return this; }, once(ev, fn) { const w = (...a) => { this.off(ev, w); fn(...a); }; return this.on(ev, w); },
       off(ev, fn) { const i = subs.findIndex((s) => s[0] === ev && s[1] === fn); if (i >= 0) subs.splice(i, 1); inner.off(ev, fn); return this; },
       emit(ev, data, cb) { inner.emit(ev, data, cb); return this; }, disconnect() { inner.disconnect && inner.disconnect(); },
-      goLocal() { if (!localSock) localSock = window.createP2PSocket(); swap(localSock); }, goRemote() { if (inner === localSock) { try { localSock.disconnect(); } catch (e) { /* ignore */ } } swap(remote); } };
+      goLocal() { if (!localSock) localSock = window.createP2PSocket(); swap(localSock); const w = $('#wake'); if (w) w.classList.add('hidden'); },
+      goRemote() { if (inner === localSock) { try { localSock.disconnect(); } catch (e) { /* ignore */ } } swap(remote); const w = $('#wake'); if (w && remote.waking) w.classList.remove('hidden'); } };
   }
   function remoteOrP2P(url) {
     // A free Render server sleeps when idle and takes up to a minute to wake, so the site keeps trying for WAKE ms
@@ -332,7 +333,8 @@
     });
   });
   socket.on('replaced', () => goHome('This player was opened in another tab'));
-  window.addEventListener('fg-server', (e) => { const st = e.detail.state, w = $('#wake'); if (st === 'waking') { w.classList.remove('hidden'); }
+  window.addEventListener('fg-server', (e) => { const st = e.detail.state, w = $('#wake'); if (socket.local) { w.classList.add('hidden'); return; } /* a practice room never waits for the server */
+    if (st === 'waking') { w.classList.remove('hidden'); }
     else { w.classList.add('hidden'); if (st === 'up') toast('The game server is awake. Go!'); else if (st === 'p2p') toast('The game server is not answering, so this party runs browser to browser.', 8000); } });
   window.addEventListener('fg-gfx-auto', (e) => toast(`Running at ${e.detail.fps} fps, so graphics were set to ${e.detail.level === 'low' ? 'Low' : 'Medium'}. Change it any time with Esc.`));
   let closedCode = null; socket.on('room-closed', () => { if (room) { closedCode = room.code; goHome('The host left, so the room has closed. Ask them for a new link.'); } }); /* peer-to-peer: the room lived in the host's tab */

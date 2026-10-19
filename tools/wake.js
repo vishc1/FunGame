@@ -14,6 +14,11 @@ async function until(p, want, ms) { const t0 = Date.now(); while (Date.now() - t
   const site = spawn('python3', ['-m', 'http.server', String(SITE)], { cwd: siteDir, stdio: 'ignore' }); await sleep(800);
   const b = await chromium.launch({ executablePath: exe, headless: true, args: ['--disable-features=WebRtcHideLocalIpsWithMdns'] }); const errors = [];
   const open = async (q) => { const ctx = await b.newContext(); await ctx.addInitScript(() => { try { localStorage.setItem('fg_name', 'Friend'); } catch (e) {} }); const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message)); await p.goto(`http://localhost:${SITE}/?game=memekarts${q}`); return p; };
+  // 0. the server is asleep, but Play now runs in the browser: the game starts at once and no waking notice appears
+  const solo = await open('&wakems=40000'); await solo.fill('#name', 'Solo'); await solo.click('#soloBtn'); const ts = await until(solo, 'game', 12000); await sleep(4000);
+  const wakeUp = await solo.evaluate(() => !document.querySelector('#wake').classList.contains('hidden'));
+  check('Play now starts a bot match at once while the server is asleep', ts >= 0 && (await solo.evaluate(() => window.G.socket.local === true)), ts >= 0 ? `${(ts / 1000).toFixed(1)} s` : 'no game');
+  check('...and no "waking up" notice appears over it', !wakeUp); await solo.context().close();
   // 1. the server is asleep; it wakes 12 s after the host arrives
   let host = await open('&wakems=40000'); await host.fill('#name', 'Host'); await host.click('#createBtn'); await sleep(4500);
   const wakeShown = await host.evaluate(() => { const w = document.querySelector('#wake'); return !w.classList.contains('hidden') && w.getBoundingClientRect().height > 60 ? w.textContent.trim().slice(0, 60) : ''; }); check('while the server is waking, a big notice says so', !!wakeShown, wakeShown); await host.screenshot({ path: path.join(__dirname, 'shots', 'wake_banner.png') });
