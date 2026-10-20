@@ -242,6 +242,7 @@ module.exports = function attachHub(io, opts) {
       }
     });
 
+    on('ping', (d, cb) => { if (typeof cb === 'function') cb({ t: Date.now() }); }); /* clients measure their round trip with this (Meme Karts predicts your own kart that far ahead) */
     on('leave', () => {
       const room = roomOf();
       if (!room) return;

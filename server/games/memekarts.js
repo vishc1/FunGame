@@ -15,49 +15,8 @@ const M = 20, R = 16; // wall margin and kart radius. Arena size is per map: map
 const MATCH = 150;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-// ---- shared car physics ----------------------------------------------------
-function stepCar(c, dt, o) {
-  const cos = Math.cos(c.a), sin = Math.sin(c.a);
-  let fwd = c.vx * cos + c.vy * sin;
-  let lat = -c.vx * sin + c.vy * cos;
-  const ctl = c.ctl || {};
-  if (!c.spin) {
-    if (ctl.up && fwd < o.maxF) fwd = Math.min(o.maxF, fwd + o.accel * dt);
-    if (ctl.down && fwd > -o.maxR) fwd = Math.max(-o.maxR, fwd - o.accel * dt);
-    if (o.thrust && fwd < o.maxF) fwd = Math.min(o.maxF, fwd + o.thrust * dt);
-    const steer = (ctl.right ? 1 : 0) - (ctl.left ? 1 : 0);
-    c.a += steer * o.turn * Math.min(1, Math.abs(fwd) / 80) * dt;
-  }
-  fwd *= Math.pow(0.985, 60 * dt);
-  if (!ctl.up && !ctl.down && !o.thrust) fwd *= Math.pow(0.6, dt);
-  lat *= Math.pow(0.02, dt);
-  const c2 = Math.cos(c.a), s2 = Math.sin(c.a);
-  c.vx = c2 * fwd - s2 * lat; c.vy = s2 * fwd + c2 * lat;
-  c.x += c.vx * dt; c.y += c.vy * dt;
-}
-function collideBounds(o, r, rest, W, H) {
-  let hit = false;
-  if (o.x < M + r) { o.x = M + r; if (o.vx < 0) o.vx = -o.vx * rest; hit = true; }
-  if (o.x > W - M - r) { o.x = W - M - r; if (o.vx > 0) o.vx = -o.vx * rest; hit = true; }
-  if (o.y < M + r) { o.y = M + r; if (o.vy < 0) o.vy = -o.vy * rest; hit = true; }
-  if (o.y > H - M - r) { o.y = H - M - r; if (o.vy > 0) o.vy = -o.vy * rest; hit = true; }
-  return hit;
-}
-function collideRect(o, r, rc, rest) {
-  const cx = clamp(o.x, rc.x, rc.x + rc.w), cy = clamp(o.y, rc.y, rc.y + rc.h);
-  const dx = o.x - cx, dy = o.y - cy, d = Math.hypot(dx, dy);
-  if (d >= r) return false;
-  let nx, ny;
-  if (d === 0) {
-    const l = o.x - rc.x, rr = rc.x + rc.w - o.x, t = o.y - rc.y, b = rc.y + rc.h - o.y, m = Math.min(l, rr, t, b);
-    if (m === l) { nx = -1; ny = 0; o.x = rc.x - r; } else if (m === rr) { nx = 1; ny = 0; o.x = rc.x + rc.w + r; }
-    else if (m === t) { nx = 0; ny = -1; o.y = rc.y - r; } else { nx = 0; ny = 1; o.y = rc.y + rc.h + r; }
-  } else { nx = dx / d; ny = dy / d; o.x = cx + nx * r; o.y = cy + ny * r; }
-  const vn = o.vx * nx + o.vy * ny;
-  if (vn < 0) { o.vx -= nx * vn * (1 + rest); o.vy -= ny * vn * (1 + rest); }
-  return true;
-}
-function wallHit(o, r, rest, obstacles, W = 900, H = 600) { let h = collideBounds(o, r, rest, W, H); for (const rc of obstacles) if (collideRect(o, r, rc, rest)) h = true; return h; }
+// ---- shared car physics: public/memekarts-physics.js (the browser runs the same step to predict your own kart) ----
+const { stepCar, collideBounds, collideRect, wallHit } = require('../../public/memekarts-physics.js');
 function circleHit(a, b, ra, rb, rest) {
   const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
   if (d >= ra + rb || d === 0) return false;
@@ -505,7 +464,7 @@ module.exports = {
         t: Math.ceil(t),
         mapId: map.id,
         haz: movers.length ? movers.map((m) => [Math.round(m.x), Math.round(m.y)]) : undefined, // live positions of the map's moving hazards
-        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1), aw: k.away ? 1 : undefined })), win: over ? winnerId : undefined,
+        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), vx: Math.round(k.vx), vy: Math.round(k.vy), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1), aw: k.away ? 1 : undefined })), win: over ? winnerId : undefined,
         ents: ents.filter((e) => e.kind !== 'burst' && e.kind !== 'gunfire').map((e) => ({ id: e.id, k: e.kind, x: Math.round(e.x), y: Math.round(e.y), el: Math.round(e.el || 0), z: Math.round(e.z || 0), a: +(e.a || 0).toFixed(2), o: e.owner, f: +e.life.toFixed(1) })),
         boxes: boxes.map((b) => (b.t > 0 ? 0 : 1)),
       };

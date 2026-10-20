@@ -11,6 +11,20 @@ registerGame('memekarts', (G) => {
   const { ctx, canvas } = G;
   let W = G.W, H = G.H;
   let map = window.MEMEKARTS_MAPS[0], OBST = map.obstacles, BOXES = map.boxes;
+  // Your own kart is predicted: from the latest server state, the shared physics runs your current keys forward by about
+  // half a round trip plus a tick, so steering shows at once instead of after the server replies. The server stays the
+  // authority; every snapshot re-bases the prediction, so mistakes (a hit, a spin) are corrected within a frame.
+  const PHYS = window.MEMEKARTS_PHYSICS; let myCtl = {}, rtt = 0.06, lastPing = -9;
+  function predictMe(me) {
+    if (!PHYS || !me || me.dead || me.air > 0 || me.pit || me.aw || me.spin || (s.win && s.win !== G.me) || away) return null;
+    const lead = Math.min(0.2, rtt / 2 + 0.045); if (lead < 0.01) return null;
+    const p = { x: me.x, y: me.y, a: me.a, vx: me.vx || 0, vy: me.vy || 0, ctl: myCtl };
+    const spd = (me.egg > 0 ? 0.5 : 1) * (me.mush ? 1.8 : me.bst ? 1.55 : 1) * (me.star ? 1.35 : 1) * (me.small ? 0.65 : 1) * (me.ink > 0 ? 0.92 : 1) * (me.mud ? (me.star || me.mush ? 0.8 : 0.5) : 1);
+    const o = { maxF: 300 * spd, maxR: 150, accel: 420 * (me.mush || me.star || me.bst ? 1.8 : 1), turn: 3.2 };
+    for (let t = 0; t < lead; t += 1 / 60) { const h = Math.min(1 / 60, lead - t), px = p.x, py = p.y; PHYS.stepCar(p, h, o); PHYS.wallHit(p, 16, 0.4, OBST, MW, MH);
+      if (window.MEMEKARTS_MAPS.surface(map, p.x, p.y) - (me.el || 0) > 10) { p.x = px; p.y = py; p.vx *= 0.5; p.vy *= 0.5; } } /* a deck wall or ramp side: stop, the server decides */
+    return p;
+  }
   const HEARTS = 2; /* hearts per life, same as HEARTS in server/games/memekarts.js */
   const TEST_CAM = /[?&]bltest=1/.test(location.search); // tools/views.js only
   const onGfx = () => { if (T && T.applyGfx) T.applyGfx(); }; window.addEventListener('fg-gfx', onGfx); /* graphics changed in the header or on the home page */
@@ -594,13 +608,15 @@ registerGame('memekarts', (G) => {
     const views = new Map();
     function updateKarts(dt) {
       const seen = new Set();
+      if (time - lastPing > 2 && G.socket && G.socket.emit) { lastPing = time; const t0 = performance.now(); try { G.socket.emit('ping', {}, () => { rtt = rtt * 0.7 + ((performance.now() - t0) / 1000) * 0.3; }); } catch (e) { /* transport without acks */ } }
+      const predicted = predictMe(s.karts.find((q) => q.id === G.me));
       for (const k of s.karts) {
         seen.add(k.id); const p = G.player(k.id);
         let v = views.get(k.id);
         if (!v) { v = { g: buildKart(k.v, p.color), x: k.x, y: k.y, a: k.a, sc: 1, lookKey: '', spd: 0, roll: 0, pitch:0, steer:0, airTime:0, landingAge:2 }; views.set(k.id, v); scene.add(v.g); }
         if (Math.hypot(k.x - v.x, k.y - v.y) > 130) { v.x = k.x; v.y = k.y; v.a = k.a; }
-        const mine = k.id === G.me, px = v.x, py = v.y, pa = v.a, f = 1 - Math.exp(-(mine ? 26 : 16) * dt); /* your own kart follows the server tightly (less felt input lag); others are smoothed more */
-        v.x += (k.x - v.x) * f; v.y += (k.y - v.y) * f; v.a = lerpAngle(v.a, k.a, 1 - Math.exp(-14 * dt));
+        const mine = k.id === G.me, px = v.x, py = v.y, pa = v.a, f = 1 - Math.exp(-(mine ? 26 : 16) * dt), tg = (mine && predicted) || k; /* your own kart: the predicted position; others: the server's, smoothed */
+        v.x += (tg.x - v.x) * f; v.y += (tg.y - v.y) * f; v.a = lerpAngle(v.a, tg.a, 1 - Math.exp(-(mine ? 22 : 14) * dt));
         const spd = Math.hypot(v.x - px, v.y - py) / Math.max(dt, 0.001), oldSpeed=v.spd;v.spd=damp(v.spd,spd,13,dt);
         const fwd = Math.sign((v.x - px) * Math.cos(v.a) + (v.y - py) * Math.sin(v.a)) || 1;
         const av = (((v.a - pa) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
@@ -805,7 +821,7 @@ registerGame('memekarts', (G) => {
   // ============================ input ============================
   function sendCtl() { if (away) return;
     const k = new Set([...G.keys,...touchKeys]);
-    const c = { up: k.has('w') || k.has('ArrowUp'), down: k.has('s') || k.has('ArrowDown'), left: k.has('a') || k.has('ArrowLeft'), right: k.has('d') || k.has('ArrowRight') };
+    const c = { up: k.has('w') || k.has('ArrowUp'), down: k.has('s') || k.has('ArrowDown'), left: k.has('a') || k.has('ArrowLeft'), right: k.has('d') || k.has('ArrowRight') }; myCtl = c;
     const key = `${+c.up}${+c.down}${+c.left}${+c.right}`;
     if (key !== lastCtl) { lastCtl = key; G.send(Object.assign({ type: 'ctl' }, c)); }
   }
