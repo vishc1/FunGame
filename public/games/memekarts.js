@@ -14,7 +14,7 @@ registerGame('memekarts', (G) => {
   // Your own kart is predicted: from the latest server state, the shared physics runs your current keys forward by about
   // half a round trip plus a tick, so steering shows at once instead of after the server replies. The server stays the
   // authority; every snapshot re-bases the prediction, so mistakes (a hit, a spin) are corrected within a frame.
-  const PHYS = window.MEMEKARTS_PHYSICS; let myCtl = {}, rtt = 0.06, lastPing = -9;
+  const PHYS = window.MEMEKARTS_PHYSICS; let myCtl = {}, rtt = 0.06, lastPing = -9, rttKnown = false, fpsAcc = 0, fpsN = 0, fpsShow = 0; /* readout under the minimap: frames per second and the round trip */
   function predictMe(me) {
     if (!PHYS || !me || me.dead || me.air > 0 || me.pit || me.aw || me.spin || (s.win && s.win !== G.me) || away) return null;
     const lead = Math.min(0.2, rtt / 2 + 0.045); if (lead < 0.01) return null;
@@ -608,7 +608,7 @@ registerGame('memekarts', (G) => {
     const views = new Map();
     function updateKarts(dt) {
       const seen = new Set();
-      if (time - lastPing > 2 && G.socket && G.socket.emit) { lastPing = time; const t0 = performance.now(); try { G.socket.emit('ping', {}, () => { rtt = rtt * 0.7 + ((performance.now() - t0) / 1000) * 0.3; }); } catch (e) { /* transport without acks */ } }
+      if (time - lastPing > 2 && G.socket && G.socket.emit) { lastPing = time; const t0 = performance.now(); try { G.socket.emit('ping', {}, () => { rtt = rtt * 0.7 + ((performance.now() - t0) / 1000) * 0.3; rttKnown = true; }); } catch (e) { /* transport without acks */ } }
       const predicted = predictMe(s.karts.find((q) => q.id === G.me));
       for (const k of s.karts) {
         seen.add(k.id); const p = G.player(k.id);
@@ -877,6 +877,8 @@ registerGame('memekarts', (G) => {
       const fit = (t, size) => { ctx.font = `700 ${size}px system-ui, sans-serif`; let sz = size; while (sz > 7 && ctx.measureText(t).width > bw - 12) { sz -= 0.5; ctx.font = `700 ${sz}px system-ui, sans-serif`; } return sz; };
       const l1 = `${total} players  ·  ${racing} racing  ·  ${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, '0')} left`;
       G.text(l1, mx - 4 + bw / 2, iy, { size: fit(l1, 10.5), color: '#fff', stroke: false });
+      fpsAcc += dt; fpsN++; if (fpsAcc >= 1) { fpsShow = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
+      G.text(`${fpsShow} fps  ·  ${rttKnown ? Math.round(rtt * 1000) + ' ms to the server' : 'local'}`, mx - 4 + bw / 2, iy + 30, { size: 9.5, color: 'rgba(255,255,255,.6)', stroke: false }); /* so a player can tell slow drawing from a slow link */
       if (me) { const l2 = `You: ${me.kills} ${me.kills === 1 ? 'kill' : 'kills'}  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') + ' of ' + total : ''}  ·  ${map.name}`; G.text(l2, mx - 4 + bw / 2, iy + 14, { size: fit(l2, 10), color: '#ffd84d', stroke: false }); }
     }
     // item slot + hearts

@@ -15,6 +15,7 @@ registerGame('blasters', (G) => {
   const TEAM = [{ name: 'Red', color: '#ff5d5d' }, { name: 'Blue', color: '#4da6ff' }];
   const teamOf = (p) => (s && s.tm && p && p.tm != null ? TEAM[p.tm] : null), colOf = (p) => { const tmc = teamOf(p); return tmc ? tmc.color : (G.player(p.id) || {}).color || '#ffffff'; }, myTeam = () => { const st = mySt(); return st ? teamOf(st) : null; };
   const { ctx, canvas } = G; const GOLD = window.BLASTERS.GOLD;
+  let rtt = 0, rttKnown = false, lastPing = -9, fpsAcc = 0, fpsN = 0, fpsShow = 0; /* readout under the minimap: frames per second and the round trip */
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W = 900, H = 600, s = null, T = null, failed = null, time = 0;
   const lerpAngle = (a, b, f) => a + ((((b - a) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * f;
@@ -811,6 +812,8 @@ registerGame('blasters', (G) => {
       const l1 = `${total} players  ·  ${alive} standing`, l2 = s.tm ? `Red ${s.tk[0]}  ·  Blue ${s.tk[1]}  ·  ${MAP.name}` : `You: ${st ? st.k : 0} tags  ·  ${rank ? rank + (rank === 1 ? 'st' : rank === 2 ? 'nd' : rank === 3 ? 'rd' : 'th') : '-'} of ${total}  ·  ${MAP.name}`;
       txt(l1, cx, iy, { size: fit(l1, 11, 700), weight: 700, color: '#fff', stroke: false });
       txt(l2, cx, iy + 14, { size: fit(l2, 10, 600), weight: 600, color: '#ffd84d', stroke: false });
+      if (time - lastPing > 2 && G.socket && G.socket.emit) { lastPing = time; const t0 = performance.now(); try { G.socket.emit('ping', {}, () => { rtt = rtt ? rtt * 0.7 + (performance.now() - t0) * 0.3 : performance.now() - t0; rttKnown = true; }); } catch (e) { /* no acks */ } }
+      txt(`${fpsShow} fps  ·  ${rttKnown ? Math.round(rtt) + ' ms to the server' : 'local'}`, cx, iy + 30, { size: 9.5, color: 'rgba(255,255,255,.6)', stroke: false });
     }
   }
   let deathBy = '';
@@ -910,6 +913,7 @@ registerGame('blasters', (G) => {
       else if (kind === 'move' && locked && e && me.alive) { const sens = (0.0022 * sensMul) / (1 + (adsOf(me.w) - 1) * me.zoom); me.yaw -= (e.movementX || 0) * sens; me.pitch = Math.max(-1.5, Math.min(1.5, me.pitch - (e.movementY || 0) * sens)); }
     },
     render(dt) {
+      fpsAcc += dt; fpsN++; if (fpsAcc >= 1) { fpsShow = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
       time += dt;
       if (!T && !failed && window.THREE) { try { T = create3D(); } catch (e) { failed = e.message; console.error(e); } }
       const st = mySt(), K = G.keys;
