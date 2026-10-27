@@ -11,19 +11,23 @@ registerGame('memekarts', (G) => {
   const { ctx, canvas } = G;
   let W = G.W, H = G.H;
   let map = window.MEMEKARTS_MAPS[0], OBST = map.obstacles, BOXES = map.boxes;
-  // Your own kart is predicted: from the latest server state, the shared physics runs your current keys forward by about
-  // half a round trip plus a tick, so steering shows at once instead of after the server replies. The server stays the
-  // authority; every snapshot re-bases the prediction, so mistakes (a hit, a spin) are corrected within a frame.
-  const PHYS = window.MEMEKARTS_PHYSICS; let myCtl = {}, rtt = 0.06, lastPing = -9, rttKnown = false, fpsAcc = 0, fpsN = 0, fpsShow = 0; /* readout under the minimap: frames per second and the round trip */
-  function predictMe(me) {
-    if (!PHYS || !me || me.dead || me.air > 0 || me.pit || me.aw || me.spin || (s.win && s.win !== G.me) || away) return null;
-    const lead = Math.min(0.2, rtt / 2 + 0.045); if (lead < 0.01) return null;
-    const p = { x: me.x, y: me.y, a: me.a, vx: me.vx || 0, vy: me.vy || 0, ctl: myCtl };
-    const spd = (me.egg > 0 ? 0.5 : 1) * (me.mush ? 1.8 : me.bst ? 1.55 : 1) * (me.star ? 1.35 : 1) * (me.small ? 0.65 : 1) * (me.ink > 0 ? 0.92 : 1) * (me.mud ? (me.star || me.mush ? 0.8 : 0.5) : 1);
-    const o = { maxF: 300 * spd, maxR: 150, accel: 420 * (me.mush || me.star || me.bst ? 1.8 : 1), turn: 3.2 };
-    for (let t = 0; t < lead; t += 1 / 60) { const h = Math.min(1 / 60, lead - t), px = p.x, py = p.y; PHYS.stepCar(p, h, o); PHYS.wallHit(p, 16, 0.4, OBST, MW, MH);
-      if (window.MEMEKARTS_MAPS.surface(map, p.x, p.y) - (me.el || 0) > 10) { p.x = px; p.y = py; p.vx *= 0.5; p.vy *= 0.5; } } /* a deck wall or ramp side: stop, the server decides */
-    return p;
+  // Your own kart is predicted. The browser runs the shared kart physics on your own keys every frame, so steering
+  // shows at once. Each server snapshot re-bases it: the server's state (with velocity) is replayed forward through the
+  // keys you held since that snapshot was made (about half a round trip ago), then blended into the running prediction.
+  // The server stays the authority; snapshots without velocity (an older server) switch prediction off entirely.
+  const PHYS = window.MEMEKARTS_PHYSICS; let myCtl = {}, ctlLog = [], rtt = 0.06, lastPing = -9, rttKnown = false, fpsAcc = 0, fpsN = 0, fpsShow = 0, pred = null, predMe = null; /* readout under the minimap: frames per second and the round trip */
+  const nowS = () => performance.now() / 1000;
+  window.__kartPred = () => (pred ? { x: pred.x, y: pred.y, a: pred.a } : null); /* test hook: tools read the predicted kart */
+  const ctlAt = (t) => { let c = {}; for (const e of ctlLog) { if (e.t <= t) c = e.ctl; else break; } return c; };
+  const kartOpts = (me) => { const spd = (me.egg > 0 ? 0.5 : 1) * (me.mush ? 1.8 : me.bst ? 1.55 : 1) * (me.star ? 1.35 : 1) * (me.small ? 0.65 : 1) * (me.ink > 0 ? 0.92 : 1) * (me.mud ? (me.star || me.mush ? 0.8 : 0.5) : 1); return { maxF: 300 * spd, maxR: 150, accel: 420 * (me.mush || me.star || me.bst ? 1.8 : 1), turn: 3.2 }; };
+  function stepPred(p, h, me, o) { const px = p.x, py = p.y; PHYS.stepCar(p, h, o); PHYS.wallHit(p, 16, 0.4, OBST, MW, MH); if (window.MEMEKARTS_MAPS.surface(map, p.x, p.y) - (me.el || 0) > 10) { p.x = px; p.y = py; p.vx *= 0.5; p.vy *= 0.5; } } /* a deck wall or ramp side: stop, the server decides */
+  function rebase(me) { /* a snapshot arrived */
+    if (!PHYS || !me || me.vx == null || me.dead || me.air > 0 || me.pit || me.aw || me.spin || (s.win && s.win !== G.me) || away) { pred = null; return; }
+    const now = nowS(), o = kartOpts(me), p = { x: me.x, y: me.y, a: me.a, vx: me.vx, vy: me.vy };
+    for (let t = now - Math.min(0.25, rtt / 2 + 0.017); t < now; t += 1 / 60) { p.ctl = ctlAt(t); stepPred(p, Math.min(1 / 60, now - t), me, o); }
+    if (pred && Math.hypot(pred.x - p.x, pred.y - p.y) < 40) { pred.x += (p.x - pred.x) * 0.35; pred.y += (p.y - pred.y) * 0.35; pred.a = lerpAngle(pred.a, p.a, 0.35); pred.vx = p.vx; pred.vy = p.vy; } /* small disagreements (rounding, a nudge) are eased in */
+    else pred = p; /* a big one (a hit, a teleport): take the server's word */
+    predMe = me;
   }
   const HEARTS = 2; /* hearts per life, same as HEARTS in server/games/memekarts.js */
   const TEST_CAM = /[?&]bltest=1/.test(location.search); // tools/views.js only
@@ -609,7 +613,7 @@ registerGame('memekarts', (G) => {
     function updateKarts(dt) {
       const seen = new Set();
       if (time - lastPing > 2 && G.socket && G.socket.emit) { lastPing = time; const t0 = performance.now(); try { G.socket.emit('ping', {}, () => { rtt = rtt * 0.7 + ((performance.now() - t0) / 1000) * 0.3; rttKnown = true; }); } catch (e) { /* transport without acks */ } }
-      const predicted = predictMe(s.karts.find((q) => q.id === G.me));
+      if (pred) { pred.ctl = myCtl; stepPred(pred, dt, predMe, kartOpts(predMe)); } const predicted = pred;
       for (const k of s.karts) {
         seen.add(k.id); const p = G.player(k.id);
         let v = views.get(k.id);
@@ -821,7 +825,7 @@ registerGame('memekarts', (G) => {
   // ============================ input ============================
   function sendCtl() { if (away) return;
     const k = new Set([...G.keys,...touchKeys]);
-    const c = { up: k.has('w') || k.has('ArrowUp'), down: k.has('s') || k.has('ArrowDown'), left: k.has('a') || k.has('ArrowLeft'), right: k.has('d') || k.has('ArrowRight') }; myCtl = c;
+    const c = { up: k.has('w') || k.has('ArrowUp'), down: k.has('s') || k.has('ArrowDown'), left: k.has('a') || k.has('ArrowLeft'), right: k.has('d') || k.has('ArrowRight') }; if (!(myCtl.up === c.up && myCtl.down === c.down && myCtl.left === c.left && myCtl.right === c.right)) { ctlLog.push({ t: nowS(), ctl: c }); while (ctlLog.length > 2 && ctlLog[1].t < nowS() - 3) ctlLog.shift(); } myCtl = c;
     const key = `${+c.up}${+c.down}${+c.left}${+c.right}`;
     if (key !== lastCtl) { lastCtl = key; G.send(Object.assign({ type: 'ctl' }, c)); }
   }
@@ -922,7 +926,7 @@ registerGame('memekarts', (G) => {
   }
 
   return {
-    state(ns) { s = ns;map=window.MEMEKARTS_MAPS.find(m=>m.id===ns.mapId)||window.MEMEKARTS_MAPS[0];OBST=map.obstacles;BOXES=map.boxes;MW=map.w||900;MH=map.h||600;OX=MW/2;OZ=MH/2; },
+    state(ns) { s = ns;map=window.MEMEKARTS_MAPS.find(m=>m.id===ns.mapId)||window.MEMEKARTS_MAPS[0];OBST=map.obstacles;BOXES=map.boxes;MW=map.w||900;MH=map.h||600;OX=MW/2;OZ=MH/2; rebase(ns.karts && ns.karts.find((q) => q.id === G.me)); },
     event(e) {
       const mine = (id) => id === G.me;
       if(e.type==='pit'){feed.unshift({text:`${nm(e.id)} fell into the pit (−1 kill)`,t:6});if(mine(e.id))banner('Pit fall: −1 kill','#ffc857',2.5);}
