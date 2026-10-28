@@ -619,8 +619,8 @@ registerGame('memekarts', (G) => {
         let v = views.get(k.id);
         if (!v) { v = { g: buildKart(k.v, p.color), x: k.x, y: k.y, a: k.a, sc: 1, lookKey: '', spd: 0, roll: 0, pitch:0, steer:0, airTime:0, landingAge:2 }; views.set(k.id, v); scene.add(v.g); }
         if (Math.hypot(k.x - v.x, k.y - v.y) > 130) { v.x = k.x; v.y = k.y; v.a = k.a; }
-        const mine = k.id === G.me, px = v.x, py = v.y, pa = v.a, f = 1 - Math.exp(-(mine ? 26 : 16) * dt), tg = (mine && predicted) || k; /* your own kart: the predicted position; others: the server's, smoothed */
-        v.x += (tg.x - v.x) * f; v.y += (tg.y - v.y) * f; v.a = lerpAngle(v.a, tg.a, 1 - Math.exp(-(mine ? 22 : 14) * dt));
+        const mine = k.id === G.me, tight = mine && !!predicted, px = v.x, py = v.y, pa = v.a, f = 1 - Math.exp(-(tight ? 26 : 16) * dt), tg = (mine && predicted) || k; /* your own kart follows its per-frame prediction tightly; everything that comes straight from 30 Hz snapshots is smoothed as before */
+        v.x += (tg.x - v.x) * f; v.y += (tg.y - v.y) * f; v.a = lerpAngle(v.a, tg.a, 1 - Math.exp(-(tight ? 22 : 14) * dt));
         const spd = Math.hypot(v.x - px, v.y - py) / Math.max(dt, 0.001), oldSpeed=v.spd;v.spd=damp(v.spd,spd,13,dt);
         const fwd = Math.sign((v.x - px) * Math.cos(v.a) + (v.y - py) * Math.sin(v.a)) || 1;
         const av = (((v.a - pa) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
