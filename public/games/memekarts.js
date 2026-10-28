@@ -18,14 +18,31 @@ registerGame('memekarts', (G) => {
   const PHYS = window.MEMEKARTS_PHYSICS; let myCtl = {}, ctlLog = [], rtt = 0.06, lastPing = -9, rttKnown = false, fpsAcc = 0, fpsN = 0, fpsShow = 0, pred = null, predMe = null; /* readout under the minimap: frames per second and the round trip */
   const nowS = () => performance.now() / 1000;
   window.__kartPred = () => (pred ? { x: pred.x, y: pred.y, a: pred.a } : null); /* test hook: tools read the predicted kart */
+  // Everything drawn straight from snapshots is interpolated: the scene is shown INTERP_DELAY behind the newest snapshot,
+  // gliding at a constant rate between the previous one and it, so a turn at 30 updates a second does not pulse.
+  // (Easing toward each new snapshot instead jumped and slowed thirty times a second, which read as jerky turning.)
+  let prevS = null, prevT = 0, curT = 0, snapGap = 1 / 30, clockTk = 0; const INTERP_DELAY = () => Math.min(0.12, Math.max(0.04, snapGap * 1.3));
+  // With a tick counter in the snapshots (newer servers), the drawing clock runs on the server's ticks (30 a second) and only
+  // eases toward "newest tick minus a small delay", so a few milliseconds of arrival jitter never reach the screen.
+  // A short buffer of recent snapshots: the drawing clock sits 1.3 ticks behind the newest one, so it usually falls between
+  // two older snapshots (and a single late snapshot does not show).
+  const snapBuf = [];
+  function bracket() { if (snapBuf.length < 2) return null; let A = null, B = null; for (let i = snapBuf.length - 1; i > 0; i--) { if (snapBuf[i - 1].tk <= clockTk) { A = snapBuf[i - 1]; B = snapBuf[i]; break; } } if (!A) { A = snapBuf[0]; B = snapBuf[1]; } return { A, B, al: Math.max(0, (clockTk - A.tk) / (B.tk - A.tk)) }; }
+  function advanceClock(dt) { if (!s || s.tk == null) return; const target = s.tk - 1.3; if (!clockTk || Math.abs(target - clockTk) > 4) clockTk = target; else { clockTk += dt * 30; clockTk += (target - clockTk) * Math.min(1, dt * 3); } }
+  function interp(k, prevById) { let pk = prevById && prevById.get(k.id), al = null, kk = k; const br = s && s.tk != null ? bracket() : null;
+    if (br) { const a = br.A.by.get(k.id), b = br.B.by.get(k.id); if (a && b) { pk = a; kk = b; al = br.al; } }
+    if (!pk || (al == null && curT <= prevT)) return k; if (al == null) al = (nowS() - INTERP_DELAY() - prevT) / (curT - prevT); k = kk;
+    if (al > 1) { const over = Math.min(0.1, (al - 1) * (curT - prevT)); return k.vx != null ? { x: k.x + k.vx * over, y: k.y + k.vy * over, a: k.a, el: k.el } : k; } /* late data: coast briefly on the last velocity */
+    if (al < 0) al = 0; return { x: pk.x + (k.x - pk.x) * al, y: pk.y + (k.y - pk.y) * al, a: lerpAngle(pk.a, k.a, al), el: (pk.el || 0) + ((k.el || 0) - (pk.el || 0)) * al }; }
   const ctlAt = (t) => { let c = {}; for (const e of ctlLog) { if (e.t <= t) c = e.ctl; else break; } return c; };
   const kartOpts = (me) => { const spd = (me.egg > 0 ? 0.5 : 1) * (me.mush ? 1.8 : me.bst ? 1.55 : 1) * (me.star ? 1.35 : 1) * (me.small ? 0.65 : 1) * (me.ink > 0 ? 0.92 : 1) * (me.mud ? (me.star || me.mush ? 0.8 : 0.5) : 1); return { maxF: 300 * spd, maxR: 150, accel: 420 * (me.mush || me.star || me.bst ? 1.8 : 1), turn: 3.2 }; };
   function stepPred(p, h, me, o) { const px = p.x, py = p.y; PHYS.stepCar(p, h, o); PHYS.wallHit(p, 16, 0.4, OBST, MW, MH); if (window.MEMEKARTS_MAPS.surface(map, p.x, p.y) - (me.el || 0) > 10) { p.x = px; p.y = py; p.vx *= 0.5; p.vy *= 0.5; } } /* a deck wall or ramp side: stop, the server decides */
+  const NO_PRED = /[?&]nopred=1/.test(location.search); /* tests: draw your own kart from snapshots like everyone else */
   function rebase(me) { /* a snapshot arrived */
-    if (!PHYS || !me || me.vx == null || me.dead || me.air > 0 || me.pit || me.aw || me.spin || (s.win && s.win !== G.me) || away) { pred = null; return; }
+    if (NO_PRED || !PHYS || !me || me.vx == null || me.dead || me.air > 0 || me.pit || me.aw || me.spin || (s.win && s.win !== G.me) || away) { pred = null; return; }
     const now = nowS(), o = kartOpts(me), p = { x: me.x, y: me.y, a: me.a, vx: me.vx, vy: me.vy };
     for (let t = now - Math.min(0.25, rtt / 2 + 0.017); t < now; t += 1 / 60) { p.ctl = ctlAt(t); stepPred(p, Math.min(1 / 60, now - t), me, o); }
-    if (pred && Math.hypot(pred.x - p.x, pred.y - p.y) < 40) { pred.x += (p.x - pred.x) * 0.35; pred.y += (p.y - pred.y) * 0.35; pred.a = lerpAngle(pred.a, p.a, 0.35); pred.vx = p.vx; pred.vy = p.vy; } /* small disagreements (rounding, a nudge) are eased in */
+    if (pred && Math.hypot(pred.x - p.x, pred.y - p.y) < 40) { pred.x += (p.x - pred.x) * 0.25; pred.y += (p.y - pred.y) * 0.25; let da = p.a - pred.a; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI; if (Math.abs(da) > 0.004) pred.a += da * 0.25; pred.vx = p.vx; pred.vy = p.vy; } /* tiny heading differences are rounding, not disagreement */ /* small disagreements (rounding, a nudge) are eased in */
     else pred = p; /* a big one (a hit, a teleport): take the server's word */
     predMe = me;
   }
@@ -610,17 +627,18 @@ registerGame('memekarts', (G) => {
       });
     }
     const views = new Map();
+    window.__kartView = () => { const v = views.get(G.me); return v ? { x: v.x, y: v.y, a: v.a } : null; }; /* test hook: what is drawn for your kart */
     function updateKarts(dt) {
       const seen = new Set();
       if (time - lastPing > 2 && G.socket && G.socket.emit) { lastPing = time; const t0 = performance.now(); try { G.socket.emit('ping', {}, () => { rtt = rtt * 0.7 + ((performance.now() - t0) / 1000) * 0.3; rttKnown = true; }); } catch (e) { /* transport without acks */ } }
-      if (pred) { pred.ctl = myCtl; stepPred(pred, dt, predMe, kartOpts(predMe)); } const predicted = pred;
+      advanceClock(dt); if (pred) { pred.ctl = myCtl; stepPred(pred, dt, predMe, kartOpts(predMe)); } const predicted = pred; const prevById = prevS ? new Map(prevS.karts.map((q) => [q.id, q])) : null;
       for (const k of s.karts) {
         seen.add(k.id); const p = G.player(k.id);
         let v = views.get(k.id);
         if (!v) { v = { g: buildKart(k.v, p.color), x: k.x, y: k.y, a: k.a, sc: 1, lookKey: '', spd: 0, roll: 0, pitch:0, steer:0, airTime:0, landingAge:2 }; views.set(k.id, v); scene.add(v.g); }
         if (Math.hypot(k.x - v.x, k.y - v.y) > 130) { v.x = k.x; v.y = k.y; v.a = k.a; }
-        const mine = k.id === G.me, tight = mine && !!predicted, px = v.x, py = v.y, pa = v.a, f = 1 - Math.exp(-(tight ? 26 : 16) * dt), tg = (mine && predicted) || k; /* your own kart follows its per-frame prediction tightly; everything that comes straight from 30 Hz snapshots is smoothed as before */
-        v.x += (tg.x - v.x) * f; v.y += (tg.y - v.y) * f; v.a = lerpAngle(v.a, tg.a, 1 - Math.exp(-(tight ? 22 : 14) * dt));
+        const mine = k.id === G.me, px = v.x, py = v.y, pa = v.a, f = 1 - Math.exp(-30 * dt), tg = (mine && predicted) || interp(k, prevById); /* your own kart: its per-frame prediction; everyone else (and you without prediction): the interpolated snapshot. Both are already smooth, so the follow is tight */
+        v.x += (tg.x - v.x) * f; v.y += (tg.y - v.y) * f; v.a = lerpAngle(v.a, tg.a, 1 - Math.exp(-30 * dt));
         const spd = Math.hypot(v.x - px, v.y - py) / Math.max(dt, 0.001), oldSpeed=v.spd;v.spd=damp(v.spd,spd,13,dt);
         const fwd = Math.sign((v.x - px) * Math.cos(v.a) + (v.y - py) * Math.sin(v.a)) || 1;
         const av = (((v.a - pa) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
@@ -926,7 +944,7 @@ registerGame('memekarts', (G) => {
   }
 
   return {
-    state(ns) { s = ns;map=window.MEMEKARTS_MAPS.find(m=>m.id===ns.mapId)||window.MEMEKARTS_MAPS[0];OBST=map.obstacles;BOXES=map.boxes;MW=map.w||900;MH=map.h||600;OX=MW/2;OZ=MH/2; rebase(ns.karts && ns.karts.find((q) => q.id === G.me)); },
+    state(ns) { if (s) { prevS = s; prevT = curT; } curT = nowS(); if (prevS) snapGap = snapGap * 0.9 + (curT - prevT) * 0.1; if (ns.tk != null && ns.karts) { snapBuf.push({ tk: ns.tk, by: new Map(ns.karts.map((q) => [q.id, q])) }); while (snapBuf.length > 6) snapBuf.shift(); } s = ns;map=window.MEMEKARTS_MAPS.find(m=>m.id===ns.mapId)||window.MEMEKARTS_MAPS[0];OBST=map.obstacles;BOXES=map.boxes;MW=map.w||900;MH=map.h||600;OX=MW/2;OZ=MH/2; rebase(ns.karts && ns.karts.find((q) => q.id === G.me)); },
     event(e) {
       const mine = (id) => id === G.me;
       if(e.type==='pit'){feed.unshift({text:`${nm(e.id)} fell into the pit (−1 kill)`,t:6});if(mine(e.id))banner('Pit fall: −1 kill','#ffc857',2.5);}
