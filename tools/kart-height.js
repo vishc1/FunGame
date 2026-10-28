@@ -6,9 +6,9 @@ function world(mapId) {
   const players = ['a', 'b'].map((id) => ({ id, name: id, color: '#fff' })), w = { ev: [], state: null };
   const api = { memory: { __fast: 600, memekartsMap: mapId }, room: { bots: new Map([['x', 1]]) }, players: () => players, player: (id) => players.find((p) => p.id === id),
     emit(e, d) { if (e === 'g:event') w.ev.push(d); if (e === 'g:state') w.state = d; }, to() {}, after() {}, every() {}, clear() {}, end() {} };
-  w.game = m.create(api); w.tick = (n = 1) => { for (let i = 0; i < n; i++) w.game.tick(1 / 30); }; w.k = (id) => w.state.karts.find((k) => k.id === id);
+  w.game = m.create(api); w.tick = (n = 1, dt = 1 / 30) => { for (let i = 0; i < n; i++) w.game.tick(dt); }; w.k = (id) => w.state.karts.find((k) => k.id === id);
   w.tp = (id, x, y, a) => { w.game.onInput(id, { type: 'tp', x, y, a }); w.tick(); };
-  w.drive = (id, n, ctl = { up: true }) => { w.game.onInput(id, Object.assign({ type: 'ctl', up: false, down: false, left: false, right: false }, ctl)); w.tick(n); };
+  w.drive = (id, n, ctl = { up: true }, dt = 1 / 30) => { w.game.onInput(id, Object.assign({ type: 'ctl', up: false, down: false, left: false, right: false }, ctl)); w.tick(n, dt); };
   w.tick(2); return w;
 }
 for (const map of MAPS) {
@@ -21,7 +21,9 @@ for (const map of MAPS) {
   { const DV = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }, r2 = map.ramps.find((r) => r.z0), t2 = map.decks.find((d) => d.z), base = map.decks.find((d) => !d.z && t2.x >= d.x && t2.x + t2.w <= d.x + d.w && t2.y >= d.y && t2.y + t2.h <= d.y + d.h);
     const r1 = map.ramps.find((r) => { if (r.z0) return false; const v = DV[r.dir], hx = r.x + r.w / 2 + v[0] * (r.w / 2 + 3), hy = r.y + r.h / 2 + v[1] * (r.h / 2 + 3); return hx >= base.x && hx <= base.x + base.w && hy >= base.y && hy <= base.y + base.h; }), dd = DV[r1.dir];
     const t = world(map.id); t.tp('b', 60, 60, 0); t.tp('a', r1.x + r1.w / 2 - dd[0] * 130, r1.y + r1.h / 2 - dd[1] * 130, Math.atan2(dd[1], dd[0]));
-    let hi = 0, onTier1 = false, fellFrom = 0; for (let i = 0; i < 150; i++) { t.drive('a', 1); const k = t.k('a'); if (k.el === MAPS.DECK_Z) onTier1 = true; if (k.el > hi) hi = k.el; if (hi === MAPS.TOWER_Z && k.el < MAPS.TOWER_Z) { fellFrom = MAPS.TOWER_Z; } if (fellFrom && k.el === 0 && MAPS.surface(map, k.x, k.y) === 0) break; }
+    // Sample every physics substep: Canyon's short tier-one landing can lie
+    // entirely between two 30 Hz snapshots at full speed.
+    let hi = 0, onTier1 = false, fellFrom = 0; for (let i = 0; i < 600; i++) { t.drive('a', 1, { up: true }, 1 / 120); const k = t.k('a'); if (k.el === MAPS.DECK_Z) onTier1 = true; if (k.el > hi) hi = k.el; if (hi === MAPS.TOWER_Z && k.el < MAPS.TOWER_Z) { fellFrom = MAPS.TOWER_Z; } if (fellFrom && k.el === 0 && MAPS.surface(map, k.x, k.y) === 0) break; }
     ok(`${map.id}: the sky tower: floor, first deck, then the second ramp up to ${MAPS.TOWER_Z}`, onTier1 && hi === MAPS.TOWER_Z, `highest ${hi}, via tier 1: ${onTier1}`);
     ok(`${map.id}: ...and driving off the top drops all the way to the floor`, fellFrom === MAPS.TOWER_Z && t.k('a').el === 0, 'ended at height ' + t.k('a').el);
     const bx = map.boxes.find(([x, y]) => MAPS.surface(map, x, y) === MAPS.TOWER_Z); ok(`${map.id}: there is an item box on top of the tower`, !!bx);

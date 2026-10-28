@@ -16,7 +16,7 @@ const MATCH = 150;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---- shared car physics: public/memekarts-physics.js (the browser runs the same step to predict your own kart) ----
-const { stepCar, collideBounds, collideRect, wallHit } = require('../../public/memekarts-physics.js');
+const { stepGrounded, moveGrounded, collideTerrain, collideBounds, collideRect, wallHit } = require('../../public/memekarts-physics.js');
 function circleHit(a, b, ra, rb, rest) {
   const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
   if (d >= ra + rb || d === 0) return false;
@@ -236,7 +236,7 @@ module.exports = {
     const SPAWNS = map.spawns, BOXES = map.boxes;
     const W = map.w || 900, H = map.h || 600, CX = W / 2, CY = H / 2;
     const hitWall = (o, r, rest) => wallHit(o, r, rest, map.obstacles, W, H);
-    const karts = new Map();
+    const karts = new Map(); let tickN = 0; /* snapshot tick counter, the clients' interpolation clock */
     const ents = []; let eid = 0;
     // ---- height: decks and ramps (see public/memekarts-maps.js). `el` is how high a kart or item is standing. ----
     const surf = (x, y) => MAPS.surface(map, x, y), STEP = 10, GRADE = 0.72; // a rise of more than STEP that is steeper than GRADE (rise per unit travelled) is a wall; a drop of more than STEP is a fall. Ramps climb at 0.52 at most.
@@ -244,19 +244,8 @@ module.exports = {
     let elapsed = 0;
     // Keeps a kart on the ground it can reach after it moved from (px, py). Returns true when it ran into a deck or ramp side.
     function terrain(k, px, py, dt, rest) {
-      if (surf(px, py) - k.el > STEP) { k.el = surf(k.x, k.y); return false; } // shoved inside a deck by a collision: pop up onto it
-      const mx = k.x - px, my = k.y - py, ml = Math.hypot(mx, my) || 1, lx = (mx / ml) * R, ly = (my / ml) * R; /* the kart's front edge, so its nose stops at a ramp side instead of sinking in */
-      const wall = (x, y, ox, oy) => { const d = Math.hypot(x - px, y - py), rise = surf(x, y) - k.el, rise2 = surf(x + ox, y + oy) - k.el; return (rise > STEP && rise > d * GRADE) || (rise2 > STEP && rise2 > (d + Math.hypot(ox, oy)) * GRADE); };
-      let hit = false;
-      if (wall(k.x, k.y, lx, ly)) {
-        hit = true;
-        if (!wall(k.x, py, lx, 0)) { k.y = py; k.vy = -k.vy * rest; }
-        else if (!wall(px, k.y, 0, ly)) { k.x = px; k.vx = -k.vx * rest; }
-        else { k.x = px; k.y = py; k.vx = -k.vx * rest; k.vy = -k.vy * rest; }
-      }
-      const h = surf(k.x, k.y);
-      if (k.el - h > STEP) { k.el = Math.max(h, k.el - 300 * dt); if (!k.falling) { k.falling = true; } } // drove off an edge: fall
-      else { if (k.falling) { k.falling = false; api.emit('g:event', { type: 'land', x: Math.round(k.x), y: Math.round(k.y), drop: 1 }); } k.el = h; }
+      const falling = k.falling, hit = collideTerrain(k, px, py, dt, rest, surf, R);
+      if (falling && !k.falling) api.emit('g:event', { type: 'land', x: Math.round(k.x), y: Math.round(k.y), drop: 1 });
       return hit;
     }
     // the same idea for shells and other things that slide along the ground: decks and ramp sides bounce them, edges drop them
@@ -346,6 +335,7 @@ module.exports = {
         }
       },
       tick(dt) {
+        tickN++;
         if (over && celebT <= 0) return;
         if (over) { celebT -= dt; for (const k of karts.values()) if (k.id !== winnerId) { k.ctl = {}; k.vx = 0; k.vy = 0; } } /* everyone but the winner is frozen for the victory lap */
         else { t -= dt; elapsed += dt; if (t <= 0) { t = 0; finish(); } }
@@ -388,17 +378,16 @@ module.exports = {
             k.bill -= dt; if (k.bill <= 0) { k.bill = 0; k.inv = Math.max(k.inv, 0.8); }
             let best = null, bd = 1e9; for (const o of karts.values()) { if (o === k || o.dead || o.ghost > 0) continue; const d = Math.hypot(o.x - k.x, o.y - k.y); if (d < bd) { bd = d; best = o; } }
             if (best) { const want = Math.atan2(best.y - k.y, best.x - k.x); const da = ((want - k.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI; k.a += clamp(da, -2.2 * dt, 2.2 * dt); }
-            const bx0 = k.x, by0 = k.y; k.vx = Math.cos(k.a) * 520; k.vy = Math.sin(k.a) * 520; k.x += k.vx * dt; k.y += k.vy * dt;
-            if (hitWall(k, R, 1) | terrain(k, bx0, by0, dt, 1)) k.a = Math.atan2(k.vy, k.vx);
+            k.vx = Math.cos(k.a) * 520; k.vy = Math.sin(k.a) * 520;
+            if (moveGrounded(k, dt, map, surf, 1, R)) k.a = Math.atan2(k.vy, k.vx);
             for (const o of karts.values()) if (o !== k && !o.dead && !o.air && o.ramCd <= 0 && Math.abs(o.el - k.el) < 22 && Math.hypot(o.x - k.x, o.y - k.y) < R * 2 + 4) { o.ramCd = 0.8; g.damage(o, 2, k.id, 'Bullet Bill'); }
             continue;
           }
           if (k.spin > 0) k.a += 10 * dt;
           k.mud = k.el < 6 && zones.some((z) => k.x > z.x && k.x < z.x + z.w && k.y > z.y && k.y < z.y + z.h); // quicksand / mud zones
           const spd = (k.egg > 0 ? 0.5 : 1) * (k.mush > 0 ? 1.8 : k.boost > 0 ? 1.55 : 1) * (k.star > 0 ? 1.35 : 1) * (k.small > 0 ? 0.65 : 1) * (k.ink > 0 ? 0.92 : 1) * (k.mud ? (k.star > 0 || k.mush > 0 ? 0.8 : 0.5) : 1);
-          const px = k.x, py = k.y;
-          stepCar(k, dt, { maxF: 300 * spd, maxR: 150, accel: 420 * (k.mush > 0 || k.star > 0 || k.boost > 0 ? 1.8 : 1), turn: 3.2 });
-          hitWall(k, R, 0.4); terrain(k, px, py, dt, 0.3);
+          const movement = stepGrounded(k, dt, { maxF: 300 * spd, maxR: 150, accel: 420 * (k.mush > 0 || k.star > 0 || k.boost > 0 ? 1.8 : 1), turn: 3.2 }, map, surf, R);
+          if (movement.landed) api.emit('g:event', { type: 'land', x: Math.round(k.x), y: Math.round(k.y), drop: 1 });
         }
         for(const k of karts.values()) if(!k.dead&&!k.air&&!k.pitFall&&k.el<=0&&MAPS.isPit(map,k.x,k.y)) {
           k.pitFall=true; k.vx=k.vy=0; k.inv=0;
@@ -406,7 +395,10 @@ module.exports = {
         const live = [...karts.values()].filter((k) => !k.dead && !k.away && !k.pitFall && !k.air && !k.ghost && !k.bill);
         for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
           const a = live[i], b = live[j];
+          const ax = a.x, ay = a.y, bx = b.x, by = b.y;
           if (Math.abs(a.el - b.el) < 22 && circleHit(a, b, R, R, 0.5)) { // karts on different levels pass over each other
+            hitWall(a, R, 0); terrain(a, ax, ay, 0, 0);
+            hitWall(b, R, 0); terrain(b, bx, by, 0, 0);
             if (a.star > 0 && b.ramCd <= 0) { b.ramCd = 0.8; g.damage(b, 3, a.id, 'Star'); }
             else if (a.mush > 0 && b.ramCd <= 0) { b.ramCd = 0.6; g.damage(b, 1, a.id, 'Boost mushroom'); }
             if (b.star > 0 && a.ramCd <= 0) { a.ramCd = 0.8; g.damage(a, 3, b.id, 'Star'); }
@@ -464,7 +456,8 @@ module.exports = {
         t: Math.ceil(t),
         mapId: map.id,
         haz: movers.length ? movers.map((m) => [Math.round(m.x), Math.round(m.y)]) : undefined, // live positions of the map's moving hazards
-        karts: [...karts.values()].map((k) => ({ id: k.id, x: Math.round(k.x), y: Math.round(k.y), vx: Math.round(k.vx), vy: Math.round(k.vy), el: Math.round(k.el), a: +k.a.toFixed(2), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1), aw: k.away ? 1 : undefined })), win: over ? winnerId : undefined,
+        tk: tickN,
+        karts: [...karts.values()].map((k) => ({ id: k.id, x: +k.x.toFixed(1), y: +k.y.toFixed(1), vx: Math.round(k.vx), vy: Math.round(k.vy), el: Math.round(k.el), a: +k.a.toFixed(3), hp: +Math.max(0, k.hp).toFixed(2), bst: k.boost > 0 ? 1 : 0, streak: k.streak, weapon: k.weapon, egg: +k.egg.toFixed(1), air: +k.air.toFixed(2), spin: k.spin > 0 ? 1 : 0, mush: k.mush > 0 ? 1 : 0, inv: k.inv > 0 ? 1 : 0, mud: k.mud ? 1 : 0, dead: k.dead > 0 ? 1 : 0, pit: k.pitFall ? 1 : 0, kills: k.kills, v: k.v, star: k.star > 0 ? 1 : 0, ghost: k.ghost > 0 ? 1 : 0, small: k.small > 0 ? 1 : 0, bill: k.bill > 0 ? 1 : 0, ink: +k.ink.toFixed(1), pie: +(k.pie || 0).toFixed(1), aw: k.away ? 1 : undefined })), win: over ? winnerId : undefined,
         ents: ents.filter((e) => e.kind !== 'burst' && e.kind !== 'gunfire').map((e) => ({ id: e.id, k: e.kind, x: Math.round(e.x), y: Math.round(e.y), el: Math.round(e.el || 0), z: Math.round(e.z || 0), a: +(e.a || 0).toFixed(2), o: e.owner, f: +e.life.toFixed(1) })),
         boxes: boxes.map((b) => (b.t > 0 ? 0 : 1)),
       };

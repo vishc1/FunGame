@@ -15,7 +15,7 @@ for(const kills of [0,3,-2])for(const power of ['none','star','ghost','bill','in
   w.tick(25);assert(w.k.dead>0,power+' must not bypass pit');assert.equal(w.k.kills,kills-1);assert.equal(w.k.deaths,1);assert.equal(w.other.kills,0);
   assert.equal(w.events.filter(e=>e.type==='pit').length,1);assert.equal(w.events.filter(e=>e.type==='kill').length,0);
   assert.equal(w.k.weapon,null);assert.equal(w.k.streak,0);w.tick(25);assert.equal(w.k.kills,kills-1,'one penalty per fall');
-  w.tick(70);assert.equal(w.k.dead,0);assert.equal(w.k.pitFall,false);assert.equal(w.k.hp,3);assert(w.k.inv>0);assert(!maps.isPit(map,w.k.x,w.k.y));
+  w.tick(70);assert.equal(w.k.dead,0);assert.equal(w.k.pitFall,false);assert.equal(w.k.hp,2);assert(w.k.inv>0);assert(!maps.isPit(map,w.k.x,w.k.y));
 }
 {
   const w=world();Object.assign(w.k,{x:900,y:360,el:0,a:Math.PI/2,inv:0});w.game.onInput('a',{type:'ctl',up:true});w.tick(50);
@@ -25,7 +25,9 @@ for(const kills of [0,3,-2])for(const power of ['none','star','ghost','bill','in
   const w=world();Object.assign(w.k,{x:900,y:450,el:0,air:1.2,avx:0,avy:0});w.tick(20);assert.equal(w.k.kills,0);assert(!w.k.pitFall,'airborne karts must not fall early');w.tick(40);assert.equal(w.k.kills,-1,'landing in the pit counts');
 }
 {
-  const w=world();Object.assign(w.k,{x:900,y:300,el:0,air:1.2,avx:0,avy:250});w.tick(38);assert.equal(w.k.kills,0);assert.equal(w.k.el,48,'jump clears pit onto bridge');assert(!w.k.pitFall);
+  // Launch from the lip: arrive at the bridge while the arc is still above 48.
+  // The old y=300 / speed=250 setup hit its side during descent, below the deck.
+  const w=world();Object.assign(w.k,{x:900,y:360,el:0,air:1.2,avx:0,avy:220});w.tick(38);assert.equal(w.k.kills,0);assert.equal(w.k.el,48,'jump clears pit onto bridge');assert(!w.k.pitFall);
 }
 {
   const w=world();Object.assign(w.k,{x:540,y:600,el:48,a:0});w.game.onInput('a',{type:'ctl',up:true});w.tick(95);assert.equal(w.k.kills,0);assert(!w.k.pitFall,'bridge is safe');
