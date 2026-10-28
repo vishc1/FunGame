@@ -30,7 +30,7 @@ registerGame('memekarts', (G) => {
   // two older snapshots (and a single late snapshot does not show).
   const snapBuf = [];
   function bracket() { if (snapBuf.length < 2) return null; let A = null, B = null; for (let i = snapBuf.length - 1; i > 0; i--) { if (snapBuf[i - 1].tk <= clockTk) { A = snapBuf[i - 1]; B = snapBuf[i]; break; } } if (!A) { A = snapBuf[0]; B = snapBuf[1]; } return { A, B, al: Math.max(0, (clockTk - A.tk) / (B.tk - A.tk)) }; }
-  function advanceClock(dt) { if (!s || s.tk == null) return; const target = s.tk - 1.3; if (!clockTk || Math.abs(target - clockTk) > 4) clockTk = target; else { clockTk += dt * 30; clockTk += (target - clockTk) * Math.min(1, dt * 3); } }
+  function advanceClock(dt) { if (!s || s.tk == null) return; const target = s.tk - 1.3; if (!clockTk || Math.abs(target - clockTk) > 4) clockTk = target; else { clockTk += dt * 30; clockTk += (target - clockTk) * Math.min(1, dt * 3); } } /* 1.3 ticks behind, re-synced at 3/s: measured smoothest (2 ticks and a slower re-sync were worse) */
   function interp(k, prevById) { let pk = prevById && prevById.get(k.id), al = null, kk = k; const br = s && s.tk != null ? bracket() : null;
     if (br) { const a = br.A.by.get(k.id), b = br.B.by.get(k.id); if (a && b) { pk = a; kk = b; al = br.al; } }
     if (!pk || (al == null && curT <= prevT)) return k; if (al == null) al = (nowS() - INTERP_DELAY() - prevT) / (curT - prevT); k = kk;
